@@ -114,8 +114,11 @@ Die zentrale Quellenkonfiguration liegt in:
 src/config/newsSources.ts
 ```
 
-**Genau dort werden später die erlaubten Feed-Adressen im Feld `feedUrl` eingetragen.**
-Die enthaltenen Einträge sind inaktive Beispiele und besitzen bewusst keine erfundenen Feed-Adressen.
+**Genau dort werden erlaubte Feed-Adressen im Feld `feedUrl` eingetragen.**
+
+Aktiviert sind derzeit ausschließlich die ausdrücklich freigegebenen offiziellen Feeds
+`GameStar News`, `GameStar Deals` und `GameStar Hardware`. Weitere Quellen sind als
+deaktivierte Kandidaten dokumentiert.
 
 Vorgehen:
 
@@ -125,7 +128,7 @@ Vorgehen:
 4. `usageNotes` um Prüfdatum, Freigabegrundlage und erlaubten Umfang ergänzen.
 5. Erst danach `enabled: true` setzen.
 6. Zum Deaktivieren jederzeit wieder `enabled: false` setzen. Die Adresse kann zur Dokumentation stehen bleiben.
-7. Kategorien über `categoryMapping` auf SpielSignal-Kategorien abbilden.
+7. Eine feste Zielkategorie als Text oder mehrere Regeln über `categoryMapping` festlegen.
 8. Nur Titel, URL, Datum, Quellenname und Kategorie verarbeiten.
 9. Keine fremden Bilder, Beschreibungen oder vollständigen Texte automatisiert kopieren.
 
@@ -232,24 +235,23 @@ Keine Publisher-ID raten oder aus Beispielen übernehmen. `PUBLIC_CONSENT_MODE_R
 
 Die wiederverwendbare Werbekomponente liegt in `src/components/AdSlot.astro`. Der Affiliate-Hinweis liegt in `src/components/AffiliateNotice.astro`.
 
+## Datenschutz- und Diensteschalter
+
+Die zentrale Privacy-Konfiguration liegt in `src/config/privacy.ts`. Die passenden
+Umgebungsvariablen sind in `.env.example` dokumentiert. Standardmäßig bleiben Werbung,
+Analyse, externe Einbettungen, Newsletter und Consent-Modus deaktiviert.
+
+Der aktuelle technische und rechtliche Prüfstand steht ausführlich in `LEGAL_SETUP.md`.
+
 ## Rechtliche Pflichtaufgaben
 
 Vor jeder öffentlichen Veröffentlichung:
 
-- Platzhalter im Impressum durch echte Angaben ersetzen.
-- Verantwortliche Stelle in der Datenschutzerklärung ergänzen.
+- Impressum und Datenschutzerklärung abschließend rechtlich prüfen.
+- Hosting-Anbieter, Tarif und Vertragsunterlagen festlegen und dokumentieren.
 - Datenschutzerklärung auf Hosting, Kontaktwege, Werbung und weitere Dienste anpassen.
 - Keine Analyse-, Werbe- oder externen Tracking-Skripte ohne passende Einwilligung aktivieren.
 - Bei Unsicherheit eine rechtliche Prüfung einholen.
-
-Zwingende Platzhalter:
-
-```text
-[NAME EINTRAGEN]
-[ANSCHRIFT EINTRAGEN]
-[E-MAIL EINTRAGEN]
-[TELEFON OPTIONAL EINTRAGEN]
-```
 
 Das Kontakt- und Newsletter-Formular ist nur eine nicht sendende Frontend-Demo.
 

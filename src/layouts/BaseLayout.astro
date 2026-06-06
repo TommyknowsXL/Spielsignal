@@ -1,6 +1,7 @@
 ---
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
+import { adsenseClient, canLoadAds } from "../config/privacy";
 import "../styles/global.css";
 
 interface Props {
@@ -20,10 +21,6 @@ const {
 } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const socialImage = new URL(image, Astro.site);
-const adsEnabled =
-  import.meta.env.PUBLIC_ADS_ENABLED === "true" &&
-  Boolean(import.meta.env.PUBLIC_ADSENSE_CLIENT) &&
-  import.meta.env.PUBLIC_CONSENT_MODE_READY === "true";
 const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
@@ -58,11 +55,11 @@ const websiteJsonLd = {
     <script is:inline type="application/ld+json" set:html={JSON.stringify(websiteJsonLd)} />
     {jsonLd && <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
     {
-      adsEnabled && (
+      canLoadAds && (
         <script
           is:inline
           async
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${import.meta.env.PUBLIC_ADSENSE_CLIENT}`}
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}`}
           crossorigin="anonymous"
         />
       )

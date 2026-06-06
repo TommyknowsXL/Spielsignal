@@ -6,7 +6,7 @@ const base = z.object({
   title: z.string(),
   description: z.string(),
   date: z.coerce.date(),
-  author: z.string().default("SpielSignal Redaktion"),
+  author: z.string().default("SpielSignal-Redaktion"),
   category: z.string(),
   seoTitle: z.string(),
   seoDescription: z.string(),
@@ -56,7 +56,7 @@ const news = defineCollection({
   schema: base.extend({
     sourceName: z.string(),
     sourceUrl: z.url(),
-    articleType: z.literal("News").default("News")
+    articleType: z.literal("News-Überblick").default("News-Überblick")
   })
 });
 

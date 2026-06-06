@@ -2,7 +2,7 @@
 title: "Demo-Test: Wenn gute Planung wichtiger als Tempo ist"
 description: "Ein Musterartikel, der zeigt, wie ein späterer SpielSignal-Test aufgebaut sein kann."
 date: 2026-05-28
-author: "SpielSignal Redaktion"
+author: "SpielSignal-Redaktion"
 category: "Strategie"
 seoTitle: "Demo-Test eines PC-Strategiespiels | SpielSignal"
 seoDescription: "Eindeutig gekennzeichneter Demo-Test zur Vorschau des SpielSignal-Artikelaufbaus."

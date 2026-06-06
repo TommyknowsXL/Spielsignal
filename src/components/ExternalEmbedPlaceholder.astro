@@ -1,0 +1,22 @@
+---
+interface Props {
+  provider: "YouTube" | "Twitch" | "Steam" | string;
+}
+
+const { provider } = Astro.props;
+---
+
+<section class="external-embed-placeholder" aria-label={`${provider}-Inhalt deaktiviert`}>
+  <span class="badge">Externer Inhalt · {provider}</span>
+  <p>
+    Externer Inhalt ist deaktiviert. Mit dem Laden können Daten an den jeweiligen Anbieter
+    übertragen werden.
+  </p>
+  <button class="button secondary" type="button" disabled>
+    Externen Inhalt laden
+  </button>
+  <small>
+    Noch nicht verfügbar: Eine datenschutzgerechte Einwilligungslösung muss zuerst eingerichtet
+    werden.
+  </small>
+</section>

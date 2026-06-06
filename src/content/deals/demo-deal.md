@@ -2,7 +2,7 @@
 title: "Demo-Deal: Preisvergleich folgt nach technischer Freigabe"
 description: "Ein transparenter Platzhalter für spätere, überprüfte PC-Spiele-Angebote."
 date: 2026-05-18
-author: "SpielSignal Redaktion"
+author: "SpielSignal-Redaktion"
 category: "Deals"
 seoTitle: "Demo-Deal für PC-Spiele | SpielSignal"
 seoDescription: "Kennzeichnungsbeispiel für künftige Deals und Affiliate-Links."

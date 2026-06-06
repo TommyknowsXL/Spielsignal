@@ -2,7 +2,7 @@
 title: "Demo-Ersteindruck: Survival mit ruhigem Einstieg"
 description: "So könnte ein vorsichtiger Ersteindruck nach wenigen Spielstunden aussehen."
 date: 2026-05-25
-author: "SpielSignal Redaktion"
+author: "SpielSignal-Redaktion"
 category: "Survival"
 seoTitle: "Demo-Ersteindruck eines Survival-Spiels | SpielSignal"
 seoDescription: "Muster für einen transparent gekennzeichneten Ersteindruck auf SpielSignal."

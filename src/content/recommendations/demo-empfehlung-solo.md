@@ -2,7 +2,7 @@
 title: "Demo-Empfehlung: Lohnt sich das auch für Solo-Spieler?"
 description: "Ein Muster für persönliche Empfehlungen mit klaren Kriterien statt pauschalem Urteil."
 date: 2026-05-22
-author: "SpielSignal Redaktion"
+author: "SpielSignal-Redaktion"
 category: "Rollenspiele"
 seoTitle: "Demo-Empfehlung für Solo-Spieler | SpielSignal"
 seoDescription: "Beispiel für das Empfehlungsformat Lohnt sich das? auf SpielSignal."

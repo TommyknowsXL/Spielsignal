@@ -70,7 +70,7 @@ const processed = deduplicateAndMarkSimilar([...rssItems, duplicate, similar, ..
 assert.equal(processed.length, 3);
 assert.equal(processed.some((item) => Boolean(item.similarTo)), true);
 
-const inactiveResult = await getAggregatedNews();
+const inactiveResult = await getAggregatedNews({ sources: [] });
 assert.equal(inactiveResult.activeSourceCount, 0);
 assert.equal(inactiveResult.items.length, 0);
 assert.deepEqual(inactiveResult.statuses, []);
@@ -94,6 +94,21 @@ assert.equal(fetchedResult.items.length, 1);
 assert.equal(fetchedResult.statuses[0].ok, true);
 assert.equal(fetchedResult.statuses[0].fromCache, false);
 
+const failingSource: NewsSource = {
+  ...source,
+  name: "Nicht erreichbare Testquelle",
+  feedUrl: "http://127.0.0.1:1/feed.xml",
+  enabled: true
+};
+const partialResult = await getAggregatedNews({
+  sources: [localSource, failingSource],
+  forceRefresh: true
+});
+assert.equal(partialResult.items.length, 1);
+assert.equal(partialResult.statuses.length, 2);
+assert.equal(partialResult.statuses.some((status) => status.ok), true);
+assert.equal(partialResult.statuses.some((status) => !status.ok), true);
+
 await new Promise<void>((resolve, reject) =>
   server.close((error) => (error ? reject(error) : resolve()))
 );
@@ -112,5 +127,5 @@ assert.equal(fallbackResult.statuses[0].fromCache, true);
 assert.equal(fallbackResult.usedFallbackCache, true);
 
 console.log(
-  "Feed-Tests erfolgreich: RSS, Atom, Abruf, Cache, Ausfall-Fallback, Deduplizierung und Titelähnlichkeit."
+  "Feed-Tests erfolgreich: RSS, Atom, Abruf, Teil-Ausfall, Cache, Ausfall-Fallback, Deduplizierung und Titelähnlichkeit."
 );

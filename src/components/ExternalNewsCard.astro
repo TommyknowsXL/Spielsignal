@@ -21,7 +21,7 @@ const published = new Date(item.date).toLocaleString("de-DE", {
     <h3>{item.title}</h3>
     <div class="meta">
       <time datetime={item.date}>{published} Uhr</time>
-      <span>Quelle: <a href={item.sourceHomepageUrl} rel="nofollow noopener" target="_blank">{item.sourceName}</a></span>
+      <span>Externe Quelle: <a href={item.sourceHomepageUrl} rel="noopener noreferrer" target="_blank">{item.sourceName}</a></span>
     </div>
     {
       item.similarTo && (
@@ -29,9 +29,9 @@ const published = new Date(item.date).toLocaleString("de-DE", {
       )
     }
     <p class="muted card-teaser">
-      SpielSignal zeigt nur Metadaten. Der vollständige Beitrag liegt auf der Seite der Quelle.
+      Der vollständige Beitrag befindet sich auf der Webseite der Quelle.
     </p>
-    <a class="button secondary" href={item.url} rel="nofollow noopener" target="_blank">
+    <a class="button secondary" href={item.url} rel="noopener noreferrer" target="_blank">
       Originalmeldung lesen ↗
     </a>
   </div>

@@ -1,20 +1,41 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
-<BaseLayout title="Impressum | SpielSignal" description="Impressum von SpielSignal. Pflichtangaben müssen vor Veröffentlichung ergänzt werden.">
-  <header class="page-hero container">
-    <nav class="breadcrumbs" aria-label="Brotkrumen"><a href="/">Startseite</a><span>/</span><span>Impressum</span></nav>
-    <p class="eyebrow">Rechtliches</p><h1>Impressum</h1>
-    <p class="demo-note">Vor Veröffentlichung zwingend mit echten Angaben vervollständigen.</p>
+
+<BaseLayout title="Impressum | SpielSignal" description="Impressum und Anbieterkennzeichnung von SpielSignal.">
+  <header class="page-hero page-hero--compact container">
+    <nav class="breadcrumbs" aria-label="Brotkrumen">
+      <a href="/">Startseite</a><span>/</span><span>Impressum</span>
+    </nav>
+    <p class="eyebrow">Rechtliches</p>
+    <h1>Impressum</h1>
   </header>
-  <section class="section narrow legal">
+
+  <section class="section section--compact narrow legal">
     <h2>Angaben gemäß § 5 DDG</h2>
-    <p>[NAME EINTRAGEN]<br />[ANSCHRIFT EINTRAGEN]</p>
+    <address>
+      <strong>SpielSignal</strong><br />
+      Thomas Oestermann<br />
+      Goethestraße 18A<br />
+      68766 Hockenheim<br />
+      Deutschland
+    </address>
+
     <h2>Kontakt</h2>
-    <p>E-Mail: [E-MAIL EINTRAGEN]<br />Telefon: [TELEFON OPTIONAL EINTRAGEN]</p>
-    <h2>Redaktionell verantwortlich</h2>
-    <p>[NAME EINTRAGEN]<br />[ANSCHRIFT EINTRAGEN]</p>
-    <h2>Haftung für Links</h2>
-    <p>Diese Vorlage ersetzt keine rechtliche Beratung. Inhalte externer Seiten liegen in der Verantwortung ihrer jeweiligen Betreiber. Die Formulierung und Vollständigkeit dieses Impressums müssen vor dem öffentlichen Start geprüft werden.</p>
+    <p>E-Mail: <a href="mailto:kontakt@spielsignal.de">kontakt@spielsignal.de</a></p>
+
+    <h2>Verantwortlich für journalistisch-redaktionelle Inhalte gemäß § 18 Abs. 2 MStV</h2>
+    <address>
+      Thomas Oestermann<br />
+      Goethestraße 18A<br />
+      68766 Hockenheim<br />
+      Deutschland
+    </address>
+
+    <h2>Verbraucherstreitbeilegung</h2>
+    <p>
+      Ich bin nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer
+      Verbraucherschlichtungsstelle teilzunehmen.
+    </p>
   </section>
 </BaseLayout>

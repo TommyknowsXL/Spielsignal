@@ -1,25 +1,129 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+
+const sections = [
+  ["verantwortlicher", "1. Verantwortlicher"],
+  ["allgemeine-hinweise", "2. Allgemeine Hinweise"],
+  ["hosting", "3. Hosting"],
+  ["kontaktaufnahme", "4. Kontaktaufnahme per E-Mail"],
+  ["cookies", "5. Cookies und ähnliche Technologien"],
+  ["werbung", "6. Werbung"],
+  ["analyse", "7. Analyse und Tracking"],
+  ["embeds", "8. Eingebettete Inhalte von Drittanbietern"],
+  ["externe-links", "9. Externe Links und RSS-Feeds"],
+  ["newsletter", "10. Newsletter"],
+  ["konten", "11. Benutzerkonten und Kommentare"],
+  ["speicherdauer", "12. Speicherdauer"],
+  ["rechte", "13. Rechte betroffener Personen"],
+  ["beschwerde", "14. Beschwerderecht bei einer Aufsichtsbehörde"],
+  ["aenderungen", "15. Änderungen dieser Datenschutzerklärung"]
+] as const;
 ---
-<BaseLayout title="Datenschutz | SpielSignal" description="Datenschutzhinweise für die statische erste Version von SpielSignal.">
-  <header class="page-hero container">
-    <nav class="breadcrumbs" aria-label="Brotkrumen"><a href="/">Startseite</a><span>/</span><span>Datenschutz</span></nav>
-    <p class="eyebrow">Rechtliches</p><h1>Datenschutz</h1>
-    <p>Hinweise für die derzeitige statische Demo-Version ohne Analyse, aktive Werbung oder Formularversand.</p>
+
+<BaseLayout title="Datenschutzerklärung | SpielSignal" description="Datenschutzerklärung von SpielSignal, Stand 6. Juni 2026.">
+  <header class="page-hero page-hero--compact container">
+    <nav class="breadcrumbs" aria-label="Brotkrumen">
+      <a href="/">Startseite</a><span>/</span><span>Datenschutz</span>
+    </nav>
+    <p class="eyebrow">Rechtliches</p>
+    <h1>Datenschutzerklärung</h1>
+    <p>Stand: 6. Juni 2026</p>
   </header>
-  <section class="section narrow legal">
-    <p class="demo-note">Diese Vorlage muss vor Veröffentlichung und vor Aktivierung externer Dienste rechtlich geprüft und angepasst werden.</p>
-    <h2>Verantwortliche Stelle</h2>
-    <p>[NAME EINTRAGEN]<br />[ANSCHRIFT EINTRAGEN]<br />[E-MAIL EINTRAGEN]</p>
-    <h2>Hosting</h2>
-    <p>Beim Aufruf der Webseite verarbeitet der eingesetzte Hosting-Anbieter technisch notwendige Verbindungsdaten, insbesondere IP-Adresse, Zeitpunkt und angeforderte Datei. Vor dem Start sind der konkrete Anbieter, die Rechtsgrundlage, Speicherdauer und ein möglicher Auftragsverarbeitungsvertrag zu ergänzen.</p>
-    <h2>Cookies und lokale Speicherung</h2>
-    <p>Diese erste Version setzt selbst keine Analyse- oder Werbe-Cookies. AdSense wird nur geladen, wenn Werbung, Publisher-ID und Consent-Bereitschaft ausdrücklich aktiviert wurden.</p>
-    <h2>Kontakt und Newsletter</h2>
-    <p>Die sichtbaren Formulare sind Frontend-Demos. Sie versenden oder speichern keine Daten.</p>
-    <h2>Externe Links</h2>
-    <p>Beim Öffnen externer Links gelten die Datenschutzbestimmungen des jeweiligen Anbieters. Externe Inhalte werden nicht automatisch eingebettet.</p>
-    <h2>Betroffenenrechte</h2>
-    <p>Die gesetzlich vorgesehenen Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerspruch sind vor Veröffentlichung mit passenden Kontakt- und Beschwerdeangaben zu vervollständigen.</p>
-  </section>
+
+  <div class="container legal-layout">
+    <nav class="legal-toc" aria-label="Inhaltsverzeichnis der Datenschutzerklärung">
+      <strong>Inhaltsverzeichnis</strong>
+      {sections.map(([id, label]) => <a href={`#${id}`}>{label}</a>)}
+    </nav>
+
+    <section class="legal">
+      <h2 id="verantwortlicher">1. Verantwortlicher</h2>
+      <p>Verantwortlich für die Datenverarbeitung auf dieser Webseite ist:</p>
+      <address>
+        Thomas Oestermann<br />
+        SpielSignal<br />
+        Goethestraße 18A<br />
+        68766 Hockenheim<br />
+        Deutschland
+      </address>
+      <p>E-Mail: <a href="mailto:kontakt@spielsignal.de">kontakt@spielsignal.de</a></p>
+
+      <h2 id="allgemeine-hinweise">2. Allgemeine Hinweise</h2>
+      <p>Der Schutz personenbezogener Daten ist mir wichtig. Personenbezogene Daten sind Informationen, mit denen eine Person direkt oder indirekt identifiziert werden kann.</p>
+      <p>Diese Datenschutzerklärung erläutert, welche personenbezogenen Daten beim Besuch dieser Webseite verarbeitet werden und zu welchem Zweck dies geschieht.</p>
+
+      <h2 id="hosting">3. Hosting</h2>
+      <p>Diese Webseite wird über einen externen Hosting-Anbieter bereitgestellt. Beim Aufruf der Webseite können technisch erforderliche Daten verarbeitet werden. Dazu können insbesondere gehören:</p>
+      <ul>
+        <li>IP-Adresse</li><li>Datum und Uhrzeit des Zugriffs</li><li>aufgerufene Seite oder Datei</li>
+        <li>Browsertyp und Browserversion</li><li>Betriebssystem</li><li>Referrer-URL</li>
+        <li>technische Status- und Fehlerdaten</li>
+      </ul>
+      <p>Die Verarbeitung erfolgt, um die Webseite technisch bereitzustellen, die Sicherheit und Stabilität zu gewährleisten und Missbrauch zu verhindern.</p>
+      <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO. Das berechtigte Interesse besteht in der sicheren und zuverlässigen Bereitstellung dieser Webseite.</p>
+      <p>Aktuell ist eine Bereitstellung über Vercel vorgesehen. Vor dem öffentlichen Start ist zu prüfen, welcher Vercel-Tarif oder welcher alternative Hosting-Anbieter tatsächlich genutzt wird. Die Angaben in dieser Datenschutzerklärung sind bei einem Wechsel des Hosting-Anbieters anzupassen.</p>
+
+      <h2 id="kontaktaufnahme">4. Kontaktaufnahme per E-Mail</h2>
+      <p>Bei einer Kontaktaufnahme über <a href="mailto:kontakt@spielsignal.de">kontakt@spielsignal.de</a> werden die übermittelten Daten verarbeitet, um die Anfrage zu beantworten.</p>
+      <p>Dazu können insbesondere gehören:</p>
+      <ul><li>Name</li><li>E-Mail-Adresse</li><li>Inhalt der Nachricht</li><li>weitere freiwillig übermittelte Angaben</li></ul>
+      <p>Soweit die Anfrage auf den Abschluss oder die Durchführung eines Vertrags gerichtet ist, erfolgt die Verarbeitung auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO. In anderen Fällen erfolgt die Verarbeitung auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO. Das berechtigte Interesse besteht in der Bearbeitung der Anfrage.</p>
+      <p>Die Daten werden gelöscht, sobald die Anfrage abschließend bearbeitet wurde und keine gesetzlichen Aufbewahrungspflichten entgegenstehen.</p>
+
+      <h2 id="cookies">5. Cookies und ähnliche Technologien</h2>
+      <p>In der aktuellen Startversion setzt SpielSignal keine nicht erforderlichen Cookies, Analyse-Cookies oder Werbe-Cookies ein.</p>
+      <p>Technisch nicht erforderliche Cookies oder ähnliche Technologien dürfen erst nach einer geeigneten Einwilligung verwendet werden.</p>
+      <p>Falls später Werbeanzeigen, Analyse-Dienste oder eingebettete Inhalte aktiviert werden, wird die Datenschutzerklärung entsprechend erweitert und eine geeignete Einwilligungslösung eingerichtet.</p>
+
+      <h2 id="werbung">6. Werbung</h2>
+      <p>Auf der Webseite können bereits gekennzeichnete Flächen mit der Bezeichnung „WERBUNG“ angezeigt werden. In der aktuellen Startversion handelt es sich ausschließlich um Platzhalter.</p>
+      <p>Es werden derzeit keine personalisierten Werbeanzeigen und keine aktiven Google-AdSense-Skripte geladen.</p>
+      <p>Vor einer späteren Aktivierung von Werbeanzeigen werden die erforderlichen Datenschutzinformationen ergänzt und eine geeignete Einwilligungslösung eingerichtet.</p>
+
+      <h2 id="analyse">7. Analyse und Tracking</h2>
+      <p>In der aktuellen Startversion werden keine Analyse-Dienste wie Google Analytics, Matomo oder Meta Pixel eingesetzt.</p>
+      <p>Falls später Analyse-Dienste aktiviert werden, werden diese vorab datenschutzrechtlich geprüft, technisch nur nach der erforderlichen Einwilligung geladen und in dieser Datenschutzerklärung ergänzt.</p>
+
+      <h2 id="embeds">8. Eingebettete Inhalte von Drittanbietern</h2>
+      <p>In der aktuellen Startversion werden keine eingebetteten YouTube-Videos, Twitch-Streams, Steam-Widgets oder Social-Media-Feeds automatisch geladen.</p>
+      <p>Für zukünftige eingebettete Inhalte ist eine datenschutzfreundliche Zwei-Klick-Lösung vorzusehen. Externe Inhalte dürfen erst geladen werden, nachdem Besucher dies ausdrücklich freigegeben haben.</p>
+      <p>Beim Aufruf externer Inhalte können personenbezogene Daten an den jeweiligen Drittanbieter übermittelt werden. Vor der Aktivierung solcher Inhalte wird diese Datenschutzerklärung entsprechend ergänzt.</p>
+
+      <h2 id="externe-links">9. Externe Links und RSS-Feeds</h2>
+      <p>SpielSignal kann Überschriften und Metadaten externer Nachrichtenquellen anzeigen und auf die Originalbeiträge verlinken.</p>
+      <p>Beim bloßen Besuch von SpielSignal werden dadurch keine eingebetteten Inhalte der jeweiligen Nachrichtenseite geladen. Erst wenn Besucher einen externen Link anklicken, verlassen sie SpielSignal. Für die Datenverarbeitung auf der verlinkten Webseite ist der jeweilige Anbieter verantwortlich.</p>
+
+      <h2 id="newsletter">10. Newsletter</h2>
+      <p>In der aktuellen Startversion wird kein Newsletter angeboten. Eine eventuell sichtbare Newsletter-Fläche ist ausschließlich ein Platzhalter. Es werden darüber keine Daten gespeichert oder versendet.</p>
+
+      <h2 id="konten">11. Benutzerkonten und Kommentare</h2>
+      <p>In der aktuellen Startversion gibt es keine Benutzerkonten, keine Login-Funktion und keine Kommentarfunktion.</p>
+
+      <h2 id="speicherdauer">12. Speicherdauer</h2>
+      <p>Personenbezogene Daten werden nur so lange gespeichert, wie dies für den jeweiligen Zweck erforderlich ist oder gesetzliche Aufbewahrungspflichten bestehen.</p>
+
+      <h2 id="rechte">13. Rechte betroffener Personen</h2>
+      <p>Betroffene Personen haben im Rahmen der gesetzlichen Voraussetzungen insbesondere folgende Rechte:</p>
+      <ul>
+        <li>Recht auf Auskunft</li><li>Recht auf Berichtigung</li><li>Recht auf Löschung</li>
+        <li>Recht auf Einschränkung der Verarbeitung</li><li>Recht auf Datenübertragbarkeit</li>
+        <li>Recht auf Widerspruch gegen bestimmte Verarbeitungen</li>
+        <li>Recht auf Widerruf einer erteilten Einwilligung mit Wirkung für die Zukunft</li>
+      </ul>
+      <p>Zur Ausübung dieser Rechte genügt eine Nachricht an: <a href="mailto:kontakt@spielsignal.de">kontakt@spielsignal.de</a></p>
+
+      <h2 id="beschwerde">14. Beschwerderecht bei einer Aufsichtsbehörde</h2>
+      <p>Betroffene Personen haben das Recht, sich bei einer Datenschutzaufsichtsbehörde zu beschweren.</p>
+      <p>Zuständige Aufsichtsbehörde in Baden-Württemberg:</p>
+      <address>
+        Der Landesbeauftragte für den Datenschutz und die Informationsfreiheit Baden-Württemberg<br />
+        Postfach 10 29 32<br />
+        70025 Stuttgart
+      </address>
+      <p>E-Mail: <a href="mailto:poststelle@lfdi.bwl.de">poststelle@lfdi.bwl.de</a></p>
+
+      <h2 id="aenderungen">15. Änderungen dieser Datenschutzerklärung</h2>
+      <p>Diese Datenschutzerklärung wird angepasst, wenn neue Funktionen, Dienste oder Anbieter eingebunden werden oder sich die rechtlichen Anforderungen ändern.</p>
+    </section>
+  </div>
 </BaseLayout>

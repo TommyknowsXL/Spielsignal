@@ -3,7 +3,7 @@ export interface NewsSource {
   feedUrl: string | null;
   homepageUrl: string;
   enabled: boolean;
-  categoryMapping: Record<string, string>;
+  categoryMapping: string | Record<string, string>;
   usageNotes: string;
 }
 
@@ -20,28 +20,67 @@ export interface NewsSource {
  */
 export const newsSources: NewsSource[] = [
   {
-    name: "Demo: offizieller Publisher-Newsroom",
-    feedUrl: null,
-    homepageUrl: "https://example.com/",
-    enabled: false,
-    categoryMapping: {
-      updates: "Updates",
-      releases: "Releases"
-    },
+    name: "GameStar News",
+    homepageUrl: "https://www.gamestar.de/",
+    feedUrl: "https://www.gamestar.de/news/rss/news.rss",
+    enabled: true,
+    categoryMapping: "News",
     usageNotes:
-      "Platzhalter. Vor Aktivierung Nutzungsbedingungen, Feed-Adresse und zulässige Metadaten prüfen."
+      "Offizieller GameStar-RSS-Feed. Nur Überschrift, Veröffentlichungszeitpunkt, Quelle und Link zum Originalartikel anzeigen. Keine vollständigen Texte oder fremden Bilder übernehmen."
   },
   {
-    name: "Demo: freigegebene Spiele-API",
-    feedUrl: null,
-    homepageUrl: "https://example.org/",
-    enabled: false,
-    categoryMapping: {
-      news: "News",
-      deals: "Deals"
-    },
+    name: "GameStar Deals",
+    homepageUrl: "https://www.gamestar.de/",
+    feedUrl: "https://www.gamestar.de/rss/deals.rss",
+    enabled: true,
+    categoryMapping: "Deals",
     usageNotes:
-      "Platzhalter. Nur mit dokumentierter Erlaubnis und ohne Übernahme fremder Volltexte oder Bilder aktivieren."
+      "Offizieller GameStar-RSS-Feed. Nur Überschrift, Veröffentlichungszeitpunkt, Quelle und Link zum Originalartikel anzeigen. Keine vollständigen Texte oder fremden Bilder übernehmen."
+  },
+  {
+    name: "GameStar Hardware",
+    homepageUrl: "https://www.gamestar.de/",
+    feedUrl: "https://www.gamestar.de/rss/hardware.rss",
+    enabled: true,
+    categoryMapping: "Hardware",
+    usageNotes:
+      "Offizieller GameStar-RSS-Feed. Nur Überschrift, Veröffentlichungszeitpunkt, Quelle und Link zum Originalartikel anzeigen. Keine vollständigen Texte oder fremden Bilder übernehmen."
+  },
+  {
+    name: "GamePro News",
+    homepageUrl: "https://www.gamepro.de/",
+    feedUrl: "https://www.gamepro.de/rss/gpnews.rss",
+    enabled: false,
+    categoryMapping: "Gaming allgemein",
+    usageNotes:
+      "Offizieller RSS-Feed, aber stärker konsolenorientiert. Erst nach redaktioneller Entscheidung aktivieren."
+  },
+  {
+    name: "PC Games",
+    homepageUrl: "https://www.pcgames.de/",
+    feedUrl: null,
+    enabled: false,
+    categoryMapping: "News",
+    usageNotes:
+      "Feed-Adresse und Nutzungsbedingungen vor Aktivierung manuell prüfen."
+  },
+  {
+    name: "PC Games Hardware",
+    homepageUrl: "https://www.pcgameshardware.de/",
+    feedUrl: null,
+    enabled: false,
+    categoryMapping: "Hardware",
+    usageNotes:
+      "Feed-Adresse und Nutzungsbedingungen vor Aktivierung manuell prüfen."
+  },
+  {
+    name: "MeinMMO",
+    homepageUrl: "https://mein-mmo.de/",
+    feedUrl: null,
+    enabled: false,
+    categoryMapping: "Online-Spiele",
+    usageNotes:
+      "Feed-Adresse und Nutzungsbedingungen vor Aktivierung manuell prüfen."
   }
 ];
 

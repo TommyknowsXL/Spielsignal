@@ -95,6 +95,8 @@ function safeExternalUrl(value: string): string | null {
 }
 
 function categoryFor(rawCategories: unknown, source: NewsSource): string {
+  if (typeof source.categoryMapping === "string") return source.categoryMapping;
+
   const categories = asArray(rawCategories)
     .map((category) => textValue(category).toLocaleLowerCase("de"))
     .filter(Boolean);
@@ -105,7 +107,7 @@ function categoryFor(rawCategories: unknown, source: NewsSource): string {
     }
   }
 
-  return source.categoryMapping.news ?? "News";
+  return source.categoryMapping.news ?? Object.values(source.categoryMapping)[0] ?? "News";
 }
 
 export function parseFeedXml(xml: string, source: NewsSource): AggregatedNewsItem[] {
