@@ -1,0 +1,25 @@
+---
+interface Props {
+  title: string;
+  category: string;
+  time: string;
+  source: string;
+  sourceUrl: string;
+  note: string;
+}
+const { title, category, time, source, sourceUrl, note } = Astro.props;
+---
+
+<article class="card news-card" data-category={category}>
+  <div class="visual" aria-hidden="true">S</div>
+  <div class="card-body">
+    <span class="badge">{category}</span>
+    <h3>{title}</h3>
+    <div class="meta"><span>{time}</span><span>Quelle: {source}</span></div>
+    <p class="muted">{note}</p>
+    <p class="demo-note">Beispieldaten – keine aktuelle Meldung</p>
+    <a class="text-link" href={sourceUrl} rel="nofollow noopener" target="_blank">
+      Demo-Quelle öffnen ↗
+    </a>
+  </div>
+</article>

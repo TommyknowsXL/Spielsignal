@@ -1,0 +1,9 @@
+---
+import ListingPage from "../../components/ListingPage.astro";
+const items = [
+  { title: "Demo-Test: Wenn gute Planung wichtiger als Tempo ist", description: "Vorschau eines ausführlichen Tests mit Kriterien, Stärken, Schwächen und Fazit.", category: "Test", href: "/artikel/demo-test-taktikspiel/", label: "Test lesen" },
+  { title: "Demo-Ersteindruck: Survival mit ruhigem Einstieg", description: "Ein bewusst vorläufiger Ersteindruck mit klar benannten offenen Fragen.", category: "Ersteindruck", href: "/artikel/demo-ersteindruck-survival/", label: "Ersteindruck lesen" },
+  { title: "Demo-Empfehlung für Solo-Spieler", description: "Eine zielgruppenbezogene Einordnung statt pauschaler Kaufempfehlung.", category: "Empfehlung", href: "/artikel/demo-empfehlung-solo/", label: "Empfehlung lesen" }
+];
+---
+<ListingPage title="Tests" eyebrow="Selbst gespielt" description="Eigene Tests, Ersteindrücke und Empfehlungen. Die derzeitigen Artikel sind deutlich markierte Layout-Demos und keine realen Bewertungen." items={items} />

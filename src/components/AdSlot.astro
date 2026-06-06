@@ -1,0 +1,14 @@
+---
+interface Props {
+  format?: "wide" | "feed" | "sidebar" | "article" | "mobile";
+}
+const { format = "wide" } = Astro.props;
+---
+
+<div class="ad-slot" data-format={format} aria-label="Werbeplatzhalter">
+  <div>
+    <span class="ad-label">WERBUNG</span>
+    <strong>Werbeplatz vorbereitet</strong>
+    <p>Hier erscheint erst nach Einrichtung und Einwilligung ein Anzeigenformat.</p>
+  </div>
+</div>

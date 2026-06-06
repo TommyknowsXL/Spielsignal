@@ -1,0 +1,18 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+<BaseLayout title="Suche | SpielSignal" description="Vorbereitete Suche für News, Tests, Deals und Releases auf SpielSignal.">
+  <header class="page-hero container">
+    <nav class="breadcrumbs" aria-label="Brotkrumen"><a href="/">Startseite</a><span>/</span><span>Suche</span></nav>
+    <p class="eyebrow">Suche</p><h1>Was möchtest du finden?</h1>
+    <p>Die Suche ist für eine spätere Inhaltsmenge vorbereitet und arbeitet in dieser ersten Version noch nicht.</p>
+  </header>
+  <section class="section narrow">
+    <form class="demo-form" onsubmit="return false">
+      <label class="sr-only" for="site-search">Suchbegriff</label>
+      <input id="site-search" type="search" placeholder="Spiel, Genre oder Thema" disabled />
+      <button class="button" disabled>Suchen</button>
+    </form>
+    <p class="demo-note" style="margin-top: 1rem;">Noch nicht aktiviert – es werden keine Suchdaten übertragen.</p>
+  </section>
+</BaseLayout>

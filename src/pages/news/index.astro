@@ -1,0 +1,130 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import ExternalNewsCard from "../../components/ExternalNewsCard.astro";
+import NewsCard from "../../components/NewsCard.astro";
+import { demoNews } from "../../data/demoNews";
+import { getAggregatedNews } from "../../lib/newsFeed";
+
+export const prerender = false;
+
+Astro.response.headers.set(
+  "Cache-Control",
+  "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400"
+);
+
+const result = await getAggregatedNews();
+const hasExternalItems = result.items.length > 0;
+const filters = [
+  "Alle",
+  ...new Set(
+    (hasExternalItems ? result.items : demoNews).map((item) => item.category)
+  )
+];
+---
+
+<BaseLayout
+  title="Aktuelle PC-Gaming-News | SpielSignal"
+  description="Automatisch aktualisierte PC-Gaming-Meldungen aus ausdrücklich freigegebenen Quellen mit sichtbarem Link zur Originalmeldung."
+>
+  <header class="page-hero container">
+    <nav class="breadcrumbs" aria-label="Brotkrumen">
+      <a href="/">Startseite</a><span>/</span><span>News</span>
+    </nav>
+    <p class="eyebrow">PC-Gaming im Überblick</p>
+    <h1>Aktuelle Meldungen</h1>
+    <p>
+      Kurze Metadaten aus freigegebenen Quellen. Vollständige Beiträge bleiben immer auf der
+      Seite der jeweiligen Quelle.
+    </p>
+  </header>
+
+  <section class="section container">
+    {
+      hasExternalItems ? (
+        <div class="feed-status success">
+          <strong>Automatische Aktualisierung aktiv</strong>
+          <span>
+            {result.activeSourceCount} freigegebene Quelle{result.activeSourceCount === 1 ? "" : "n"} ·
+            Aktualisierung etwa stündlich
+          </span>
+        </div>
+      ) : (
+        <div class="feed-status">
+          <strong>Demo-Fallback aktiv</strong>
+          <span>
+            Es ist noch keine geprüfte Quelle aktiviert. Daher werden weiterhin eindeutig
+            markierte Beispieldaten gezeigt.
+          </span>
+        </div>
+      )
+    }
+
+    {
+      result.statuses.some((status) => !status.ok) && (
+        <details class="feed-diagnostics">
+          <summary>Hinweis zu nicht erreichbaren Quellen</summary>
+          <ul>
+            {result.statuses.filter((status) => !status.ok).map((status) => (
+              <li>
+                <strong>{status.name}:</strong> {status.error}
+                {status.fromCache && " – letzter erfolgreicher Stand wird angezeigt."}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )
+    }
+
+    <div class="filters" aria-label="News filtern">
+      {filters.map((filter, index) => (
+        <button class="filter" type="button" data-filter={filter} aria-pressed={index === 0 ? "true" : "false"}>
+          {filter}
+        </button>
+      ))}
+    </div>
+
+    <div class="news-layout">
+      <div class="grid news-grid">
+        {
+          hasExternalItems
+            ? result.items.map((item, index) => (
+                <>
+                  <ExternalNewsCard item={item} />
+                  {index === 7 && <AdSlot format="feed" />}
+                </>
+              ))
+            : demoNews.map((item, index) => (
+                <>
+                  <NewsCard
+                    title={item.title}
+                    category={item.category}
+                    time={item.publishedLabel}
+                    source={item.sourceName}
+                    sourceUrl={item.sourceUrl}
+                    note={item.note}
+                  />
+                  {index === 7 && <AdSlot format="feed" />}
+                </>
+              ))
+        }
+      </div>
+      <aside><AdSlot format="sidebar" /></aside>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const filterButtons = document.querySelectorAll<HTMLButtonElement>("[data-filter]");
+  const newsCards = document.querySelectorAll<HTMLElement>(".news-card");
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      filterButtons.forEach((item) => item.setAttribute("aria-pressed", "false"));
+      button.setAttribute("aria-pressed", "true");
+      const selected = button.dataset.filter;
+      newsCards.forEach((card) => {
+        card.hidden = selected !== "Alle" && card.dataset.category !== selected;
+      });
+    });
+  });
+</script>

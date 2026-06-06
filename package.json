@@ -1,0 +1,31 @@
+{
+  "name": "spielsignal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "test:feeds": "tsx scripts/test-news-feed.ts",
+    "steam:prepare": "tsx scripts/prepare-steam-suggestions.ts",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/rss": "latest",
+    "@astrojs/sitemap": "latest",
+    "@astrojs/vercel": "latest",
+    "astro": "latest",
+    "fast-xml-parser": "^5.3.6"
+  },
+  "devDependencies": {
+    "@astrojs/check": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  },
+  "overrides": {
+    "@vercel/routing-utils": {
+      "path-to-regexp": "6.3.0"
+    }
+  }
+}

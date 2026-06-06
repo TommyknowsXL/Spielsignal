@@ -1,0 +1,20 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+<BaseLayout title="Kontakt | SpielSignal" description="Kontakt zu SpielSignal aufnehmen. Das Formular ist derzeit eine nicht sendende Frontend-Demo.">
+  <header class="page-hero container">
+    <nav class="breadcrumbs" aria-label="Brotkrumen"><a href="/">Startseite</a><span>/</span><span>Kontakt</span></nav>
+    <p class="eyebrow">Kontakt</p>
+    <h1>Schreib uns.</h1>
+    <p>Hinweise, Korrekturen und Themenvorschläge sind willkommen. Das Formular ist technisch noch nicht aktiviert.</p>
+  </header>
+  <section class="section narrow">
+    <form class="contact-form" onsubmit="return false">
+      <div class="field"><label for="name">Name</label><input id="name" name="name" autocomplete="name" /></div>
+      <div class="field"><label for="email">E-Mail</label><input id="email" name="email" type="email" autocomplete="email" /></div>
+      <div class="field"><label for="message">Nachricht</label><textarea id="message" name="message"></textarea></div>
+      <button class="button" type="submit" disabled>Noch nicht aktiviert</button>
+      <p class="demo-note">Dieses Formular versendet und speichert keine Daten.</p>
+    </form>
+  </section>
+</BaseLayout>

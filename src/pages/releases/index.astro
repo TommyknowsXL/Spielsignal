@@ -1,0 +1,8 @@
+---
+import ListingPage from "../../components/ListingPage.astro";
+const items = [
+  { title: "Demo-Release: Unangekündigtes PC-Projekt", description: "Neutraler Beispieleintrag mit Genre, Plattform, Termin und Status.", category: "Termin offen", href: "/artikel/demo-release/", label: "Eintrag ansehen" },
+  { title: "Demo-Projekt Orbit", description: "Reiner Platzhalter ohne Bezug zu einem realen angekündigten Spiel.", category: "PC", href: "/artikel/demo-release/", label: "Eintrag ansehen" }
+];
+---
+<ListingPage title="Releases" eyebrow="PC-Termine" description="Eine kommende Übersicht bestätigter PC-Veröffentlichungen. Alle derzeitigen Einträge sind erfundene Demo-Platzhalter, keine Produktankündigungen." items={items} />

@@ -1,0 +1,49 @@
+---
+const path = Astro.url.pathname;
+const links = [
+  ["/", "Startseite"],
+  ["/news/", "News"],
+  ["/tests/", "Tests"],
+  ["/lohnt-sich-das/", "Lohnt sich das?"],
+  ["/deals/", "Deals"],
+  ["/releases/", "Releases"],
+  ["/ueber-spielsignal/", "Über SpielSignal"]
+];
+---
+
+<header class="site-header">
+  <div class="container nav-wrap">
+    <a class="brand" href="/" aria-label="SpielSignal Startseite">
+      <span class="signal-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span>SpielSignal</span>
+    </a>
+    <nav class="desktop-nav" aria-label="Hauptnavigation">
+      {
+        links.map(([href, label]) => (
+          <a href={href} aria-current={path === href ? "page" : undefined}>{label}</a>
+        ))
+      }
+    </nav>
+    <div class="header-actions">
+      <a class="search-button" href="/suche/" aria-label="Suche öffnen">⌕</a>
+      <a class="button" href="/news/">Alle News</a>
+      <button class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false">☰</button>
+    </div>
+  </div>
+  <details class="mobile-nav container">
+    <summary>Navigation</summary>
+    <nav aria-label="Mobile Navigation">
+      {links.map(([href, label]) => <a href={href}>{label}</a>)}
+    </nav>
+  </details>
+</header>
+
+<script>
+  const button = document.querySelector<HTMLButtonElement>(".menu-button");
+  const menu = document.querySelector<HTMLDetailsElement>(".mobile-nav");
+  button?.addEventListener("click", () => {
+    if (!menu) return;
+    menu.open = !menu.open;
+    button.setAttribute("aria-expanded", String(menu.open));
+  });
+</script>

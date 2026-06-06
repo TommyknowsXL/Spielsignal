@@ -1,0 +1,36 @@
+---
+import type { AggregatedNewsItem } from "../lib/newsFeed";
+
+interface Props {
+  item: AggregatedNewsItem;
+}
+
+const { item } = Astro.props;
+const published = new Date(item.date).toLocaleString("de-DE", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Europe/Berlin"
+});
+---
+
+<article class="card news-card" data-category={item.category}>
+  <div class="card-body">
+    <span class="badge">{item.category}</span>
+    <h3>{item.title}</h3>
+    <div class="meta">
+      <time datetime={item.date}>{published} Uhr</time>
+      <span>Quelle: <a href={item.sourceHomepageUrl} rel="nofollow noopener" target="_blank">{item.sourceName}</a></span>
+    </div>
+    {
+      item.similarTo && (
+        <p class="similar-note">Ähnliches Thema bereits im Feed: „{item.similarTo}“</p>
+      )
+    }
+    <p class="muted">
+      SpielSignal zeigt nur Metadaten. Der vollständige Beitrag liegt auf der Seite der Quelle.
+    </p>
+    <a class="button secondary" href={item.url} rel="nofollow noopener" target="_blank">
+      Originalmeldung lesen ↗
+    </a>
+  </div>
+</article>
