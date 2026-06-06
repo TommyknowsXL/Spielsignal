@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-labelledby="title desc">
+  <title id="title">SpielSignal Steam-Fallback-Bild</title>
+  <desc id="desc">Abstrakte verbundene Kreise als neutrale Spieleplattform-Grafik.</desc>
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#132b46"/><stop offset="1" stop-color="#07101d"/></linearGradient></defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <circle cx="535" cy="155" r="78" fill="none" stroke="#39dcff" stroke-width="15"/>
+  <circle cx="535" cy="155" r="24" fill="#39dcff"/>
+  <circle cx="285" cy="305" r="58" fill="none" stroke="#7186ff" stroke-width="14"/>
+  <circle cx="285" cy="305" r="18" fill="#7186ff"/>
+  <path d="m330 277 145-82" stroke="#dceaff" stroke-width="20" stroke-linecap="round"/>
+  <path d="M85 105h230M85 135h155M500 340h215" stroke="#fff" stroke-width="4" opacity=".12"/>
+  <circle cx="650" cy="300" r="110" fill="none" stroke="#39dcff" opacity=".12" stroke-width="2"/>
+</svg>

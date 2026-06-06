@@ -1,0 +1,38 @@
+---
+interface Props {
+  appId: number;
+  enabled?: boolean;
+}
+
+const { appId, enabled = false } = Astro.props;
+const safeAppId = Number.isInteger(appId) && appId > 0 ? appId : null;
+---
+
+<section class="steam-widget-placeholder" data-steam-widget data-app-id={safeAppId}>
+  <p>
+    Externer Steam-Inhalt ist deaktiviert. Beim Laden können Daten an Steam übertragen werden.
+  </p>
+  <button class="button secondary" type="button" disabled={!enabled || !safeAppId}>
+    Steam-Inhalt laden
+  </button>
+  {!enabled && <small>Die Einbettung ist noch nicht freigegeben.</small>}
+</section>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-steam-widget]").forEach((container) => {
+    const button = container.querySelector<HTMLButtonElement>("button");
+    button?.addEventListener("click", () => {
+      if (button.disabled || container.querySelector("iframe")) return;
+      const appId = container.dataset.appId;
+      if (!appId || !/^\d+$/.test(appId)) return;
+
+      const iframe = document.createElement("iframe");
+      iframe.src = `https://store.steampowered.com/widget/${appId}/`;
+      iframe.title = "Offizielles Steam-Store-Widget";
+      iframe.loading = "lazy";
+      iframe.referrerPolicy = "strict-origin-when-cross-origin";
+      iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups");
+      container.replaceChildren(iframe);
+    });
+  });
+</script>

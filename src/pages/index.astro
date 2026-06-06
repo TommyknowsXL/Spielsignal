@@ -8,9 +8,25 @@ import RecommendationCard from "../components/RecommendationCard.astro";
 import ReleaseCalendar from "../components/ReleaseCalendar.astro";
 import ReviewCard from "../components/ReviewCard.astro";
 import SectionHeader from "../components/SectionHeader.astro";
+import SteamTrendsSidebar from "../components/SteamTrendsSidebar.astro";
 import TrendingSidebar from "../components/TrendingSidebar.astro";
 import { demoNews } from "../data/demoNews";
 import { demoImageAlt, demoImageFor } from "../data/demoImages";
+import { getAggregatedNews } from "../lib/newsFeed";
+import { getSteamReleases, getSteamTrends } from "../lib/steamData";
+import { getTrendingItems } from "../lib/trending";
+
+export const prerender = false;
+
+Astro.response.headers.set(
+  "Cache-Control",
+  "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400"
+);
+
+const feedResult = await getAggregatedNews();
+const trendingResult = await getTrendingItems(feedResult.items);
+const steamTrends = await getSteamTrends();
+const steamReleases = await getSteamReleases();
 
 const recommendations = [
   ["Lohnt sich das auch für Solo-Spieler?", "Welche Systeme alleine funktionieren und wo Mitspieler wirklich nötig sind."],
@@ -29,14 +45,6 @@ const releases = [
   ["Demo-Projekt Orbit", "Strategie", "28. Mai"],
   ["Demo-Projekt Werkstatt", "Simulation", "02. Juni"],
   ["Demo-Projekt Tiefsee", "Survival", "06. Juni"]
-];
-
-const trending = [
-  "Demo: Welche PC-Neuheiten diese Woche auffallen",
-  "Demo: Das steckt im nächsten großen Update",
-  "Demo: Drei Indie-Projekte auf der Beobachtungsliste",
-  "Demo: Neue Systemanforderungen richtig lesen",
-  "Demo: Diese Genres bewegen die Redaktion"
 ];
 
 const deals = [
@@ -89,8 +97,9 @@ const deals = [
       </div>
 
       <aside class="home-sidebar">
-        <TrendingSidebar items={trending} />
-        <ReleaseCalendar items={releases} />
+        <TrendingSidebar result={trendingResult} />
+        <SteamTrendsSidebar items={steamTrends} />
+        <ReleaseCalendar items={steamReleases} />
         <AdSlot format="sidebar" />
       </aside>
     </div>
@@ -122,7 +131,7 @@ const deals = [
     <div class="container">
       <SectionHeader eyebrow="Spiele-Beobachtung" title="Deals und interessante PC-Spiele" href="/deals/" linkLabel="Alle Deals" />
       <div class="grid deal-grid">
-        {deals.map(([title, price, discount]) => <DealCard title={title} price={price} discount={discount} image="/images/demo/deals.svg" />)}
+        {deals.map(([title, price, discount]) => <DealCard title={title} price={price} discount={discount} image="/images/demo/deals.svg" href="/deals/" />)}
       </div>
       <p class="demo-note" style="margin-top: 1rem;">Keine echten Angebote. Preise und Titel dienen ausschließlich der Layout-Vorschau.</p>
     </div>
@@ -133,10 +142,10 @@ const deals = [
       <SectionHeader eyebrow="Release-Vorschau" title="Diese PC-Spiele solltest du im Blick behalten" href="/releases/" linkLabel="Alle Releases" />
       <div class="grid grid-3">
         {releases.slice(0, 3).map(([title, genre, date], index) => (
-          <article class="card release-card">
+          <a class="card release-card card-link" href="/artikel/demo-release/">
             <img class="card-image" src={demoImageFor(["Fantasy", "Strategie", "Simulation"][index])} alt={`Abstrakter Demo-Platzhalter für ${title}`} width="800" height="450" loading="lazy" />
             <div class="card-body"><span class="badge">Demo-Release</span><h3>{title}</h3><p class="muted">{genre} · PC</p><div class="meta"><span>{date}</span><span>Termin nur Demo</span></div></div>
-          </article>
+          </a>
         ))}
       </div>
     </div>

@@ -235,6 +235,24 @@ Keine Publisher-ID raten oder aus Beispielen übernehmen. `PUBLIC_CONSENT_MODE_R
 
 Die wiederverwendbare Werbekomponente liegt in `src/components/AdSlot.astro`. Der Affiliate-Hinweis liegt in `src/components/AffiliateNotice.astro`.
 
+## Trending und Bildfreigabe
+
+`Trending auf SpielSignal` liest echte persistierte Klickwerte ausschließlich serverseitig aus
+Upstash Redis. Die optionalen Variablen heißen:
+
+```env
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+```
+
+Sind sie nicht gesetzt oder liegen keine Klickdaten vor, zeigt das Modul als `Neu eingetroffen`
+die drei neuesten Feed-Meldungen ohne Klickzahlen.
+
+Die Bildregeln liegen in `src/config/newsImageRules.ts`. Externe Bildkandidaten beginnen in
+`src/data/editorialImageQueue.ts` immer als `pending-review`. Nur manuell freigegebene Einträge
+aus `approvedNewsImages.ts` oder `approvedSteamImages.ts` können ein lokales Fallback ersetzen.
+Details stehen in `docs/content-image-rights.md` und `docs/editorial/image-workflow.md`.
+
 ## Datenschutz- und Diensteschalter
 
 Die zentrale Privacy-Konfiguration liegt in `src/config/privacy.ts`. Die passenden

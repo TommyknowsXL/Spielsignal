@@ -1,11 +1,35 @@
 ---
-interface Props { items: string[]; }
-const { items } = Astro.props;
+import type { TrendingResult } from "../lib/trending";
+
+interface Props {
+  result: TrendingResult;
+}
+
+const { result } = Astro.props;
+const items = result.items.slice(0, 3);
 ---
-<section class="sidebar-panel">
-  <h2 class="sidebar-title"><span></span>Trending</h2>
+
+<section class="sidebar-panel" data-module="spielsignal-trending">
+  <h2 class="sidebar-title"><span></span>{result.heading}</h2>
   <ol class="trending-list">
-    {items.map((item) => <li><span class="trend-thumb" aria-hidden="true"></span><strong>{item}</strong></li>)}
+    {
+      items.map((item) => (
+        <li>
+          <a
+            class="sidebar-entry"
+            href={item.url}
+            target={item.external ? "_blank" : undefined}
+            rel={item.external ? "noopener noreferrer" : undefined}
+          >
+            <img src={item.image} alt={item.imageAlt} width="120" height="80" loading="lazy" />
+            <span class="sidebar-entry__copy">
+              <strong>{item.title}</strong>
+              <small>Quelle: {item.source}</small>
+              {result.usesClickData && item.clickCount ? <small>{item.clickCount} Klicks</small> : null}
+            </span>
+          </a>
+        </li>
+      ))
+    }
   </ol>
-  <p class="demo-note">Beispielthemen, keine Reichweitenangaben</p>
 </section>

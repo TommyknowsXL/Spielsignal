@@ -8,6 +8,8 @@
     "build": "astro check && astro build",
     "preview": "astro preview",
     "test:feeds": "tsx scripts/test-news-feed.ts",
+    "test:content": "tsx scripts/test-content-safety.ts",
+    "test": "npm run test:feeds && npm run test:content",
     "steam:prepare": "tsx scripts/prepare-steam-suggestions.ts",
     "astro": "astro"
   },

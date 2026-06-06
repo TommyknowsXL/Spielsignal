@@ -3,9 +3,11 @@ interface Props { title: string; text: string; href: string; image: string; }
 const { title, text, href, image } = Astro.props;
 ---
 <article class="card recommendation-card">
-  <img class="card-image" src={image} alt={`Abstrakter Demo-Platzhalter zu ${title}`} width="800" height="450" loading="lazy" />
-  <div class="card-body">
-    <span class="badge">Demo-Empfehlung</span><h3>{title}</h3><p class="muted card-teaser">{text}</p>
-    <a class="text-link" href={href}>Beispiel lesen →</a>
-  </div>
+  <a class="card-link" href={href}>
+    <img class="card-image" src={image} alt={`Abstrakter Demo-Platzhalter zu ${title}`} width="800" height="450" loading="lazy" />
+    <div class="card-body">
+      <span class="badge">Demo-Empfehlung</span><h3>{title}</h3><p class="muted card-teaser">{text}</p>
+      <span class="text-link">Beispiel lesen →</span>
+    </div>
+  </a>
 </article>

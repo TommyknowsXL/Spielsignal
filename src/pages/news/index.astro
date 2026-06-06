@@ -4,10 +4,13 @@ import AdSlot from "../../components/AdSlot.astro";
 import ExternalNewsCard from "../../components/ExternalNewsCard.astro";
 import NewsCard from "../../components/NewsCard.astro";
 import ReleaseCalendar from "../../components/ReleaseCalendar.astro";
+import SteamTrendsSidebar from "../../components/SteamTrendsSidebar.astro";
 import TrendingSidebar from "../../components/TrendingSidebar.astro";
 import { demoNews } from "../../data/demoNews";
 import { demoImageAlt, demoImageFor } from "../../data/demoImages";
 import { getAggregatedNews } from "../../lib/newsFeed";
+import { getSteamReleases, getSteamTrends } from "../../lib/steamData";
+import { getTrendingItems } from "../../lib/trending";
 
 export const prerender = false;
 
@@ -18,22 +21,14 @@ Astro.response.headers.set(
 
 const result = await getAggregatedNews();
 const hasExternalItems = result.items.length > 0;
+const trendingResult = await getTrendingItems(result.items);
+const steamTrends = await getSteamTrends();
+const steamReleases = await getSteamReleases();
 const filters = [
   "Alle",
   ...new Set(
     (hasExternalItems ? result.items : demoNews).map((item) => item.category)
   )
-];
-const trending = [
-  "Demo: Diese PC-Themen werden gerade häufig beobachtet",
-  "Demo: Neue Updates auf der redaktionellen Liste",
-  "Demo: Drei Indie-Ideen mit Potenzial",
-  "Demo: Welche Releases bald interessant werden"
-];
-const releases = [
-  ["Demo-Projekt Nord", "Rollenspiel", "24. Mai"],
-  ["Demo-Projekt Orbit", "Strategie", "28. Mai"],
-  ["Demo-Projekt Tiefsee", "Survival", "06. Juni"]
 ];
 ---
 
@@ -126,8 +121,9 @@ const releases = [
         }
       </div>
       <aside class="news-sidebar">
-        <TrendingSidebar items={trending} />
-        <ReleaseCalendar items={releases} />
+        <TrendingSidebar result={trendingResult} />
+        <SteamTrendsSidebar items={steamTrends} />
+        <ReleaseCalendar items={steamReleases} />
         <AdSlot format="sidebar" />
       </aside>
     </div>

@@ -13,15 +13,17 @@ const { title, category, time, source, sourceUrl, note, image, imageAlt } = Astr
 ---
 
 <article class="card news-card" data-category={category}>
-  <img class="card-image" src={image} alt={imageAlt} width="800" height="450" loading="lazy" />
-  <div class="card-body">
-    <span class:list={["badge", category === "Deals" && "badge--deal"]}>{category}</span>
-    <h3>{title}</h3>
-    <div class="meta"><span>{time}</span><span>Quelle: {source}</span></div>
-    <p class="muted card-teaser">{note}</p>
-    <p class="demo-note">Beispieldaten – keine aktuelle Meldung</p>
-    <a class="text-link" href={sourceUrl} rel="nofollow noopener" target="_blank">
+  <a class="card-link" href={sourceUrl} rel="noopener noreferrer" target="_blank">
+    <img class="card-image" src={image} alt={imageAlt} width="800" height="450" loading="lazy" />
+    <div class="card-body">
+      <span class:list={["badge", category === "Deals" && "badge--deal"]}>{category}</span>
+      <h3>{title}</h3>
+      <div class="meta"><span>{time}</span><span>Quelle: {source}</span></div>
+      <p class="muted card-teaser">{note}</p>
+      <p class="demo-note">Beispieldaten – keine aktuelle Meldung</p>
+      <span class="text-link">
       Demo-Quelle öffnen ↗
-    </a>
-  </div>
+      </span>
+    </div>
+  </a>
 </article>

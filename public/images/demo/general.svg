@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-labelledby="title desc">
+  <title id="title">SpielSignal allgemeines Fallback-Bild</title>
+  <desc id="desc">Abstrakte Signalwellen über einer dunklen Gaming-Landschaft.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#101a30"/><stop offset="1" stop-color="#07101d"/></linearGradient>
+    <linearGradient id="signal" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#36e0ff"/><stop offset="1" stop-color="#6378ff"/></linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <path d="M0 365 150 250l105 70 130-180 112 145 115-90 188 170v85H0z" fill="#111f38"/>
+  <g fill="none" stroke="url(#signal)" stroke-width="8" opacity=".88">
+    <path d="M285 228a115 115 0 0 1 230 0"/><path d="M330 228a70 70 0 0 1 140 0"/><path d="M375 228a25 25 0 0 1 50 0"/>
+  </g>
+  <circle cx="400" cy="232" r="12" fill="#36e0ff"/>
+  <path d="M80 385h640" stroke="#36e0ff" stroke-width="3" opacity=".35"/>
+</svg>

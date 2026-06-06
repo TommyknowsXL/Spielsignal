@@ -233,6 +233,27 @@ p {
   transform: translateY(-3px);
 }
 
+a.card-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.card > .card-link {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.card-link:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.release-card.card-link {
+  display: flex;
+  flex-direction: column;
+}
+
 .card-body {
   display: grid;
   flex: 1;
@@ -843,7 +864,7 @@ p {
 
 .trending-list li {
   display: grid;
-  grid-template-columns: 20px 48px 1fr;
+  grid-template-columns: 20px 1fr;
   align-items: center;
   gap: 0.55rem;
   padding-block: 0.7rem;
@@ -858,11 +879,108 @@ p {
   font-weight: 800;
 }
 
-.trend-thumb {
-  width: 48px;
-  height: 38px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, rgb(60 230 255 / 35%), rgb(79 124 255 / 12%)), var(--surface-2);
+.sidebar-entry {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  padding: 0.35rem;
+  border-radius: 9px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sidebar-entry:hover {
+  background: rgb(60 230 255 / 6%);
+}
+
+.sidebar-entry:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sidebar-entry img {
+  display: block;
+  width: 54px;
+  height: 42px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.sidebar-entry__copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.sidebar-entry__copy strong {
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.sidebar-entry__copy small,
+.sidebar-entry__copy time {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.steam-sidebar-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  counter-reset: steam-entry;
+  list-style: none;
+}
+
+.steam-sidebar-list li {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  padding-block: 0.65rem;
+  border-top: 1px solid var(--line);
+  counter-increment: steam-entry;
+}
+
+.steam-sidebar-list li::before {
+  content: counter(steam-entry);
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.steam-fallback {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.steam-fallback p,
+.release-source-fallback > p {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.release-source-fallback {
+  display: grid;
+  max-width: 720px;
+  gap: 1rem;
+}
+
+.steam-widget-placeholder {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.steam-widget-placeholder iframe {
+  width: 100%;
+  min-height: 190px;
+  border: 0;
 }
 
 .calendar-list {

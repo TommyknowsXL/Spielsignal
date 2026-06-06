@@ -6,12 +6,12 @@ interface Props {
 }
 
 const { items } = Astro.props;
-const visibleItems = items.slice(0, 6);
-const fallback = officialSteamFallback("releases");
+const visibleItems = items.slice(0, 5);
+const fallback = officialSteamFallback("trends");
 ---
 
-<section class="sidebar-panel" data-module="steam-release-calendar">
-  <h2 class="sidebar-title"><span></span>Steam-Release-Kalender</h2>
+<section class="sidebar-panel" data-module="steam-trends">
+  <h2 class="sidebar-title"><span></span>Steam-Trends</h2>
   {
     visibleItems.length ? (
       <ol class="steam-sidebar-list">
@@ -31,7 +31,7 @@ const fallback = officialSteamFallback("releases");
       </ol>
     ) : (
       <div class="steam-fallback">
-        <p>Steam-Veröffentlichungen werden gerade vorbereitet.</p>
+        <p>Steam-Trends werden gerade vorbereitet.</p>
         <a class="sidebar-entry" href={fallback.url} target="_blank" rel="noopener noreferrer">
           <img src={fallback.image} alt={fallback.imageAlt} width="120" height="80" loading="lazy" />
           <span class="sidebar-entry__copy">

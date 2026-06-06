@@ -145,3 +145,15 @@ Die Entscheidung für Hosting-Anbieter und Tarif ist noch offen und muss der Bet
 - Rechtstexte bei jeder neuen Funktion vor deren Aktivierung aktualisieren
 - keine private Steuernummer veröffentlichen
 - keinen veralteten Link zur früheren EU-Online-Streitbeilegungsplattform ergänzen
+
+## Bilder und redaktionelle Freigabe
+
+SpielSignal zeigt zu jedem sichtbaren Inhalt eine Bildfläche. Fremde Bilder dürfen nicht ungeprüft übernommen werden.
+
+Für neue externe Meldungen wird zunächst ein eigenes lokales SpielSignal-Kategoriebild oder Fallback-Bild angezeigt. Ein Agent darf passende Bilder suchen und als Kandidaten vorschlagen. Ein externes Bild darf jedoch erst veröffentlicht werden, wenn Quelle und Nutzungsgrundlage dokumentiert und der Status manuell auf `approved` gesetzt wurden.
+
+Bilder anderer Gaming-Magazine, ungeprüfte Suchmaschinenbilder und automatisiert von SteamDB bezogene Bilder sind nicht zulässig.
+
+SteamDB wird nicht automatisch ausgelesen, gecrawlt oder gescrapt.
+
+Offizielle Steam-Widgets dürfen auf Detailseiten über eine datenschutzfreundliche Zwei-Klick-Lösung eingebunden werden.
