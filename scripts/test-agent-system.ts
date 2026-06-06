@@ -21,6 +21,22 @@ import { hasPcGamingReference } from "./agents/newsScout";
 import { prepareEditorialAiDrafts } from "./agents/providers/editorialAiProvider";
 import { runDailyEditorialQueue } from "./agents/runDailyEditorialQueue";
 import { runSteamScout } from "./agents/steamScout";
+import {
+  collectSteamScoutData,
+  enrichRssCandidatesWithSteam
+} from "./agents/providers/steamScoutProvider";
+import {
+  findUniqueSteamApp
+} from "../src/lib/steam/steamAppCatalog";
+import { STEAM_APP_LIST_CACHE_TTL_MS } from "../src/lib/steam/steamCache";
+import {
+  getOfficialSteamReleases,
+  STEAM_RELEASE_CACHE_TTL_MS
+} from "../src/lib/steam/steamReleaseProvider";
+import {
+  getOfficialSteamTrends,
+  STEAM_TREND_CACHE_TTL_MS
+} from "../src/lib/steam/steamTrendsProvider";
 import type { EditorialCandidate } from "./agents/types";
 
 const baseCandidate: EditorialCandidate = {
@@ -55,7 +71,8 @@ const manyCandidates = Array.from({ length: 15 }, (_, index) => ({
   score: index
 }));
 const queue = buildEditorialQueue(manyCandidates);
-assert.equal(queue.length, MAX_DAILY_CANDIDATES);
+assert.equal(queue.length <= MAX_DAILY_CANDIDATES, true);
+assert.equal(queue.length, 5);
 assert.equal(queue.every((candidate) => Boolean(candidate.sourceUrl)), true);
 assert.equal(queue.every((candidate) => candidate.editorialStatus === "needs-review"), true);
 assert.equal(queue.some((candidate) => (candidate.articleType as string) === "test"), false);
@@ -219,6 +236,9 @@ assert.doesNotMatch(workflow, /\bdeploy\b/i);
 assert.match(workflow, /permissions:\s*\n\s*contents: read/);
 assert.match(workflow, /workflow_dispatch/);
 assert.match(workflow, /schedule/);
+assert.match(workflow, /STEAM_WEB_API_KEY: \$\{\{ secrets\.STEAM_WEB_API_KEY \}\}/);
+assert.match(workflow, /STEAM_SCOUT_ENABLED: "true"/);
+assert.match(workflow, /STEAM_TRENDS_ENABLED: "true"/);
 
 const agentFiles = await readdir("scripts/agents", {
   recursive: true,
@@ -235,6 +255,7 @@ assert.doesNotMatch(agentCode, /\bfetch\s*\([^)]*steamdb/i);
 assert.doesNotMatch(agentCode, /\b(sk-[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{20,})\b/);
 assert.doesNotMatch(agentCode, /console\.log\([^)]*(API_KEY|TOKEN)/i);
 assert.doesNotMatch(agentCode, /src[\\/]content[\\/].*(writeFile|mkdir)/i);
+assert.doesNotMatch(agentCode, /\bfetch\w*\s*\([^)]*steamapi\.xpaw\.me/i);
 
 const safeRoot = await mkdtemp(join(tmpdir(), "spielsignal-agent-safe-"));
 const safeReport = await runDailyEditorialQueue({
@@ -338,6 +359,222 @@ assert.equal(mixedReport.summary.imageCandidates, 2);
 assert.match(mixedReport.steamScoutStatus, /2 verwertbare/);
 await new Promise<void>((resolve, reject) =>
   server.close((error) => (error ? reject(error) : resolve()))
+);
+
+assert.equal(STEAM_RELEASE_CACHE_TTL_MS >= 6 * 60 * 60 * 1000, true);
+assert.equal(STEAM_TREND_CACHE_TTL_MS >= 60 * 60 * 1000, true);
+assert.equal(STEAM_APP_LIST_CACHE_TTL_MS >= 6 * 60 * 60 * 1000, true);
+let releaseLoadCount = 0;
+const releaseCacheRoot = await mkdtemp(
+  join(tmpdir(), "spielsignal-release-cache-")
+);
+const loadReleaseFixture = async () => {
+  releaseLoadCount += 1;
+  return [
+    ...Array.from({ length: 7 }, (_, index) => ({
+      appId: String(7000 + index),
+      name: `Release ${index}`,
+      releaseDate: `2026-06-${String(10 + index).padStart(2, "0")}`,
+      genre: "Action",
+      storeUrl: `https://store.steampowered.com/app/${7000 + index}/Release_${index}/`
+    })),
+    {
+      appId: "7999",
+      name: "Release Soundtrack DLC",
+      releaseDate: "2026-06-30",
+      genre: "DLC",
+      storeUrl: "https://store.steampowered.com/app/7999/Release_DLC/"
+    }
+  ];
+};
+const cachedReleases = await getOfficialSteamReleases({
+  loadOfficialSource: loadReleaseFixture,
+  cacheDirectory: releaseCacheRoot
+});
+await getOfficialSteamReleases({
+  loadOfficialSource: loadReleaseFixture,
+  cacheDirectory: releaseCacheRoot
+});
+assert.equal(releaseLoadCount, 1);
+assert.equal(cachedReleases.records.length, 5);
+assert.equal(
+  cachedReleases.records.some((record) => /dlc|soundtrack/i.test(record.name)),
+  false
+);
+assert.equal(
+  findUniqueSteamApp("Goals", [
+    { appid: 10, name: "Goals" },
+    { appid: 11, name: "Unrelated" }
+  ])?.appid,
+  10
+);
+assert.equal(
+  findUniqueSteamApp("Goals", [
+    { appid: 10, name: "Goals" },
+    { appid: 12, name: "GOALS" }
+  ]),
+  undefined
+);
+
+let steamFetchCount = 0;
+const secretSentinel = ["STEAM", "TEST", "SENTINEL"].join("_");
+const mockSteamFetch: typeof fetch = async (input) => {
+  steamFetchCount += 1;
+  const url = new URL(String(input));
+  if (url.pathname.includes("IStoreService/GetAppList")) {
+    return new Response(
+      JSON.stringify({
+        response: {
+          apps: [
+            { appid: 1001, name: "Goals" },
+            { appid: 1002, name: "Star Wars Zero Company" }
+          ],
+          more_results: false
+        }
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+  }
+  if (url.pathname.includes("ISteamChartsService/GetMostPlayedGames")) {
+    return new Response(
+      JSON.stringify({
+        response: {
+          ranks: [
+            {
+              rank: 1,
+              appid: 1001,
+              concurrent_in_game: 123,
+              item: { id: 1001, name: "Goals" }
+            }
+          ]
+        }
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+  }
+  return new Response("{}", { status: 404 });
+};
+const steamCacheRoot = await mkdtemp(join(tmpdir(), "spielsignal-steam-cache-"));
+const providerResult = await collectSteamScoutData({
+  env: {
+    STEAM_WEB_API_KEY: secretSentinel,
+    STEAM_SCOUT_ENABLED: "true",
+    STEAM_RELEASES_ENABLED: "true",
+    STEAM_TRENDS_ENABLED: "true"
+  },
+  fetchImpl: mockSteamFetch,
+  cacheDirectory: steamCacheRoot
+});
+assert.equal(providerResult.keyPresent, true);
+assert.equal(providerResult.records.length, 1);
+assert.match(providerResult.releaseStatus, /derzeit nicht verfügbar/);
+assert.match(providerResult.trendStatus, /aktiv/);
+
+const noKeyProvider = await collectSteamScoutData({
+  env: {
+    STEAM_SCOUT_ENABLED: "true",
+    STEAM_RELEASES_ENABLED: "true",
+    STEAM_TRENDS_ENABLED: "true"
+  },
+  fetchImpl: mockSteamFetch,
+  cacheDirectory: await mkdtemp(join(tmpdir(), "spielsignal-steam-no-key-"))
+});
+assert.equal(noKeyProvider.keyPresent, false);
+assert.match(noKeyProvider.scoutStatus, /API-Key fehlt/);
+
+const failedTrend = await getOfficialSteamTrends({
+  enabled: true,
+  apiKey: "test-key",
+  fetchImpl: async () => new Response("Fehler", { status: 503 }),
+  cacheDirectory: await mkdtemp(join(tmpdir(), "spielsignal-steam-failure-"))
+});
+assert.deepEqual(failedTrend.records, []);
+assert.match(failedTrend.status, /derzeit nicht verfügbar/);
+
+const enriched = enrichRssCandidatesWithSteam(
+  [{ ...baseCandidate, gameTitle: "Goals" }],
+  providerResult.appCatalog
+);
+assert.equal(enriched[0].steamAppId, "1001");
+assert.equal(enriched[0].imageStatus, "pending-review");
+assert.equal(enriched[0].imageSourceType, "steam-store");
+assert.equal(enriched[0].imagePath, "/images/demo/general.svg");
+
+const beforeCachedTrend = steamFetchCount;
+await getOfficialSteamTrends({
+  enabled: true,
+  apiKey: secretSentinel,
+  fetchImpl: mockSteamFetch,
+  cacheDirectory: steamCacheRoot
+});
+assert.equal(steamFetchCount, beforeCachedTrend);
+
+const secretReportRoot = await mkdtemp(join(tmpdir(), "spielsignal-secret-report-"));
+const secretReport = await runDailyEditorialQueue({
+  reportDate: "2026-06-09",
+  rootDirectory: secretReportRoot,
+  newsSources: [],
+  env: {
+    STEAM_WEB_API_KEY: secretSentinel,
+    STEAM_SCOUT_ENABLED: "true",
+    STEAM_RELEASES_ENABLED: "true",
+    STEAM_TRENDS_ENABLED: "true"
+  },
+  fetchImpl: mockSteamFetch,
+  steamCacheDirectory: steamCacheRoot
+});
+const secretJson = await readFile(
+  join(secretReportRoot, "src/data/editorial/latest-queue.json"),
+  "utf8"
+);
+const secretMarkdown = await readFile(
+  join(secretReportRoot, "docs/editorial/daily-reports/2026-06-09.md"),
+  "utf8"
+);
+assert.equal(secretReport.steamApiKeyPresent, true);
+assert.equal(secretJson.includes(secretSentinel), false);
+assert.equal(secretMarkdown.includes(secretSentinel), false);
+assert.match(secretMarkdown, /Steam-API-Key vorhanden:\*\* ja/);
+
+const releaseRecords = Array.from({ length: 7 }, (_, index) => ({
+  sourceType: "steam-release" as const,
+  sourceName: "Steam",
+  sourceUrl: `https://store.steampowered.com/app/${3000 + index}/Game_${index}/`,
+  title: `UniqueTitle${index} Genre${index} Launch${index}`,
+  gameTitle: `UniqueTitle${index}`,
+  steamAppId: String(3000 + index),
+  sourceReviewed: true
+}));
+const releasesWithDlc = await runSteamScout([
+  ...releaseRecords,
+  {
+    ...releaseRecords[0],
+    steamAppId: "9999",
+    sourceUrl: "https://store.steampowered.com/app/9999/Game_DLC/",
+    title: "Game DLC Soundtrack"
+  }
+]);
+assert.equal(releasesWithDlc.some((candidate) => /soundtrack/i.test(candidate.title)), false);
+assert.equal(
+  buildEditorialQueue(releasesWithDlc).filter(
+    (candidate) => candidate.sourceType === "steam-release"
+  ).length,
+  5
+);
+
+const hardwareQueue = buildEditorialQueue(
+  Array.from({ length: 4 }, (_, index) => ({
+    ...baseCandidate,
+    id: `hardware-${index}`,
+    sourceName: `Hardware ${index}`,
+    sourceUrl: `https://example.test/hardware/${index}`,
+    title: `PC Hardware Kennung${index}`,
+    category: "Hardware"
+  }))
+);
+assert.equal(
+  hardwareQueue.filter((candidate) => candidate.category === "Hardware").length,
+  2
 );
 
 console.log(

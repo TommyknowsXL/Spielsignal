@@ -22,6 +22,7 @@ export type SteamScoutRecord = {
   steamAppId: string;
   genre?: string;
   releaseDate?: string;
+  concurrentPlayers?: number;
   sourceReviewed: boolean;
   freeReferenceType?: FreeReferenceType;
   freePromotionConfirmed?: boolean;
@@ -44,7 +45,13 @@ export async function runSteamScout(
       (record) =>
         record.sourceReviewed &&
         /^\d+$/.test(record.steamAppId) &&
-        isOfficialSteamStoreUrl(record.sourceUrl)
+        isOfficialSteamStoreUrl(record.sourceUrl) &&
+        !(
+          record.sourceType === "steam-release" &&
+          /\b(dlc|soundtrack|season pass|artbook|add-on|expansion pack)\b/i.test(
+            `${record.title} ${record.genre ?? ""}`
+          )
+        )
     )
     .map((record): EditorialCandidate => {
       const imageCandidate = prepareOfficialSteamImageCandidate(
@@ -76,6 +83,7 @@ export async function runSteamScout(
         genre: record.genre,
         category: record.genre ?? "Steam",
         releaseDate: record.releaseDate,
+        concurrentPlayers: record.concurrentPlayers,
         freeReferenceType,
         freePromotionConfirmed: isConfirmedPromotion,
         articleType: recommendArticleType({
@@ -90,7 +98,7 @@ export async function runSteamScout(
         imagePath: resolveLocalFallback(record.title, record.genre ?? "Steam"),
         imageCandidateUrl: imageCandidate.candidateImageUrl,
         imageSourcePageUrl: imageCandidate.sourcePageUrl,
-        imageCandidateSourceType: imageCandidate.sourceType,
+        imageSourceType: imageCandidate.sourceType,
         rightsNotes: imageCandidate.rightsNotes,
         editorialStatus: "needs-review",
         openChecks: [

@@ -71,16 +71,27 @@ export function buildEditorialQueue(
     );
   const selected: EditorialCandidate[] = [];
   const rssSourceCounts = new Map<string, number>();
+  let rssCount = 0;
+  let hardwareCount = 0;
+  let steamReleaseCount = 0;
   const maximum = Math.min(limit, MAX_DAILY_CANDIDATES);
 
   const canSelect = (candidate: EditorialCandidate): boolean => {
     if (selected.some((entry) => entry.id === candidate.id)) return false;
+    if (candidate.category === "Hardware" && hardwareCount >= 2) return false;
+    if (candidate.sourceType === "steam-release" && steamReleaseCount >= 5) {
+      return false;
+    }
     if (candidate.sourceType !== "rss-news") return true;
-    return (rssSourceCounts.get(candidate.sourceName) ?? 0) < 6;
+    if (rssCount >= 5) return false;
+    return (rssSourceCounts.get(candidate.sourceName) ?? 0) < 5;
   };
   const select = (candidate: EditorialCandidate): void => {
     selected.push(candidate);
+    if (candidate.category === "Hardware") hardwareCount += 1;
+    if (candidate.sourceType === "steam-release") steamReleaseCount += 1;
     if (candidate.sourceType === "rss-news") {
+      rssCount += 1;
       rssSourceCounts.set(
         candidate.sourceName,
         (rssSourceCounts.get(candidate.sourceName) ?? 0) + 1
@@ -89,9 +100,15 @@ export function buildEditorialQueue(
   };
 
   ranked
-    .filter((candidate) => candidate.sourceType !== "rss-news")
+    .filter((candidate) => candidate.sourceType === "steam-release")
     .slice(0, 2)
-    .forEach(select);
+    .forEach((candidate) => {
+      if (canSelect(candidate)) select(candidate);
+    });
+  const topTrend = ranked.find(
+    (candidate) => candidate.sourceType === "steam-trend"
+  );
+  if (topTrend && canSelect(topTrend)) select(topTrend);
 
   for (const candidate of ranked) {
     if (selected.length >= maximum) break;

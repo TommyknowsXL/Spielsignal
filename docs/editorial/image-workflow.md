@@ -15,3 +15,11 @@ nach `src/config/approvedSteamImages.ts` übertragen.
 
 Der öffentliche Resolver in `src/config/newsImageRules.ts` akzeptiert nur `approved` und
 `fallback`. Er fragt weder RSS-Bilder noch Open-Graph-Bilder oder SteamDB ab.
+
+Für Steam-Kandidaten gilt zusätzlich:
+
+1. App-ID und Store-Link im Tagesbericht öffnen.
+2. Prüfen, ob Spiel und Bildkandidat eindeutig zusammengehören.
+3. Nutzungsgrundlage dokumentieren.
+4. App-ID erst danach in `src/config/approvedSteamImages.ts` eintragen.
+5. Bis zum Eintrag bleibt das lokale Kategorie-Fallback öffentlich sichtbar.

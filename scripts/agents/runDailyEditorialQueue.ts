@@ -1,8 +1,11 @@
 import { pathToFileURL } from "node:url";
 import type { NewsSource } from "../../src/config/newsSources";
-import { steamAgentConfig } from "../../src/config/steamAgent";
 import { buildEditorialQueue } from "./editorialAgent";
 import { runNewsScout } from "./newsScout";
+import {
+  collectSteamScoutData,
+  enrichRssCandidatesWithSteam
+} from "./providers/steamScoutProvider";
 import { writeEditorialReport } from "./reportWriter";
 import { runSteamScout, type SteamScoutRecord } from "./steamScout";
 import type { EditorialCandidate, EditorialQueueReport } from "./types";
@@ -13,6 +16,9 @@ export async function runDailyEditorialQueue(options: {
   newsSources?: NewsSource[];
   steamRecords?: SteamScoutRecord[];
   forceRefresh?: boolean;
+  env?: NodeJS.ProcessEnv;
+  fetchImpl?: typeof fetch;
+  steamCacheDirectory?: string;
 } = {}): Promise<EditorialQueueReport> {
   const generatedAt = new Date().toISOString();
   const reportDate = options.reportDate ?? generatedAt.slice(0, 10);
@@ -38,24 +44,30 @@ export async function runDailyEditorialQueue(options: {
       `News-Scout: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`
     );
   }
+  const steamProvider = await collectSteamScoutData({
+    env: options.env,
+    fetchImpl: options.fetchImpl,
+    cacheDirectory: options.steamCacheDirectory
+  });
+  newsCandidates = enrichRssCandidatesWithSteam(
+    newsCandidates,
+    steamProvider.appCatalog
+  );
 
   let steamCandidates: EditorialCandidate[] = [];
-  let steamScoutStatus = steamAgentConfig.enabled
-    ? "Steam-Scout aktiv, aber keine verwertbaren Daten gefunden"
-    : "Steam-Scout deaktiviert: Konfiguration fehlt";
   try {
-    steamCandidates = await runSteamScout(options.steamRecords ?? []);
-    if (steamCandidates.length > 0) {
-      steamScoutStatus =
-        `Steam-Scout aktiv: ${steamCandidates.length} verwertbare offizielle Steam-Datensätze`;
-    } else if (options.steamRecords !== undefined) {
-      steamScoutStatus = "Steam-Scout aktiv, aber keine verwertbaren Daten gefunden";
-    }
+    steamCandidates = await runSteamScout([
+      ...steamProvider.records,
+      ...(options.steamRecords ?? [])
+    ]);
   } catch (error) {
     sourceErrors.push(
       `Steam-Scout: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`
     );
   }
+  const steamScoutStatus = steamCandidates.length > 0
+    ? `${steamProvider.scoutStatus} ${steamCandidates.length} verwertbare Steam-Kandidaten übernommen.`
+    : steamProvider.scoutStatus;
 
   const candidates = buildEditorialQueue([
     ...newsCandidates,
@@ -75,6 +87,14 @@ export async function runDailyEditorialQueue(options: {
       (candidate) => candidate.freePromotionConfirmed
     ).length,
     imageCandidates: candidates.filter((candidate) => candidate.imageCandidateUrl).length,
+    rssCandidatesWithSteamAppId: candidates.filter(
+      (candidate) => candidate.sourceType === "rss-news" && candidate.steamAppId
+    ).length,
+    officialSteamImageCandidates: candidates.filter(
+      (candidate) =>
+        candidate.imageSourceType === "steam-store" &&
+        candidate.imageCandidateUrl
+    ).length,
     fallbackOnlyCandidates: candidates.filter(
       (candidate) => candidate.imageStatus === "fallback"
     ).length,
@@ -86,6 +106,9 @@ export async function runDailyEditorialQueue(options: {
     candidates,
     sourceErrors,
     steamScoutStatus,
+    steamReleaseStatus: steamProvider.releaseStatus,
+    steamTrendStatus: steamProvider.trendStatus,
+    steamApiKeyPresent: steamProvider.keyPresent,
     summary,
     safeguards: {
       automaticPublishing: false,

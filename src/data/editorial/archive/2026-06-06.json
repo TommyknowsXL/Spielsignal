@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-06T16:05:59.100Z",
+  "generatedAt": "2026-06-06T17:27:30.996Z",
   "reportDate": "2026-06-06",
   "candidates": [
     {
@@ -138,122 +138,23 @@
         "Spielname konnte nicht sicher aus der Überschrift ermittelt werden."
       ],
       "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
-    },
-    {
-      "id": "rss-dca47e9b922babd4",
-      "createdAt": "2026-06-05T23:30:00.000Z",
-      "sourceType": "rss-news",
-      "sourceName": "GameStar News",
-      "sourceUrl": "https://www.gamestar.de/videos/strategie-rollenspiel-im-early-access-noch-2026-schnallt-euch-chronicles-medieval-die-ritterruestung-um,141025.html",
-      "title": "Strategie-Rollenspiel im Early Access: Noch 2026 schnallt euch Chronicles: Medieval die Ritterrüstung um",
-      "category": "News",
-      "freeReferenceType": "none",
-      "freePromotionConfirmed": false,
-      "articleType": "news-overview",
-      "score": 24,
-      "scoreReasons": [
-        "Erkennbarer PC-Gaming-Bezug",
-        "Aktuelle Meldung"
-      ],
-      "imageStatus": "fallback",
-      "imagePath": "/images/categories/strategie.svg",
-      "rightsNotes": "Lokales SpielSignal-Fallback bis zur manuellen Bildfreigabe.",
-      "editorialStatus": "needs-review",
-      "openChecks": [
-        "Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen.",
-        "Spielname konnte nicht sicher aus der Überschrift ermittelt werden."
-      ],
-      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
-    },
-    {
-      "id": "rss-44574bdd4d15cc56",
-      "createdAt": "2026-06-05T23:23:00.000Z",
-      "sourceType": "rss-news",
-      "sourceName": "GameStar News",
-      "sourceUrl": "https://www.gamestar.de/videos/final-fantasy-7-revelations-schliesst-die-grosse-remake-trilogie-ab-und-erscheint-im-fruehling-2027-direkt-auf-dem-pc,141067.html",
-      "title": "Final Fantasy 7: Revelations schließt die große Remake-Trilogie ab und erscheint im Frühling 2027 direkt auf dem PC",
-      "gameTitle": "Final Fantasy 7",
-      "category": "News",
-      "freeReferenceType": "none",
-      "freePromotionConfirmed": false,
-      "articleType": "news-overview",
-      "score": 24,
-      "scoreReasons": [
-        "Erkennbarer PC-Gaming-Bezug",
-        "Aktuelle Meldung"
-      ],
-      "imageStatus": "fallback",
-      "imagePath": "/images/categories/fantasy.svg",
-      "rightsNotes": "Lokales SpielSignal-Fallback bis zur manuellen Bildfreigabe.",
-      "editorialStatus": "needs-review",
-      "openChecks": [
-        "Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen."
-      ],
-      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
-    },
-    {
-      "id": "rss-4db1acf043cc92dc",
-      "createdAt": "2026-06-05T17:00:00.000Z",
-      "sourceType": "rss-news",
-      "sourceName": "GameStar Hardware",
-      "sourceUrl": "https://www.gamestar.de/videos/das-muesst-ihr-sehen-eines-der-besten-spiele-aller-zeiten-ist-25-jahre-spaeter-im-vergleich-alt-gegen-neu-kaum-wiederzuerkennen,141009.html",
-      "title": "Das müsst ihr sehen: Eines der besten Spiele aller Zeiten ist 25 Jahre später im Vergleich alt gegen neu kaum wiederzuerkennen",
-      "category": "Hardware",
-      "freeReferenceType": "none",
-      "freePromotionConfirmed": false,
-      "articleType": "news-overview",
-      "score": 24,
-      "scoreReasons": [
-        "Erkennbarer PC-Gaming-Bezug",
-        "Aktuelle Meldung"
-      ],
-      "imageStatus": "fallback",
-      "imagePath": "/images/categories/hardware.svg",
-      "rightsNotes": "Lokales SpielSignal-Fallback bis zur manuellen Bildfreigabe.",
-      "editorialStatus": "needs-review",
-      "openChecks": [
-        "Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen.",
-        "Spielname konnte nicht sicher aus der Überschrift ermittelt werden."
-      ],
-      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
-    },
-    {
-      "id": "rss-1e98cddbf353c638",
-      "createdAt": "2026-06-05T11:00:00.000Z",
-      "sourceType": "rss-news",
-      "sourceName": "GameStar Hardware",
-      "sourceUrl": "https://www.gamestar.de/artikel/gaming-pc-im-wohnzimmer,3454083.html",
-      "title": "PC-Gaming - Mein Gaming-PC steht seit Jahren im Wohnzimmer und zum Schreibtisch werde ich nicht zurückkehren",
-      "category": "Hardware",
-      "freeReferenceType": "none",
-      "freePromotionConfirmed": false,
-      "articleType": "news-overview",
-      "score": 24,
-      "scoreReasons": [
-        "Erkennbarer PC-Gaming-Bezug",
-        "Aktuelle Meldung"
-      ],
-      "imageStatus": "fallback",
-      "imagePath": "/images/categories/hardware.svg",
-      "rightsNotes": "Lokales SpielSignal-Fallback bis zur manuellen Bildfreigabe.",
-      "editorialStatus": "needs-review",
-      "openChecks": [
-        "Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen.",
-        "Spielname konnte nicht sicher aus der Überschrift ermittelt werden."
-      ],
-      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
     }
   ],
   "sourceErrors": [],
-  "steamScoutStatus": "Steam-Scout deaktiviert: Konfiguration fehlt",
+  "steamScoutStatus": "Steam-Scout aktiv. Steam-App-Katalog nicht verfügbar: API-Key fehlt; Steam-Releases derzeit nicht verfügbar: Die dokumentierte Steam Web API bietet keinen stabilen öffentlichen Release-Feed; Steam-Trends derzeit nicht verfügbar: API-Key fehlt",
+  "steamReleaseStatus": "Steam-Releases derzeit nicht verfügbar: Die dokumentierte Steam Web API bietet keinen stabilen öffentlichen Release-Feed.",
+  "steamTrendStatus": "Steam-Trends derzeit nicht verfügbar: API-Key fehlt",
+  "steamApiKeyPresent": false,
   "summary": {
-    "rssCandidates": 9,
+    "rssCandidates": 5,
     "steamReleaseCandidates": 0,
     "steamTrendCandidates": 0,
     "possibleFreePromotions": 2,
     "confirmedFreePromotions": 0,
     "imageCandidates": 0,
-    "fallbackOnlyCandidates": 9,
+    "rssCandidatesWithSteamAppId": 0,
+    "officialSteamImageCandidates": 0,
+    "fallbackOnlyCandidates": 5,
     "sourceErrors": 0
   },
   "safeguards": {

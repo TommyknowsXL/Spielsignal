@@ -318,6 +318,19 @@ STEAM_WEB_API_KEY
 OPENAI_API_KEY
 ```
 
+Der Steam-Scout verwendet `STEAM_WEB_API_KEY` ausschließlich serverseitig. Der Workflow setzt:
+
+```env
+STEAM_SCOUT_ENABLED=true
+STEAM_RELEASES_ENABLED=true
+STEAM_TRENDS_ENABLED=true
+```
+
+Der offizielle Steam-App-Katalog wird über `IStoreService/GetAppList/v1/` abgerufen. Die
+experimentellen Steam-Charts laufen nur mit `STEAM_TRENDS_ENABLED=true`. Für einen stabilen
+offiziellen Release-Feed bietet die dokumentierte Steam Web API derzeit keine geeignete
+Schnittstelle; dieser Status wird transparent im Tagesbericht angezeigt.
+
 Schlüssel niemals im Repository speichern oder in Logs ausgeben. Die optionale
 KI-Schnittstelle ist standardmäßig deaktiviert:
 

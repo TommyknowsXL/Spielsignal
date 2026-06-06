@@ -98,3 +98,19 @@ niemals veröffentlichen, Bilder freigeben oder Tests beziehungsweise Bewertunge
 
 Der Bericht enthält eine Zusammenfassung nach Quellenart, Gratis-Status und Bildstatus sowie
 pro Kandidat Spielname, App-ID, Steam-Link, Score, Fallback, Bildkandidat und offene Prüfungen.
+
+## Offizielle Steam-Provider
+
+- `IStoreService/GetAppList/v1/`: offizieller App-Katalog für eindeutige App-ID-Zuordnung
+- `ISteamChartsService/GetMostPlayedGames/v1/`: experimenteller Trend-Provider hinter
+  `STEAM_TRENDS_ENABLED`
+- `store.steampowered.com/app/{appid}/`: offizielle Store-Quellseite
+- `shared.fastly.steamstatic.com`: offizieller Steam-Asset-Kandidat, nie automatisch freigegeben
+
+`steamapi.xpaw.me` dient ausschließlich als technische Dokumentationsreferenz für den
+experimentellen Charts-Endpunkt. Der Agent sendet keine Datenanfragen an diese Domain.
+
+Der App-Katalog wird 24 Stunden, Trends mindestens 60 Minuten und Release-Ergebnisse
+mindestens sechs Stunden gecacht. Da die dokumentierte Steam Web API keinen stabilen
+öffentlichen Release-Feed bereitstellt, meldet der Release-Provider diesen Zustand offen,
+statt Daten aus Store-HTML zu erraten.

@@ -1,24 +1,24 @@
 export interface SteamAgentConfig {
   enabled: boolean;
-  sourceApiUrl: string | null;
+  trendsEnabled: boolean;
+  releasesEnabled: boolean;
   runSchedule: string;
-  minSuggestions: number;
-  maxSuggestions: number;
-  allowedArticleTypes: Array<"Release-Check" | "Ersteindruck" | "Test">;
+  maxReleaseCandidates: number;
+  maxTrendCandidates: number;
   usageNotes: string;
 }
 
-/**
- * Der Agent bleibt deaktiviert, bis eine erlaubte Datenquelle geprüft wurde.
- * Keine inoffiziellen Endpunkte, Zugangsdaten oder ungeprüften Bildquellen eintragen.
- */
-export const steamAgentConfig: SteamAgentConfig = {
-  enabled: false,
-  sourceApiUrl: null,
-  runSchedule: "täglich",
-  minSuggestions: 5,
-  maxSuggestions: 10,
-  allowedArticleTypes: ["Release-Check", "Ersteindruck", "Test"],
-  usageNotes:
-    "Vor Aktivierung Datenquelle, Nutzungsbedingungen, Bildrechte und Veröffentlichungsworkflow prüfen."
-};
+export function getSteamAgentConfig(
+  env: NodeJS.ProcessEnv = process.env
+): SteamAgentConfig {
+  return {
+    enabled: env.STEAM_SCOUT_ENABLED === "true",
+    trendsEnabled: env.STEAM_TRENDS_ENABLED === "true",
+    releasesEnabled: env.STEAM_RELEASES_ENABLED === "true",
+    runSchedule: "täglich",
+    maxReleaseCandidates: 5,
+    maxTrendCandidates: 5,
+    usageNotes:
+      "Nur serverseitige offizielle Steam-Schnittstellen verwenden. SteamDB und erfundene Daten sind ausgeschlossen."
+  };
+}

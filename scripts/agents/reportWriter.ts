@@ -22,6 +22,8 @@ function candidateMarkdown(candidate: EditorialCandidate, rank: number): string 
 - **Gratis-Klassifikation:** ${candidate.freeReferenceType ?? "none"} (${candidate.freePromotionConfirmed ? "bestätigt" : "nicht bestätigt"})
 - **Warum interessant?** ${candidate.scoreReasons.join("; ") || "Redaktionelle Prüfung erforderlich"}
 - **Bildstatus:** ${candidate.imageStatus}
+- **Bildfreigabestatus:** ${candidate.imageStatus}
+- **Bildquellentyp:** ${candidate.imageSourceType ?? "Nicht vorhanden"}
 - **Lokales Fallback-Bild:** ${markdownValue(candidate.imagePath)}
 - **Offizieller Bildkandidat:** ${markdownValue(candidate.imageCandidateUrl, "Kein offizieller Bildkandidat gefunden")}
 - **Bildquellseite:** ${markdownLink("Quellseite öffnen", candidate.imageSourcePageUrl)}
@@ -50,12 +52,17 @@ keine Bilder und führt keinen Merge auf \`main\` aus.
 - **Anzahl RSS-Kandidaten:** ${report.summary.rssCandidates}
 - **Anzahl Steam-Release-Kandidaten:** ${report.summary.steamReleaseCandidates}
 - **Anzahl Steam-Trend-Kandidaten:** ${report.summary.steamTrendCandidates}
+- **Anzahl RSS-Kandidaten mit Steam-App-ID:** ${report.summary.rssCandidatesWithSteamAppId}
+- **Anzahl offizieller Steam-Bildkandidaten:** ${report.summary.officialSteamImageCandidates}
 - **Anzahl möglicher Gratis-Aktionen:** ${report.summary.possibleFreePromotions}
 - **Anzahl bestätigter Gratis-Aktionen:** ${report.summary.confirmedFreePromotions}
 - **Anzahl Bildkandidaten:** ${report.summary.imageCandidates}
 - **Anzahl Kandidaten nur mit Fallback:** ${report.summary.fallbackOnlyCandidates}
 - **Quellenfehler:** ${report.summary.sourceErrors}
 - **Steam-Scout:** ${report.steamScoutStatus}
+- **Steam-API-Key vorhanden:** ${report.steamApiKeyPresent ? "ja" : "nein"}
+- **Steam-Releases:** ${report.steamReleaseStatus}
+- **Steam-Trends:** ${report.steamTrendStatus}
 
 ## Quellenstatus
 

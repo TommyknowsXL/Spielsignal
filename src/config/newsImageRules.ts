@@ -70,15 +70,13 @@ export function resolveSteamImage(input: {
   category?: string;
 }): ResolvedContentImage {
   const approved = input.appId
-    ? approvedSteamImages.find(
-        (image) => image.status === "approved" && image.appId === input.appId
-      )
+    ? approvedSteamImages[String(input.appId)]
     : undefined;
 
   if (approved) {
     return {
       src: approved.imageUrl,
-      alt: approved.alt,
+      alt: approved.alt ?? `Offizielles Steam-Bild zu ${input.gameTitle}`,
       status: "approved",
       sourceType: "approved-steam"
     };

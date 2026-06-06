@@ -13,6 +13,7 @@ const base = z.object({
   image: z.string().optional(),
   imageAlt: z.string().optional(),
   imageSource: z.string().optional(),
+  steamAppId: z.number().int().positive().optional(),
   demo: z.boolean().default(true)
 });
 

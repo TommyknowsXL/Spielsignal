@@ -39,6 +39,7 @@ export type EditorialCandidate = {
   gameTitle?: string;
   steamAppId?: string;
   steamStoreUrl?: string;
+  concurrentPlayers?: number;
   genre?: string;
   category?: string;
   releaseDate?: string;
@@ -52,7 +53,7 @@ export type EditorialCandidate = {
   imagePath?: string;
   imageCandidateUrl?: string;
   imageSourcePageUrl?: string;
-  imageCandidateSourceType?: ImageCandidateSourceType;
+  imageSourceType?: ImageCandidateSourceType;
   rightsNotes?: string;
   editorialStatus: "draft" | "needs-review" | "approved" | "rejected" | "published";
   openChecks: string[];
@@ -66,6 +67,8 @@ export type EditorialQueueSummary = {
   possibleFreePromotions: number;
   confirmedFreePromotions: number;
   imageCandidates: number;
+  rssCandidatesWithSteamAppId: number;
+  officialSteamImageCandidates: number;
   fallbackOnlyCandidates: number;
   sourceErrors: number;
 };
@@ -76,6 +79,9 @@ export type EditorialQueueReport = {
   candidates: EditorialCandidate[];
   sourceErrors: string[];
   steamScoutStatus: string;
+  steamReleaseStatus: string;
+  steamTrendStatus: string;
+  steamApiKeyPresent: boolean;
   summary: EditorialQueueSummary;
   safeguards: {
     automaticPublishing: false;

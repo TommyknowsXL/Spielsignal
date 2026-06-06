@@ -12,6 +12,11 @@ jobs:
   prepare-editorial-queue:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
+      STEAM_SCOUT_ENABLED: "true"
+      STEAM_RELEASES_ENABLED: "true"
+      STEAM_TRENDS_ENABLED: "true"
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v4
@@ -24,6 +29,14 @@ jobs:
 
       - name: Abhängigkeiten installieren
         run: npm ci
+
+      - name: Steam-Cache wiederherstellen
+        uses: actions/cache@v4
+        with:
+          path: .cache/steam
+          key: steam-provider-${{ runner.os }}-${{ github.run_number }}
+          restore-keys: |
+            steam-provider-${{ runner.os }}-
 
       - name: Tagesqueue erzeugen
         run: npm run editorial:daily

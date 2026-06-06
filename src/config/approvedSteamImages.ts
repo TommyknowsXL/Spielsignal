@@ -1,15 +1,14 @@
 export type ApprovedSteamImage = {
-  appId: number;
   imageUrl: string;
-  alt: string;
-  status: "approved";
   sourcePageUrl: string;
-  rightsBasis: string;
-  checkedAt: string;
+  sourceType: "steam-store";
+  rightsNotes: string;
+  approvedAt: string;
+  alt?: string;
 };
 
 /**
- * Only documented official Steam assets with manual approval belong here.
- * SteamDB is not a permitted source.
+ * Nur manuell geprüfte offizielle Steam-Bilder eintragen.
+ * Schlüssel ist die numerische Steam-App-ID. SteamDB ist keine zulässige Quelle.
  */
-export const approvedSteamImages: ApprovedSteamImage[] = [];
+export const approvedSteamImages: Record<string, ApprovedSteamImage> = {};

@@ -4,6 +4,8 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import AffiliateNotice from "../../components/AffiliateNotice.astro";
 import ArticleLayout from "../../components/ArticleLayout.astro";
+import SteamStoreWidgetPlaceholder from "../../components/SteamStoreWidgetPlaceholder.astro";
+import { privacyConfig } from "../../config/privacy";
 
 type AnyEntry =
   | CollectionEntry<"tests">
@@ -38,6 +40,7 @@ const data = entry.data as AnyEntry["data"] & {
   sourceName?: string;
   sourceUrl?: string;
   affiliate?: boolean;
+  steamAppId?: number;
 };
 const articleType = data.articleType ?? "Artikel";
 const formattedDate = data.date.toLocaleDateString("de-DE", {
@@ -81,6 +84,17 @@ const jsonLd = {
   <ArticleLayout>
     <article>
       <div class="article-body"><Content /></div>
+
+      {
+        data.steamAppId && (
+          <div style="margin-block: 2rem;">
+            <SteamStoreWidgetPlaceholder
+              appId={data.steamAppId}
+              enabled={privacyConfig.externalEmbedsEnabled}
+            />
+          </div>
+        )
+      }
 
       <div style="margin-block: 2rem;"><AdSlot format="article" /></div>
 

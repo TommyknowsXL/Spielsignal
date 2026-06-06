@@ -1,5 +1,9 @@
 import type { EditorialImageCandidate } from "../../src/data/editorialImageQueue";
 import { resolveNewsImage, resolveSteamImage } from "../../src/config/newsImageRules";
+import {
+  getSteamHeaderImageCandidate,
+  getSteamStoreUrl
+} from "../../src/lib/steam/steamImageCandidateProvider";
 import type { EditorialCandidate, ImageCandidateSourceType } from "./types";
 
 const fallbackRules: Array<{ pattern: RegExp; path: string }> = [
@@ -32,8 +36,8 @@ export function prepareOfficialSteamImageCandidate(
 } {
   return {
     candidateImageUrl:
-      `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${steamAppId}/header.jpg`,
-    sourcePageUrl,
+      getSteamHeaderImageCandidate(steamAppId),
+    sourcePageUrl: sourcePageUrl || getSteamStoreUrl(steamAppId),
     sourceType: "steam-store",
     rightsNotes:
       "Offizielles Steam-Store-Asset; Nutzungsgrundlage und Zuordnung vor Veröffentlichung manuell prüfen.",

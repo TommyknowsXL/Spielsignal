@@ -35,3 +35,25 @@ Externe Bilder müssen einzeln dokumentiert werden. Mögliche Quellentypen sind:
 Keine Bilder anderer Gaming-Magazine, ungeprüfte Suchmaschinenbilder, Fan-Art, RSS-Bilder,
 Open-Graph-Bilder oder SteamDB-Bilder automatisch übernehmen. Kein Hotlinking ohne dokumentierte
 Nutzungsgrundlage.
+
+## Steam-Bildfreigabe
+
+Offizielle Steam-Store-Bilder werden zunächst nur als URL-Kandidaten im Tagesbericht geführt.
+Sie bleiben `pending-review`; öffentlich sichtbar bleibt das lokale Kategorie-Fallback.
+
+Nach manueller Prüfung wird ein Bild anhand seiner App-ID in
+`src/config/approvedSteamImages.ts` eingetragen:
+
+```ts
+export const approvedSteamImages = {
+  "123456": {
+    imageUrl: "https://shared.fastly.steamstatic.com/...",
+    sourcePageUrl: "https://store.steampowered.com/app/123456/",
+    sourceType: "steam-store",
+    rightsNotes: "Nutzungsgrundlage manuell geprüft.",
+    approvedAt: "YYYY-MM-DD"
+  }
+};
+```
+
+Ohne diesen manuellen Eintrag darf der öffentliche Resolver das externe Bild nicht anzeigen.

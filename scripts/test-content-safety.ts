@@ -45,7 +45,10 @@ assert.equal(unknownNews.src, "/images/categories/news-default.svg");
 assert.equal(resolveSteamImage({ gameTitle: "Unbekannt" }).status, "fallback");
 assert.equal(isPublicImageStatus("pending-review"), false);
 assert.equal(
-  [...approvedNewsImages, ...approvedSteamImages].every((image) => image.status === "approved"),
+  approvedNewsImages.every((image) => image.status === "approved") &&
+    Object.values(approvedSteamImages).every(
+      (image) => image.sourceType === "steam-store"
+    ),
   true
 );
 
