@@ -239,6 +239,18 @@ assert.match(workflow, /schedule/);
 assert.match(workflow, /STEAM_WEB_API_KEY: \$\{\{ secrets\.STEAM_WEB_API_KEY \}\}/);
 assert.match(workflow, /STEAM_SCOUT_ENABLED: "true"/);
 assert.match(workflow, /STEAM_TRENDS_ENABLED: "true"/);
+const queueStep = workflow.match(
+  /- name: Tagesqueue erzeugen[\s\S]*?(?=\n\s+- name: Tests ausführen)/
+)?.[0];
+assert.ok(queueStep);
+assert.match(
+  queueStep,
+  /STEAM_WEB_API_KEY: \$\{\{ secrets\.STEAM_WEB_API_KEY \}\}/
+);
+assert.equal(
+  (workflow.match(/STEAM_WEB_API_KEY:/g) ?? []).length,
+  1
+);
 
 const agentFiles = await readdir("scripts/agents", {
   recursive: true,

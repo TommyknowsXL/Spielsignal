@@ -12,11 +12,6 @@ jobs:
   prepare-editorial-queue:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
-      STEAM_SCOUT_ENABLED: "true"
-      STEAM_RELEASES_ENABLED: "true"
-      STEAM_TRENDS_ENABLED: "true"
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v4
@@ -40,6 +35,11 @@ jobs:
 
       - name: Tagesqueue erzeugen
         run: npm run editorial:daily
+        env:
+          STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
+          STEAM_SCOUT_ENABLED: "true"
+          STEAM_RELEASES_ENABLED: "true"
+          STEAM_TRENDS_ENABLED: "true"
 
       - name: Tests ausführen
         run: npm test
