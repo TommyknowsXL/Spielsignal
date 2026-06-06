@@ -95,17 +95,27 @@ export const unrelatedTopicKeywords = [
 export function recommendArticleType(input: {
   sourceType: EditorialCandidate["sourceType"];
   title: string;
+  freePromotionConfirmed?: boolean;
+  hasFreeReference?: boolean;
 }): EditorialArticleType {
+  if (input.sourceType === "free-promotion" && input.freePromotionConfirmed) {
+    return "free-promotion";
+  }
+  if (input.hasFreeReference) return "free-promotion-candidate";
   if (input.sourceType === "steam-release") return "release-check";
   if (input.sourceType === "steam-trend") return "steam-trend";
-  if (input.sourceType === "free-promotion") return "free-promotion";
   return "news-overview";
 }
 
 export function scoreCandidate(
   candidate: Pick<
     EditorialCandidate,
-    "sourceType" | "title" | "imageStatus" | "createdAt"
+    | "sourceType"
+    | "title"
+    | "imageStatus"
+    | "createdAt"
+    | "freeReferenceType"
+    | "freePromotionConfirmed"
   >
 ): { score: number; reasons: string[] } {
   const title = candidate.title.toLocaleLowerCase("de");
@@ -123,9 +133,12 @@ export function scoreCandidate(
     score += scoringRules.verifiedSteamTrend;
     reasons.push("Steam-Trend aus zulässiger Quelle");
   }
-  if (candidate.sourceType === "free-promotion") {
+  if (candidate.sourceType === "free-promotion" && candidate.freePromotionConfirmed) {
+    score += scoringRules.confirmedFreePromotion;
+    reasons.push("Gratis-Aktion anhand einer offiziellen Quelle bestätigt");
+  } else if (candidate.freeReferenceType && candidate.freeReferenceType !== "none") {
     score += scoringRules.possibleFreePromotion;
-    reasons.push("Mögliche Gratis-Aktion, Bestätigung noch erforderlich");
+    reasons.push("Gratis-Bezug erkannt, Bestätigung noch erforderlich");
   }
   if (hasGamingReference) {
     score += scoringRules.pcGamingReference;

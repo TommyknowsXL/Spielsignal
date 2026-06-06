@@ -269,6 +269,11 @@ Der Lauf:
 
 Er commitet nichts, pusht nichts, veröffentlicht keine Artikel und führt keinen Merge aus.
 
+Der Bericht zeigt den Steam-Scout-Status ausdrücklich an. Solange
+`src/config/steamAgent.ts` deaktiviert ist, werden keine Steam-Daten erfunden oder aus
+inoffiziellen Quellen ergänzt. Erkannte Gratis-Bezüge bleiben bis zur Prüfung einer
+offiziellen Quelle unbestätigt.
+
 Lokal:
 
 ```bash

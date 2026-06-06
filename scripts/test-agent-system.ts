@@ -10,10 +10,17 @@ import {
   MAX_DAILY_CANDIDATES
 } from "./agents/agentConfig";
 import { buildEditorialQueue } from "./agents/editorialAgent";
-import { prepareImageCandidate } from "./agents/imageScout";
+import { classifyFreeReference } from "./agents/freeReference";
+import { extractGameTitle } from "./agents/gameTitle";
+import {
+  prepareImageCandidate,
+  prepareOfficialSteamImageCandidate,
+  resolveLocalFallback
+} from "./agents/imageScout";
 import { hasPcGamingReference } from "./agents/newsScout";
 import { prepareEditorialAiDrafts } from "./agents/providers/editorialAiProvider";
 import { runDailyEditorialQueue } from "./agents/runDailyEditorialQueue";
+import { runSteamScout } from "./agents/steamScout";
 import type { EditorialCandidate } from "./agents/types";
 
 const baseCandidate: EditorialCandidate = {
@@ -43,6 +50,7 @@ const manyCandidates = Array.from({ length: 15 }, (_, index) => ({
   ...baseCandidate,
   id: `candidate-${index}`,
   sourceUrl: `https://example.test/news/${index}`,
+  sourceName: `Testquelle ${index % 3}`,
   title: `PC Meldung Kennung${index} Thema${index} Detail${index}`,
   score: index
 }));
@@ -52,6 +60,48 @@ assert.equal(queue.every((candidate) => Boolean(candidate.sourceUrl)), true);
 assert.equal(queue.every((candidate) => candidate.editorialStatus === "needs-review"), true);
 assert.equal(queue.some((candidate) => (candidate.articleType as string) === "test"), false);
 assert.equal(queue.some((candidate) => candidate.editorialStatus === "published"), false);
+assert.equal(
+  Math.max(
+    ...[...new Set(queue.map((candidate) => candidate.sourceName))].map(
+      (sourceName) =>
+        queue.filter((candidate) => candidate.sourceName === sourceName).length
+    )
+  ) <= 6,
+  true
+);
+
+for (const [headline, expected] of [
+  ["Goals - Das neue Gratis-FIFA?", "Goals"],
+  ["Star Wars Zero Company: Das neue Taktik-Rollenspiel", "Star Wars Zero Company"],
+  ["Gothic 1 Remake - Eines der besten Spiele", "Gothic 1 Remake"],
+  ["1666: Amsterdam - Die ersten 10 Minuten", "1666: Amsterdam"],
+  ["Haex: Im neuen Sci-Fi-Survival-Shooter", "Haex"],
+  ["Crossfire: Neuer Singleplayer-Shooter", "Crossfire"]
+] as const) {
+  assert.equal(extractGameTitle(headline), expected);
+}
+assert.equal(
+  extractGameTitle("Warum dieses neue PC-Spiel gerade viele Fans überrascht"),
+  undefined
+);
+assert.equal(
+  extractGameTitle("Mech-Fans aufgepasst: Endlich kommt ein neues Spiel"),
+  undefined
+);
+assert.equal(
+  extractGameTitle("Strategie-Rollenspiel im Early Access: Noch 2026"),
+  undefined
+);
+assert.equal(extractGameTitle("PC-Gaming - Mein Rechner im Wohnzimmer"), undefined);
+
+assert.equal(
+  classifyFreeReference("Goals - Das neue Gratis-FIFA?").type,
+  "unknown-free-reference"
+);
+assert.equal(classifyFreeReference("Jetzt ist eine Demo verfügbar").type, "demo");
+assert.equal(classifyFreeReference("Free Weekend bis Montag").type, "free-weekend");
+assert.equal(classifyFreeReference("Free-to-Keep für kurze Zeit").type, "free-to-keep");
+assert.equal(classifyFreeReference("Free Weekend bis Montag").requiresReview, true);
 assert.equal(
   buildEditorialQueue([
     {
@@ -99,6 +149,59 @@ const pendingImage = prepareImageCandidate({
   rightsNotes: "Nutzungsgrundlage muss manuell geprüft werden."
 });
 assert.equal(pendingImage.status, "pending-review");
+assert.equal(
+  resolveLocalFallback("Star Wars Zero Company: Taktik-Rollenspiel"),
+  "/images/categories/strategie.svg"
+);
+assert.equal(
+  resolveLocalFallback("Gothic 1 Remake"),
+  "/images/categories/rollenspiele.svg"
+);
+assert.equal(
+  resolveLocalFallback("Haex: Sci-Fi-Survival-Shooter"),
+  "/images/categories/survival.svg"
+);
+assert.equal(
+  resolveLocalFallback("Crossfire: Neuer Shooter"),
+  "/images/categories/shooter.svg"
+);
+const officialSteamImage = prepareOfficialSteamImageCandidate(
+  "123456",
+  "https://store.steampowered.com/app/123456/Test/"
+);
+assert.equal(officialSteamImage.status, "pending-review");
+assert.equal(officialSteamImage.sourceType, "steam-store");
+
+const steamCandidates = await runSteamScout([
+  {
+    sourceType: "steam-release",
+    sourceName: "Offizieller Steam Store",
+    sourceUrl: "https://store.steampowered.com/app/123456/Test/",
+    title: "Test Strategy erscheint auf Steam",
+    gameTitle: "Test Strategy",
+    steamAppId: "123456",
+    genre: "Strategie",
+    sourceReviewed: true
+  },
+  {
+    sourceType: "free-promotion",
+    sourceName: "Offizieller Steam Store",
+    sourceUrl: "https://store.steampowered.com/app/654321/Test_Free/",
+    title: "Test Free Weekend",
+    gameTitle: "Test Free",
+    steamAppId: "654321",
+    sourceReviewed: true,
+    freeReferenceType: "free-weekend",
+    freePromotionConfirmed: false
+  }
+]);
+assert.equal(steamCandidates.length, 2);
+assert.equal(steamCandidates[0].imageStatus, "pending-review");
+assert.equal(steamCandidates[1].articleType, "free-promotion-candidate");
+assert.equal(
+  steamCandidates.every((candidate) => candidate.editorialStatus === "needs-review"),
+  true
+);
 
 const aiResult = await prepareEditorialAiDrafts([baseCandidate], {
   PUBLIC_AI_EDITORIAL_ENABLED: "false",
@@ -153,6 +256,9 @@ const safeMarkdown = await readFile(
   "utf8"
 );
 assert.doesNotMatch(safeMarkdown, /## 0\./);
+assert.match(safeMarkdown, /## Zusammenfassung/);
+assert.match(safeMarkdown, /Steam-Scout/);
+assert.equal(safeReport.summary.rssCandidates, 0);
 assert.match(safeMarkdown, /veröffentlicht keine Artikel/);
 
 const rss = `<?xml version="1.0"?>
@@ -190,9 +296,46 @@ const partialReport = await runDailyEditorialQueue({
 });
 assert.equal(partialReport.candidates.length, 1);
 assert.equal(partialReport.sourceErrors.length, 1);
+assert.equal(partialReport.summary.sourceErrors, 1);
 assert.equal(partialReport.candidates[0].sourceUrl, "https://example.test/news/pc-update");
 assert.equal(partialReport.candidates[0].imageStatus, "fallback");
 assert.equal(partialReport.candidates[0].editorialStatus, "needs-review");
+
+const mixedRoot = await mkdtemp(join(tmpdir(), "spielsignal-agent-mixed-"));
+const mixedReport = await runDailyEditorialQueue({
+  reportDate: "2026-06-08",
+  rootDirectory: mixedRoot,
+  newsSources: [goodSource],
+  steamRecords: [
+    {
+      sourceType: "steam-release",
+      sourceName: "Offizieller Steam Store",
+      sourceUrl: "https://store.steampowered.com/app/111111/Strategy_One/",
+      title: "Strategy One erscheint auf Steam",
+      gameTitle: "Strategy One",
+      steamAppId: "111111",
+      genre: "Strategie",
+      sourceReviewed: true
+    },
+    {
+      sourceType: "steam-trend",
+      sourceName: "Offizieller Steam Store",
+      sourceUrl: "https://store.steampowered.com/app/222222/Survival_Two/",
+      title: "Survival Two erhält großes Update",
+      gameTitle: "Survival Two",
+      steamAppId: "222222",
+      genre: "Survival",
+      sourceReviewed: true
+    }
+  ],
+  forceRefresh: true
+});
+assert.equal(
+  mixedReport.candidates.filter((candidate) => candidate.sourceType !== "rss-news").length,
+  2
+);
+assert.equal(mixedReport.summary.imageCandidates, 2);
+assert.match(mixedReport.steamScoutStatus, /2 verwertbare/);
 await new Promise<void>((resolve, reject) =>
   server.close((error) => (error ? reject(error) : resolve()))
 );

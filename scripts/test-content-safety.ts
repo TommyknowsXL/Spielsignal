@@ -41,7 +41,7 @@ const unknownNews = resolveNewsImage({
   category: "Unbekannt"
 });
 assert.equal(unknownNews.status, "fallback");
-assert.equal(unknownNews.src, "/images/demo/general.svg");
+assert.equal(unknownNews.src, "/images/categories/news-default.svg");
 assert.equal(resolveSteamImage({ gameTitle: "Unbekannt" }).status, "fallback");
 assert.equal(isPublicImageStatus("pending-review"), false);
 assert.equal(

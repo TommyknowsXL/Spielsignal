@@ -62,12 +62,45 @@ export function buildEditorialQueue(
     acceptedTitles.push(candidate.title);
   }
 
-  return unique
+  const ranked = unique
     .filter((candidate) => candidate.editorialStatus !== "rejected")
     .sort(
       (left, right) =>
         right.score - left.score ||
         Date.parse(right.createdAt) - Date.parse(left.createdAt)
-    )
-    .slice(0, Math.min(limit, MAX_DAILY_CANDIDATES));
+    );
+  const selected: EditorialCandidate[] = [];
+  const rssSourceCounts = new Map<string, number>();
+  const maximum = Math.min(limit, MAX_DAILY_CANDIDATES);
+
+  const canSelect = (candidate: EditorialCandidate): boolean => {
+    if (selected.some((entry) => entry.id === candidate.id)) return false;
+    if (candidate.sourceType !== "rss-news") return true;
+    return (rssSourceCounts.get(candidate.sourceName) ?? 0) < 6;
+  };
+  const select = (candidate: EditorialCandidate): void => {
+    selected.push(candidate);
+    if (candidate.sourceType === "rss-news") {
+      rssSourceCounts.set(
+        candidate.sourceName,
+        (rssSourceCounts.get(candidate.sourceName) ?? 0) + 1
+      );
+    }
+  };
+
+  ranked
+    .filter((candidate) => candidate.sourceType !== "rss-news")
+    .slice(0, 2)
+    .forEach(select);
+
+  for (const candidate of ranked) {
+    if (selected.length >= maximum) break;
+    if (canSelect(candidate)) select(candidate);
+  }
+
+  return selected.sort(
+    (left, right) =>
+      right.score - left.score ||
+      Date.parse(right.createdAt) - Date.parse(left.createdAt)
+  );
 }

@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import type { NewsSource } from "../../src/config/newsSources";
-import { resolveNewsImage } from "../../src/config/newsImageRules";
 import {
   getAggregatedNews,
   type AggregatedNewsItem,
@@ -12,6 +11,9 @@ import {
   scoreCandidate,
   unrelatedTopicKeywords
 } from "./agentConfig";
+import { classifyFreeReference } from "./freeReference";
+import { extractGameTitle } from "./gameTitle";
+import { resolveLocalFallback } from "./imageScout";
 import type { EditorialCandidate } from "./types";
 
 export type NewsScoutResult = {
@@ -31,10 +33,6 @@ export function hasPcGamingReference(item: AggregatedNewsItem): boolean {
   return positive && !unrelated;
 }
 
-function isPossibleFreePromotion(title: string): boolean {
-  return /\b(kostenlos|gratis|free weekend|free-to-play|verschenkt)\b/i.test(title);
-}
-
 export async function runNewsScout(options: {
   sources?: NewsSource[];
   forceRefresh?: boolean;
@@ -43,35 +41,39 @@ export async function runNewsScout(options: {
   const candidates = result.items
     .filter(hasPcGamingReference)
     .map((item): EditorialCandidate => {
-      const sourceType = isPossibleFreePromotion(item.title)
-        ? "free-promotion"
-        : "rss-news";
-      const image = resolveNewsImage({
-        articleUrl: item.url,
-        title: item.title,
-        category: item.category
-      });
+      const freeReference = classifyFreeReference(item.title);
+      const gameTitle = extractGameTitle(item.title);
       const base = {
         id: stableId(item.url),
         createdAt: item.date,
-        sourceType,
+        sourceType: "rss-news",
         sourceName: item.sourceName,
         sourceUrl: item.url,
         title: item.title,
-        articleType: recommendArticleType({ sourceType, title: item.title }),
+        gameTitle,
+        category: item.category,
+        freeReferenceType: freeReference.type,
+        freePromotionConfirmed: false,
+        articleType: recommendArticleType({
+          sourceType: "rss-news",
+          title: item.title,
+          hasFreeReference: freeReference.type !== "none"
+        }),
         score: 0,
         scoreReasons: [],
-        imageStatus: image.status,
-        imagePath: image.src,
-        rightsNotes:
-          image.status === "fallback"
-            ? "Lokales SpielSignal-Fallback bis zur manuellen Bildfreigabe."
-            : "Manuell freigegebene Bildquelle.",
+        imageStatus: "fallback",
+        imagePath: resolveLocalFallback(item.title, item.category),
+        rightsNotes: "Lokales SpielSignal-Fallback bis zur manuellen Bildfreigabe.",
         editorialStatus: "needs-review",
-        openChecks:
-          sourceType === "free-promotion"
-            ? ["Laufzeit und Bedingungen der möglichen Gratis-Aktion bestätigen."]
-            : ["Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen."],
+        openChecks: [
+          "Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen.",
+          ...(gameTitle
+            ? []
+            : ["Spielname konnte nicht sicher aus der Überschrift ermittelt werden."]),
+          ...(freeReference.requiresReview
+            ? ["Gratis-Art, offizielle Quelle und gegebenenfalls Laufzeit bestätigen."]
+            : [])
+        ],
         recommendedNextAction:
           "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
       } satisfies EditorialCandidate;

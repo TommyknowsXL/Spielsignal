@@ -1,10 +1,20 @@
 import { createHash } from "node:crypto";
-import { resolveSteamImage } from "../../src/config/newsImageRules";
 import { recommendArticleType, scoreCandidate } from "./agentConfig";
-import type { EditorialCandidate, EditorialSourceType } from "./types";
+import {
+  prepareOfficialSteamImageCandidate,
+  resolveLocalFallback
+} from "./imageScout";
+import type {
+  EditorialCandidate,
+  EditorialSourceType,
+  FreeReferenceType
+} from "./types";
 
 export type SteamScoutRecord = {
-  sourceType: Extract<EditorialSourceType, "steam-release" | "steam-trend" | "free-promotion">;
+  sourceType: Extract<
+    EditorialSourceType,
+    "steam-release" | "steam-trend" | "free-promotion"
+  >;
   sourceName: string;
   sourceUrl: string;
   title: string;
@@ -13,6 +23,7 @@ export type SteamScoutRecord = {
   genre?: string;
   releaseDate?: string;
   sourceReviewed: boolean;
+  freeReferenceType?: FreeReferenceType;
   freePromotionConfirmed?: boolean;
 };
 
@@ -32,20 +43,26 @@ export async function runSteamScout(
     .filter(
       (record) =>
         record.sourceReviewed &&
-        Boolean(record.steamAppId) &&
+        /^\d+$/.test(record.steamAppId) &&
         isOfficialSteamStoreUrl(record.sourceUrl)
     )
     .map((record): EditorialCandidate => {
-      const appId = Number(record.steamAppId);
-      const image = resolveSteamImage({
-        appId: Number.isInteger(appId) ? appId : undefined,
-        gameTitle: record.gameTitle ?? record.title,
-        category: "Steam"
-      });
-      const sourceType =
-        record.sourceType === "free-promotion" && !record.freePromotionConfirmed
-          ? "free-promotion"
+      const imageCandidate = prepareOfficialSteamImageCandidate(
+        record.steamAppId,
+        record.sourceUrl
+      );
+      const isConfirmedPromotion =
+        record.sourceType === "free-promotion" &&
+        record.freePromotionConfirmed === true;
+      const sourceType = isConfirmedPromotion
+        ? "free-promotion"
+        : record.sourceType === "free-promotion"
+          ? "steam-release"
           : record.sourceType;
+      const freeReferenceType = record.freeReferenceType ??
+        (record.sourceType === "free-promotion"
+          ? "unknown-free-reference"
+          : "none");
       const base = {
         id: `steam-${createHash("sha256").update(record.sourceUrl).digest("hex").slice(0, 16)}`,
         createdAt: new Date().toISOString(),
@@ -55,22 +72,34 @@ export async function runSteamScout(
         title: record.title,
         gameTitle: record.gameTitle,
         steamAppId: record.steamAppId,
+        steamStoreUrl: record.sourceUrl,
         genre: record.genre,
+        category: record.genre ?? "Steam",
         releaseDate: record.releaseDate,
-        articleType: recommendArticleType({ sourceType, title: record.title }),
+        freeReferenceType,
+        freePromotionConfirmed: isConfirmedPromotion,
+        articleType: recommendArticleType({
+          sourceType,
+          title: record.title,
+          freePromotionConfirmed: isConfirmedPromotion,
+          hasFreeReference: freeReferenceType !== "none"
+        }),
         score: 0,
         scoreReasons: [],
-        imageStatus: image.status,
-        imagePath: image.src,
-        imageSourcePageUrl: record.sourceUrl,
-        rightsNotes:
-          image.status === "approved"
-            ? "Manuell freigegebenes offizielles Steam-Asset."
-            : "Lokales SpielSignal-Fallback; offizielles Steam-Asset noch nicht freigegeben.",
+        imageStatus: "pending-review",
+        imagePath: resolveLocalFallback(record.title, record.genre ?? "Steam"),
+        imageCandidateUrl: imageCandidate.candidateImageUrl,
+        imageSourcePageUrl: imageCandidate.sourcePageUrl,
+        imageCandidateSourceType: imageCandidate.sourceType,
+        rightsNotes: imageCandidate.rightsNotes,
         editorialStatus: "needs-review",
         openChecks: [
           "Store-Angaben, Veröffentlichungsdatum und Genre redaktionell prüfen.",
-          ...(record.sourceType === "free-promotion" && !record.freePromotionConfirmed
+          "Offizielles Steam-Bild und dessen Nutzungsgrundlage manuell freigeben.",
+          ...(!record.gameTitle
+            ? ["Spielname fehlt und muss anhand der Store-Seite bestätigt werden."]
+            : []),
+          ...(record.sourceType === "free-promotion" && !isConfirmedPromotion
             ? ["Gratis-Aktion ist unbestätigt und darf nicht als bestätigt erscheinen."]
             : [])
         ],

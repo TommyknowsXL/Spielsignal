@@ -80,3 +80,21 @@ als GitHub Actions Secret oder serverseitige Umgebungsvariable hinterlegt werden
 Vor jeder Aktivierung sind Kosten, Datenschutz, Prompt-Grenzen und redaktionelle Kontrolle
 manuell zu prüfen. Die Schnittstelle darf nur strukturierte Entwurfsvorschläge liefern und
 niemals veröffentlichen, Bilder freigeben oder Tests beziehungsweise Bewertungen erfinden.
+
+## Qualitätsregeln für die Tagesqueue
+
+- Spielnamen werden nur aus plausiblen Bestandteilen vor `:` oder `-` extrahiert.
+- Bei Unsicherheit bleibt der Spielname leer; es wird nichts ergänzt oder geraten.
+- Gratis-Bezüge werden als `free-to-play`, `free-to-keep`, `play-for-free`, `demo`,
+  `free-weekend` oder `unknown-free-reference` erfasst.
+- Eine ungeprüfte Gratis-Referenz bleibt `needs-review` und höchstens
+  `free-promotion-candidate`.
+- Eine bestätigte Gratis-Aktion benötigt eine geprüfte offizielle Quelle.
+- Pro RSS-Quelle erscheinen höchstens sechs Einträge in der Top-10.
+- Bei vorhandenen offiziellen Steam-Daten werden bis zu zwei Steam-Plätze reserviert.
+- Ohne freigegebene Steam-Konfiguration nennt der Bericht den fehlenden Datenstand sichtbar.
+- Lokale Fallback-Bilder werden nach Thema gewählt.
+- Offizielle Steam-Bildkandidaten bleiben bis zur manuellen Prüfung `pending-review`.
+
+Der Bericht enthält eine Zusammenfassung nach Quellenart, Gratis-Status und Bildstatus sowie
+pro Kandidat Spielname, App-ID, Steam-Link, Score, Fallback, Bildkandidat und offene Prüfungen.

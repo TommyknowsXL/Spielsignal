@@ -10,21 +10,21 @@ export type ResolvedContentImage = {
   sourceType: "approved-news" | "approved-steam" | "category-fallback" | "general-fallback";
 };
 
-const GENERAL_FALLBACK = "/images/demo/general.svg";
-const STEAM_FALLBACK = "/images/demo/steam.svg";
+const GENERAL_FALLBACK = "/images/categories/news-default.svg";
+const STEAM_FALLBACK = "/images/categories/news-default.svg";
 
 const categoryFallbacks: Record<string, string> = {
-  Rollenspiele: "/images/demo/fantasy.svg",
-  Fantasy: "/images/demo/fantasy.svg",
-  Survival: "/images/demo/survival.svg",
-  Strategie: "/images/demo/strategy.svg",
-  Shooter: "/images/demo/shooter.svg",
-  Simulation: "/images/demo/strategy.svg",
-  Indie: "/images/demo/indie.svg",
-  Updates: "/images/demo/sci-fi.svg",
-  News: "/images/demo/sci-fi.svg",
-  Hardware: "/images/demo/sci-fi.svg",
-  Deals: "/images/demo/deals.svg",
+  Rollenspiele: "/images/categories/rollenspiele.svg",
+  Fantasy: "/images/categories/fantasy.svg",
+  Survival: "/images/categories/survival.svg",
+  Strategie: "/images/categories/strategie.svg",
+  Shooter: "/images/categories/shooter.svg",
+  Simulation: "/images/categories/strategie.svg",
+  Indie: "/images/categories/news-default.svg",
+  Updates: "/images/categories/updates.svg",
+  News: "/images/categories/news-default.svg",
+  Hardware: "/images/categories/hardware.svg",
+  Deals: "/images/categories/deals.svg",
   Steam: STEAM_FALLBACK
 };
 

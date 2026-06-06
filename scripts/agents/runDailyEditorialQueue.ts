@@ -1,5 +1,6 @@
 import { pathToFileURL } from "node:url";
 import type { NewsSource } from "../../src/config/newsSources";
+import { steamAgentConfig } from "../../src/config/steamAgent";
 import { buildEditorialQueue } from "./editorialAgent";
 import { runNewsScout } from "./newsScout";
 import { writeEditorialReport } from "./reportWriter";
@@ -39,8 +40,17 @@ export async function runDailyEditorialQueue(options: {
   }
 
   let steamCandidates: EditorialCandidate[] = [];
+  let steamScoutStatus = steamAgentConfig.enabled
+    ? "Steam-Scout aktiv, aber keine verwertbaren Daten gefunden"
+    : "Steam-Scout deaktiviert: Konfiguration fehlt";
   try {
     steamCandidates = await runSteamScout(options.steamRecords ?? []);
+    if (steamCandidates.length > 0) {
+      steamScoutStatus =
+        `Steam-Scout aktiv: ${steamCandidates.length} verwertbare offizielle Steam-Datensätze`;
+    } else if (options.steamRecords !== undefined) {
+      steamScoutStatus = "Steam-Scout aktiv, aber keine verwertbaren Daten gefunden";
+    }
   } catch (error) {
     sourceErrors.push(
       `Steam-Scout: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`
@@ -51,11 +61,32 @@ export async function runDailyEditorialQueue(options: {
     ...newsCandidates,
     ...steamCandidates
   ]);
+  const summary = {
+    rssCandidates: candidates.filter((candidate) => candidate.sourceType === "rss-news").length,
+    steamReleaseCandidates: candidates.filter((candidate) => candidate.sourceType === "steam-release").length,
+    steamTrendCandidates: candidates.filter((candidate) => candidate.sourceType === "steam-trend").length,
+    possibleFreePromotions: candidates.filter(
+      (candidate) =>
+        candidate.freeReferenceType &&
+        candidate.freeReferenceType !== "none" &&
+        !candidate.freePromotionConfirmed
+    ).length,
+    confirmedFreePromotions: candidates.filter(
+      (candidate) => candidate.freePromotionConfirmed
+    ).length,
+    imageCandidates: candidates.filter((candidate) => candidate.imageCandidateUrl).length,
+    fallbackOnlyCandidates: candidates.filter(
+      (candidate) => candidate.imageStatus === "fallback"
+    ).length,
+    sourceErrors: sourceErrors.length
+  };
   const report: EditorialQueueReport = {
     generatedAt,
     reportDate,
     candidates,
     sourceErrors,
+    steamScoutStatus,
+    summary,
     safeguards: {
       automaticPublishing: false,
       automaticMainMerge: false,

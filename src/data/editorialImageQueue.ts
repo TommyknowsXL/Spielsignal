@@ -2,7 +2,8 @@ export type EditorialImageCandidate = {
   articleUrl: string;
   articleTitle: string;
   gameTitle?: string;
-  candidateImageUrl: string;
+  steamAppId?: string;
+  candidateImageUrl?: string;
   sourcePageUrl: string;
   sourceType:
     | "steam-store"

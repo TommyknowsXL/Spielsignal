@@ -2,20 +2,30 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { EditorialCandidate, EditorialQueueReport } from "./types";
 
-function markdownValue(value: string | undefined): string {
-  return value?.trim() || "Nicht ermittelt";
+function markdownValue(value: string | undefined, fallback = "Nicht ermittelt"): string {
+  return value?.trim() || fallback;
+}
+
+function markdownLink(label: string, value: string | undefined): string {
+  return value ? `[${label}](${value})` : "Nicht vorhanden";
 }
 
 function candidateMarkdown(candidate: EditorialCandidate, rank: number): string {
   return `## ${rank + 1}. ${candidate.title}
 
 - **Spielname:** ${markdownValue(candidate.gameTitle)}
+- **Steam-App-ID:** ${markdownValue(candidate.steamAppId)}
+- **Steam-Store-Link:** ${markdownLink("Steam öffnen", candidate.steamStoreUrl)}
 - **Quelle:** [${candidate.sourceName}](${candidate.sourceUrl})
 - **Artikeltyp:** ${candidate.articleType}
+- **Prioritätswert:** ${candidate.score}
+- **Gratis-Klassifikation:** ${candidate.freeReferenceType ?? "none"} (${candidate.freePromotionConfirmed ? "bestätigt" : "nicht bestätigt"})
 - **Warum interessant?** ${candidate.scoreReasons.join("; ") || "Redaktionelle Prüfung erforderlich"}
 - **Bildstatus:** ${candidate.imageStatus}
-- **Bildquelle oder Fallback:** ${markdownValue(candidate.imageSourcePageUrl ?? candidate.imagePath)}
-- **Offene Prüfung:** ${candidate.openChecks.join("; ") || "Keine zusätzliche Prüfung dokumentiert"}
+- **Lokales Fallback-Bild:** ${markdownValue(candidate.imagePath)}
+- **Offizieller Bildkandidat:** ${markdownValue(candidate.imageCandidateUrl, "Kein offizieller Bildkandidat gefunden")}
+- **Bildquellseite:** ${markdownLink("Quellseite öffnen", candidate.imageSourcePageUrl)}
+- **Offene Prüfungen:** ${candidate.openChecks.join("; ") || "Keine zusätzliche Prüfung dokumentiert"}
 - **Empfohlene nächste Aktion:** ${candidate.recommendedNextAction}
 `;
 }
@@ -34,6 +44,18 @@ Erzeugt: ${report.generatedAt}
 
 Dieser Bericht enthält ausschließlich Vorschläge. Er veröffentlicht keine Artikel, genehmigt
 keine Bilder und führt keinen Merge auf \`main\` aus.
+
+## Zusammenfassung
+
+- **Anzahl RSS-Kandidaten:** ${report.summary.rssCandidates}
+- **Anzahl Steam-Release-Kandidaten:** ${report.summary.steamReleaseCandidates}
+- **Anzahl Steam-Trend-Kandidaten:** ${report.summary.steamTrendCandidates}
+- **Anzahl möglicher Gratis-Aktionen:** ${report.summary.possibleFreePromotions}
+- **Anzahl bestätigter Gratis-Aktionen:** ${report.summary.confirmedFreePromotions}
+- **Anzahl Bildkandidaten:** ${report.summary.imageCandidates}
+- **Anzahl Kandidaten nur mit Fallback:** ${report.summary.fallbackOnlyCandidates}
+- **Quellenfehler:** ${report.summary.sourceErrors}
+- **Steam-Scout:** ${report.steamScoutStatus}
 
 ## Quellenstatus
 
