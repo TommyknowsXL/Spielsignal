@@ -13,11 +13,16 @@ import SecondaryButton from "./SecondaryButton.astro";
         <SecondaryButton href="/tests/">Unsere Tests entdecken</SecondaryButton>
       </div>
     </div>
-    <div class="hero-visual" aria-hidden="true">
-      <div class="radar"><i></i><i></i><i></i><b></b></div>
-      <div class="terrain terrain--one"></div>
-      <div class="terrain terrain--two"></div>
-      <div class="pulse-line"></div>
-    </div>
+    <article class="featured-card">
+      <img class="featured-card__image" src="/images/demo/sci-fi.svg" alt="Abstrakter Sci-Fi-Platzhalter für den Featured-Demo-Artikel" width="800" height="450" />
+      <div class="featured-card__overlay" aria-hidden="true"></div>
+      <div class="featured-card__content">
+        <span class="badge">Demo-Featured</span>
+        <h2>Warum uns dieses PC-Projekt neugierig macht</h2>
+        <p>Ein Muster für den wichtigsten redaktionellen Beitrag des Tages.</p>
+        <a class="button button--secondary" href="/artikel/demo-ersteindruck-survival/">Artikel lesen <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="featured-radar" aria-hidden="true"></div>
+    </article>
   </div>
 </section>

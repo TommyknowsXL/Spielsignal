@@ -1,8 +1,8 @@
 ---
-interface Props { title: string; price: string; discount: string; }
-const { title, price, discount } = Astro.props;
+interface Props { title: string; price: string; discount: string; image: string; }
+const { title, price, discount, image } = Astro.props;
 ---
 <article class="deal-card">
-  <div class="deal-card__visual" aria-hidden="true">%</div>
+  <img class="deal-card__visual" src={image} alt={`Abstrakter Deals-Platzhalter zu ${title}`} width="800" height="450" loading="lazy" />
   <div><span class="badge badge--deal">Demo-Deal</span><h3>{title}</h3><strong>{price}</strong><small>{discount}</small></div>
 </article>

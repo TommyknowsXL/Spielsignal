@@ -3,7 +3,10 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import ExternalNewsCard from "../../components/ExternalNewsCard.astro";
 import NewsCard from "../../components/NewsCard.astro";
+import ReleaseCalendar from "../../components/ReleaseCalendar.astro";
+import TrendingSidebar from "../../components/TrendingSidebar.astro";
 import { demoNews } from "../../data/demoNews";
+import { demoImageAlt, demoImageFor } from "../../data/demoImages";
 import { getAggregatedNews } from "../../lib/newsFeed";
 
 export const prerender = false;
@@ -21,13 +24,24 @@ const filters = [
     (hasExternalItems ? result.items : demoNews).map((item) => item.category)
   )
 ];
+const trending = [
+  "Demo: Diese PC-Themen werden gerade häufig beobachtet",
+  "Demo: Neue Updates auf der redaktionellen Liste",
+  "Demo: Drei Indie-Ideen mit Potenzial",
+  "Demo: Welche Releases bald interessant werden"
+];
+const releases = [
+  ["Demo-Projekt Nord", "Rollenspiel", "24. Mai"],
+  ["Demo-Projekt Orbit", "Strategie", "28. Mai"],
+  ["Demo-Projekt Tiefsee", "Survival", "06. Juni"]
+];
 ---
 
 <BaseLayout
   title="Aktuelle PC-Gaming-News | SpielSignal"
   description="Automatisch aktualisierte PC-Gaming-Meldungen aus ausdrücklich freigegebenen Quellen mit sichtbarem Link zur Originalmeldung."
 >
-  <header class="page-hero container">
+  <header class="page-hero page-hero--compact container">
     <nav class="breadcrumbs" aria-label="Brotkrumen">
       <a href="/">Startseite</a><span>/</span><span>News</span>
     </nav>
@@ -39,7 +53,7 @@ const filters = [
     </p>
   </header>
 
-  <section class="section container">
+  <section class="section section--compact container">
     {
       hasExternalItems ? (
         <div class="feed-status success">
@@ -103,13 +117,19 @@ const filters = [
                     source={item.sourceName}
                     sourceUrl={item.sourceUrl}
                     note={item.note}
+                    image={demoImageFor(item.category)}
+                    imageAlt={demoImageAlt(item.category)}
                   />
                   {index === 7 && <AdSlot format="feed" />}
                 </>
               ))
         }
       </div>
-      <aside><AdSlot format="sidebar" /></aside>
+      <aside class="news-sidebar">
+        <TrendingSidebar items={trending} />
+        <ReleaseCalendar items={releases} />
+        <AdSlot format="sidebar" />
+      </aside>
     </div>
   </section>
 </BaseLayout>

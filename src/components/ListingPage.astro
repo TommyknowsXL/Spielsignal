@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { demoImageAlt, demoImageFor } from "../data/demoImages";
 
 interface Item {
   title: string;
@@ -30,7 +31,14 @@ const { title, eyebrow, description, items } = Astro.props;
     <div class="grid grid-3">
       {items.map((item) => (
         <article class="card">
-          <div class="visual" aria-hidden="true">S</div>
+          <img
+            class="card-image"
+            src={demoImageFor(item.category)}
+            alt={demoImageAlt(item.category)}
+            width="800"
+            height="450"
+            loading="lazy"
+          />
           <div class="card-body">
             <span class="badge">{item.category}</span>
             <h3>{item.title}</h3>

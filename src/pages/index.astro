@@ -10,6 +10,7 @@ import ReviewCard from "../components/ReviewCard.astro";
 import SectionHeader from "../components/SectionHeader.astro";
 import TrendingSidebar from "../components/TrendingSidebar.astro";
 import { demoNews } from "../data/demoNews";
+import { demoImageAlt, demoImageFor } from "../data/demoImages";
 
 const recommendations = [
   ["Lohnt sich das auch für Solo-Spieler?", "Welche Systeme alleine funktionieren und wo Mitspieler wirklich nötig sind."],
@@ -53,12 +54,12 @@ const deals = [
 
   <div class="container" style="padding-top: 1rem;"><AdSlot format="wide" /></div>
 
-  <section class="section" id="aktuelle-meldungen">
+  <section class="section section--compact" id="aktuelle-meldungen">
     <div class="container home-magazine">
       <div class="home-main">
         <SectionHeader
-          eyebrow="News-Radar"
-          title="Aktuelle Meldungen"
+          eyebrow="Direkt im Blick"
+          title="Top-Meldungen"
           href="/news/"
           linkLabel="Alle News"
         />
@@ -78,6 +79,8 @@ const deals = [
                 source={item.sourceName}
                 sourceUrl={item.sourceUrl}
                 note={item.note}
+                image={demoImageFor(item.category)}
+                imageAlt={demoImageAlt(item.category)}
               />
               {index === 5 && <AdSlot format="feed" />}
             </>
@@ -98,7 +101,7 @@ const deals = [
       <SectionHeader eyebrow="Aus der Redaktion" title="Neueste Tests" href="/tests/" linkLabel="Alle Tests" />
       <div class="grid grid-3">
         {tests.map(([title, category, date, score, slug]) => (
-          <ReviewCard title={title} category={category} date={date} score={score} href={`/artikel/${slug}/`} />
+          <ReviewCard title={title} category={category} date={date} score={score} href={`/artikel/${slug}/`} image={demoImageFor(category)} />
         ))}
       </div>
     </div>
@@ -108,8 +111,8 @@ const deals = [
     <div class="container">
       <SectionHeader eyebrow="Persönlich eingeordnet" title="Lohnt sich das?" href="/lohnt-sich-das/" linkLabel="Alle Empfehlungen" />
       <div class="grid grid-3">
-        {recommendations.map(([title, text]) => (
-          <RecommendationCard title={title} text={text} href="/artikel/demo-empfehlung-solo/" />
+        {recommendations.map(([title, text], index) => (
+          <RecommendationCard title={title} text={text} href="/artikel/demo-empfehlung-solo/" image={demoImageFor(["Fantasy", "Indie", "Shooter"][index])} />
         ))}
       </div>
     </div>
@@ -119,13 +122,27 @@ const deals = [
     <div class="container">
       <SectionHeader eyebrow="Spiele-Beobachtung" title="Deals und interessante PC-Spiele" href="/deals/" linkLabel="Alle Deals" />
       <div class="grid deal-grid">
-        {deals.map(([title, price, discount]) => <DealCard title={title} price={price} discount={discount} />)}
+        {deals.map(([title, price, discount]) => <DealCard title={title} price={price} discount={discount} image="/images/demo/deals.svg" />)}
       </div>
       <p class="demo-note" style="margin-top: 1rem;">Keine echten Angebote. Preise und Titel dienen ausschließlich der Layout-Vorschau.</p>
     </div>
   </section>
 
-  <div class="container"><AdSlot format="mobile" /></div>
+  <section class="section">
+    <div class="container">
+      <SectionHeader eyebrow="Release-Vorschau" title="Diese PC-Spiele solltest du im Blick behalten" href="/releases/" linkLabel="Alle Releases" />
+      <div class="grid grid-3">
+        {releases.slice(0, 3).map(([title, genre, date], index) => (
+          <article class="card release-card">
+            <img class="card-image" src={demoImageFor(["Fantasy", "Strategie", "Simulation"][index])} alt={`Abstrakter Demo-Platzhalter für ${title}`} width="800" height="450" loading="lazy" />
+            <div class="card-body"><span class="badge">Demo-Release</span><h3>{title}</h3><p class="muted">{genre} · PC</p><div class="meta"><span>{date}</span><span>Termin nur Demo</span></div></div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <div class="container"><AdSlot format="wide" /></div>
 
   <section class="section">
     <div class="container newsletter">

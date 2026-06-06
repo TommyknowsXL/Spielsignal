@@ -97,6 +97,10 @@ input {
   padding-block: clamp(3.6rem, 7vw, 6.5rem);
 }
 
+.section--compact {
+  padding-top: clamp(1.5rem, 3vw, 2.5rem);
+}
+
 .section + .section {
   border-top: 1px solid rgb(255 255 255 / 5%);
 }
@@ -211,6 +215,9 @@ p {
 }
 
 .card {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -228,8 +235,51 @@ p {
 
 .card-body {
   display: grid;
+  flex: 1;
   gap: 0.8rem;
   padding: 1.2rem;
+}
+
+.card-image-wrap {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.card-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-bottom: 1px solid var(--line);
+  transition: transform 240ms ease, filter 240ms ease;
+}
+
+.card:hover .card-image {
+  transform: scale(1.025);
+  filter: saturate(1.08);
+}
+
+.image-label {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 999px;
+  background: rgb(4 10 18 / 78%);
+  color: rgb(255 255 255 / 78%);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.card-teaser {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .visual {
@@ -620,6 +670,87 @@ p {
   gap: 1.5rem;
 }
 
+.hero {
+  padding-block: clamp(2rem, 4vw, 3.6rem);
+}
+
+.hero-grid {
+  grid-template-columns: minmax(0, 0.92fr) minmax(340px, 1.08fr);
+  gap: clamp(2rem, 4vw, 3.5rem);
+}
+
+.hero h1 {
+  max-width: 760px;
+  font-size: clamp(2.35rem, 4.6vw, 4.35rem);
+}
+
+.hero-copy {
+  gap: 1.2rem;
+}
+
+.featured-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 320px;
+  border: 1px solid rgb(60 230 255 / 20%);
+  border-radius: 24px;
+  background: #09111d;
+  box-shadow: var(--shadow);
+  isolation: isolate;
+}
+
+.featured-card__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.featured-card__overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgb(3 8 16 / 8%) 20%, rgb(3 8 16 / 94%) 92%),
+    linear-gradient(90deg, rgb(3 8 16 / 55%), transparent 65%);
+}
+
+.featured-card__content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-height: 320px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  padding: clamp(1.35rem, 3vw, 2rem);
+}
+
+.featured-card__content h2 {
+  max-width: 650px;
+  font-size: clamp(1.5rem, 2.8vw, 2.35rem);
+}
+
+.featured-card__content p {
+  max-width: 580px;
+  color: rgb(255 255 255 / 78%);
+}
+
+.featured-radar {
+  position: absolute;
+  z-index: 1;
+  top: -100px;
+  right: -100px;
+  width: 280px;
+  height: 280px;
+  border: 1px solid rgb(60 230 255 / 14%);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 38px rgb(60 230 255 / 2.5%),
+    0 0 0 76px rgb(60 230 255 / 1.8%);
+}
+
 .hero-copy .lead {
   max-width: 720px;
   color: #bbc7d8;
@@ -881,14 +1012,11 @@ p {
 }
 
 .deal-card__visual {
-  display: grid;
+  display: block;
+  width: 100%;
   min-height: 110px;
-  place-items: center;
+  object-fit: cover;
   border-radius: 10px;
-  background: var(--surface-2);
-  color: var(--color-accent-amber);
-  font-size: 2rem;
-  font-weight: 900;
 }
 
 .deal-card h3 { margin-block: 0.45rem; font-size: 0.95rem; }
@@ -946,9 +1074,17 @@ p {
   padding-block: 4.5rem 3rem;
 }
 
+.page-hero--compact {
+  padding-block: clamp(2rem, 4vw, 3rem) 1.2rem;
+}
+
 .page-hero h1 {
   max-width: 900px;
   font-size: clamp(2.4rem, 6vw, 4.5rem);
+}
+
+.page-hero--compact h1 {
+  font-size: clamp(2.1rem, 4.8vw, 3.75rem);
 }
 
 .page-hero p {
@@ -956,6 +1092,17 @@ p {
   margin-top: 1rem;
   color: var(--muted);
   font-size: 1.1rem;
+}
+
+.section--compact .feed-status {
+  padding: 0.65rem 0.85rem;
+  font-size: 0.82rem;
+}
+
+.news-sidebar {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
 }
 
 .breadcrumbs {
@@ -1094,8 +1241,19 @@ p {
     grid-template-columns: 1fr;
   }
 
-  aside {
+  .article-layout > aside {
     display: none;
+  }
+
+  .news-sidebar,
+  .home-sidebar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .featured-card,
+  .featured-card__content {
+    min-height: 290px;
   }
 }
 
@@ -1111,6 +1269,10 @@ p {
   }
 
   .home-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .news-sidebar {
     grid-template-columns: 1fr;
   }
 

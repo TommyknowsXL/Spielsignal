@@ -1,11 +1,11 @@
 ---
-interface Props { title: string; text: string; href: string; }
-const { title, text, href } = Astro.props;
+interface Props { title: string; text: string; href: string; image: string; }
+const { title, text, href, image } = Astro.props;
 ---
 <article class="card recommendation-card">
-  <div class="visual visual--recommendation" aria-hidden="true">?</div>
+  <img class="card-image" src={image} alt={`Abstrakter Demo-Platzhalter zu ${title}`} width="800" height="450" loading="lazy" />
   <div class="card-body">
-    <span class="badge">Demo-Empfehlung</span><h3>{title}</h3><p class="muted">{text}</p>
+    <span class="badge">Demo-Empfehlung</span><h3>{title}</h3><p class="muted card-teaser">{text}</p>
     <a class="text-link" href={href}>Beispiel lesen →</a>
   </div>
 </article>

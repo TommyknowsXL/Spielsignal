@@ -1,5 +1,6 @@
 ---
 import type { AggregatedNewsItem } from "../lib/newsFeed";
+import { demoImageAlt, demoImageFor } from "../data/demoImages";
 
 interface Props {
   item: AggregatedNewsItem;
@@ -14,6 +15,7 @@ const published = new Date(item.date).toLocaleString("de-DE", {
 ---
 
 <article class="card news-card" data-category={item.category}>
+  <img class="card-image" src={demoImageFor(item.category)} alt={demoImageAlt(item.category)} width="800" height="450" loading="lazy" />
   <div class="card-body">
     <span class="badge">{item.category}</span>
     <h3>{item.title}</h3>
@@ -26,7 +28,7 @@ const published = new Date(item.date).toLocaleString("de-DE", {
         <p class="similar-note">Ähnliches Thema bereits im Feed: „{item.similarTo}“</p>
       )
     }
-    <p class="muted">
+    <p class="muted card-teaser">
       SpielSignal zeigt nur Metadaten. Der vollständige Beitrag liegt auf der Seite der Quelle.
     </p>
     <a class="button secondary" href={item.url} rel="nofollow noopener" target="_blank">

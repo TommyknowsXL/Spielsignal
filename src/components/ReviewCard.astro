@@ -1,15 +1,15 @@
 ---
 interface Props {
-  title: string; category: string; date: string; score: string; href: string;
+  title: string; category: string; date: string; score: string; href: string; image: string;
 }
-const { title, category, date, score, href } = Astro.props;
+const { title, category, date, score, href, image } = Astro.props;
 ---
 <article class="card review-card">
-  <div class="visual visual--review" aria-hidden="true"><span>TEST</span></div>
+  <div class="card-image-wrap"><img class="card-image" src={image} alt={`Abstrakter Demo-Platzhalter zu ${title}`} width="800" height="450" loading="lazy" /><span class="image-label">TEST</span></div>
   <div class="card-body">
     <div class="card-top"><span class="badge">{category}</span><span class="score">{score}</span></div>
     <h3>{title}</h3>
-    <p class="muted">Ein klar gekennzeichneter Musterartikel für das künftige Testformat.</p>
+    <p class="muted card-teaser">Ein klar gekennzeichneter Musterartikel für das künftige Testformat.</p>
     <div class="meta"><span>{date}</span><span>Demo-Inhalt</span></div>
     <a class="text-link" href={href}>Test lesen →</a>
   </div>
