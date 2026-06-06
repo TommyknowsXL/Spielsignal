@@ -32,8 +32,8 @@ const releaseFallback = officialSteamFallback("releases");
 assert.ok(trendFallback.image);
 assert.ok(releaseFallback.image);
 assert.equal(trendFallback.source, "Steam");
-assert.equal(trendFallback.url, "https://store.steampowered.com/charts/mostplayed");
-assert.equal(trendFallback.title, "Offizielle Steam-Charts ansehen ↗");
+assert.equal(trendFallback.url, "https://store.steampowered.com/charts/topselling/DE");
+assert.match(trendFallback.title, /Steam-Topseller/);
 
 const unknownNews = resolveNewsImage({
   articleUrl: "https://example.test/unknown",
@@ -88,7 +88,9 @@ assert.match(trendingComponent, /class="sidebar-entry"/);
 
 const steamTrendsComponent = readFileSync("src/components/SteamTrendsSidebar.astro", "utf8");
 assert.match(steamTrendsComponent, /slice\(0, 5\)/);
-assert.match(steamTrendsComponent, /Steam-Trends werden gerade vorbereitet/);
+assert.match(steamTrendsComponent, /Top-Seller in Deutschland/);
+assert.match(steamTrendsComponent, /target="_blank"/);
+assert.match(steamTrendsComponent, /Quelle: Steam/);
 assert.match(steamTrendsComponent, /<img/);
 
 const widget = readFileSync("src/components/SteamStoreWidgetPlaceholder.astro", "utf8");

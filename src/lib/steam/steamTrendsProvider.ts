@@ -4,7 +4,7 @@ import {
   withSteamCache
 } from "./steamCache";
 
-export type SteamTrendRecord = {
+export type SteamMostPlayedRecord = {
   appId: string;
   name?: string;
   concurrentPlayers?: number;
@@ -24,24 +24,31 @@ type SteamChartsResponse = {
   };
 };
 
-export async function getOfficialSteamTrends(options: {
+export async function getSteamMostPlayed(options: {
   enabled: boolean;
   apiKey?: string;
   fetchImpl?: typeof fetch;
   cacheDirectory?: string;
-}): Promise<{ records: SteamTrendRecord[]; status: string }> {
+}): Promise<{ records: SteamMostPlayedRecord[]; status: string }> {
   if (!options.enabled) {
-    return { records: [], status: "Steam-Trends deaktiviert: Feature-Flag fehlt" };
+    return {
+      records: [],
+      status: "Steam Most Played deaktiviert: Feature-Flag ist false"
+    };
   }
   if (!options.apiKey) {
-    return { records: [], status: "Steam-Trends derzeit nicht verfügbar: API-Key fehlt" };
+    return {
+      records: [],
+      status: "Steam Most Played derzeit nicht verfügbar: API-Key fehlt"
+    };
   }
 
   try {
     const records = await withSteamCache({
-      cacheKey: "trends",
+      cacheKey: "most-played",
       ttlMs: STEAM_TREND_CACHE_TTL_MS,
       cacheDirectory: options.cacheDirectory,
+      useStaleOnError: true,
       load: async () => {
         const result = await fetchSteamJson<SteamChartsResponse>({
           path: "/ISteamChartsService/GetMostPlayedGames/v1/",
@@ -53,7 +60,7 @@ export async function getOfficialSteamTrends(options: {
           }
         });
         return (result.response?.ranks ?? [])
-          .map((entry): SteamTrendRecord | undefined => {
+          .map((entry): SteamMostPlayedRecord | undefined => {
             const appId = entry.appid ?? entry.item?.id;
             const name = entry.item?.name;
             if (!appId) return undefined;
@@ -65,23 +72,27 @@ export async function getOfficialSteamTrends(options: {
                 : {})
             };
           })
-          .filter((record): record is SteamTrendRecord => Boolean(record))
+          .filter((record): record is SteamMostPlayedRecord => Boolean(record))
           .slice(0, 5);
       }
     });
     return {
       records,
       status: records.length
-        ? `Steam-Trends aktiv: ${records.length} offizielle Datensätze`
-        : "Steam-Trends derzeit nicht verfügbar: API lieferte keine verwertbaren Daten"
+        ? `Steam Most Played aktiv: ${records.length} offizielle Datensätze`
+        : "Steam Most Played derzeit nicht verfügbar: API lieferte keine verwertbaren Daten"
     };
   } catch (error) {
     return {
       records: [],
       status:
-        `Steam-Trends derzeit nicht verfügbar: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`
+        `Steam Most Played derzeit nicht verfügbar: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`
     };
   }
 }
 
+// Compatibility aliases for existing imports while the public meaning of
+// "Steam-Trends" now belongs exclusively to the top-seller provider.
+export const getOfficialSteamTrends = getSteamMostPlayed;
+export type SteamTrendRecord = SteamMostPlayedRecord;
 export { STEAM_TREND_CACHE_TTL_MS };

@@ -13,7 +13,7 @@ import type {
 export type SteamScoutRecord = {
   sourceType: Extract<
     EditorialSourceType,
-    "steam-release" | "steam-trend" | "free-promotion"
+    "steam-release" | "steam-top-seller" | "steam-most-played" | "free-promotion"
   >;
   sourceName: string;
   sourceUrl: string;
@@ -23,6 +23,9 @@ export type SteamScoutRecord = {
   genre?: string;
   releaseDate?: string;
   concurrentPlayers?: number;
+  steamRank?: number;
+  steamRegion?: "DE" | "global";
+  steamFetchedAt?: string;
   sourceReviewed: boolean;
   freeReferenceType?: FreeReferenceType;
   freePromotionConfirmed?: boolean;
@@ -84,6 +87,9 @@ export async function runSteamScout(
         category: record.genre ?? "Steam",
         releaseDate: record.releaseDate,
         concurrentPlayers: record.concurrentPlayers,
+        steamRank: record.steamRank,
+        steamRegion: record.steamRegion,
+        steamFetchedAt: record.steamFetchedAt,
         freeReferenceType,
         freePromotionConfirmed: isConfirmedPromotion,
         articleType: recommendArticleType({

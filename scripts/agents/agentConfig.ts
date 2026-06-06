@@ -103,7 +103,8 @@ export function recommendArticleType(input: {
   }
   if (input.hasFreeReference) return "free-promotion-candidate";
   if (input.sourceType === "steam-release") return "release-check";
-  if (input.sourceType === "steam-trend") return "steam-trend";
+  if (input.sourceType === "steam-top-seller") return "steam-top-seller";
+  if (input.sourceType === "steam-most-played") return "steam-most-played";
   return "news-overview";
 }
 
@@ -129,9 +130,13 @@ export function scoreCandidate(
     score += scoringRules.newSteamRelease;
     reasons.push("Neue überprüfbare Steam-Veröffentlichung");
   }
-  if (candidate.sourceType === "steam-trend") {
+  if (candidate.sourceType === "steam-top-seller") {
     score += scoringRules.verifiedSteamTrend;
-    reasons.push("Steam-Trend aus zulässiger Quelle");
+    reasons.push("Steam-Topseller aus offizieller Quelle");
+  }
+  if (candidate.sourceType === "steam-most-played") {
+    score += scoringRules.verifiedSteamTrend;
+    reasons.push("Steam-Spielerzahlen aus offizieller Quelle");
   }
   if (candidate.sourceType === "free-promotion" && candidate.freePromotionConfirmed) {
     score += scoringRules.confirmedFreePromotion;

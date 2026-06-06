@@ -51,7 +51,8 @@ keine Bilder und führt keinen Merge auf \`main\` aus.
 
 - **Anzahl RSS-Kandidaten:** ${report.summary.rssCandidates}
 - **Anzahl Steam-Release-Kandidaten:** ${report.summary.steamReleaseCandidates}
-- **Anzahl Steam-Trend-Kandidaten:** ${report.summary.steamTrendCandidates}
+- **Anzahl Steam-Topseller-Kandidaten:** ${report.summary.steamTopSellerCandidates}
+- **Anzahl Steam-Most-Played-Kandidaten:** ${report.summary.steamMostPlayedCandidates}
 - **Anzahl RSS-Kandidaten mit Steam-App-ID:** ${report.summary.rssCandidatesWithSteamAppId}
 - **Anzahl offizieller Steam-Bildkandidaten:** ${report.summary.officialSteamImageCandidates}
 - **Anzahl möglicher Gratis-Aktionen:** ${report.summary.possibleFreePromotions}
@@ -62,7 +63,11 @@ keine Bilder und führt keinen Merge auf \`main\` aus.
 - **Steam-Scout:** ${report.steamScoutStatus}
 - **Steam-API-Key vorhanden:** ${report.steamApiKeyPresent ? "ja" : "nein"}
 - **Steam-Releases:** ${report.steamReleaseStatus}
-- **Steam-Trends:** ${report.steamTrendStatus}
+- **Steam-Topseller:** ${report.steamTopSellerStatus}
+- **Steam-Most-Played:** ${report.steamMostPlayedStatus}
+- **Steam-Topseller-Region:** ${report.steamTopSellerRegion}
+- **Steam-Topseller-Abrufzeit:** ${report.steamTopSellerFetchedAt}
+- **Steam-Topseller-Quelle:** ${report.steamTopSellerSource}
 
 ## Quellenstatus
 

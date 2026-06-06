@@ -76,7 +76,12 @@ export async function runDailyEditorialQueue(options: {
   const summary = {
     rssCandidates: candidates.filter((candidate) => candidate.sourceType === "rss-news").length,
     steamReleaseCandidates: candidates.filter((candidate) => candidate.sourceType === "steam-release").length,
-    steamTrendCandidates: candidates.filter((candidate) => candidate.sourceType === "steam-trend").length,
+    steamTopSellerCandidates: candidates.filter(
+      (candidate) => candidate.sourceType === "steam-top-seller"
+    ).length,
+    steamMostPlayedCandidates: candidates.filter(
+      (candidate) => candidate.sourceType === "steam-most-played"
+    ).length,
     possibleFreePromotions: candidates.filter(
       (candidate) =>
         candidate.freeReferenceType &&
@@ -107,7 +112,11 @@ export async function runDailyEditorialQueue(options: {
     sourceErrors,
     steamScoutStatus,
     steamReleaseStatus: steamProvider.releaseStatus,
-    steamTrendStatus: steamProvider.trendStatus,
+    steamTopSellerStatus: steamProvider.topSellerStatus,
+    steamMostPlayedStatus: steamProvider.mostPlayedStatus,
+    steamTopSellerRegion: steamProvider.topSellerRegion,
+    steamTopSellerFetchedAt: steamProvider.topSellerFetchedAt,
+    steamTopSellerSource: "Steam",
     steamApiKeyPresent: steamProvider.keyPresent,
     summary,
     safeguards: {

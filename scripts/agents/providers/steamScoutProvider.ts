@@ -6,7 +6,8 @@ import {
 } from "../../../src/lib/steam/steamAppCatalog";
 import { getSteamStoreUrl } from "../../../src/lib/steam/steamImageCandidateProvider";
 import { getOfficialSteamReleases } from "../../../src/lib/steam/steamReleaseProvider";
-import { getOfficialSteamTrends } from "../../../src/lib/steam/steamTrendsProvider";
+import { getSteamMostPlayed } from "../../../src/lib/steam/steamMostPlayedProvider";
+import { getSteamTopSellers } from "../../../src/lib/steam/steamTopSellersProvider";
 import type { EditorialCandidate } from "../types";
 import type { SteamScoutRecord } from "../steamScout";
 
@@ -16,7 +17,10 @@ export type SteamScoutProviderResult = {
   keyPresent: boolean;
   scoutStatus: string;
   releaseStatus: string;
-  trendStatus: string;
+  topSellerStatus: string;
+  mostPlayedStatus: string;
+  topSellerRegion: "DE" | "global";
+  topSellerFetchedAt: string;
 };
 
 function statusPart(value: string): string {
@@ -32,6 +36,7 @@ export async function collectSteamScoutData(options: {
   const config = getSteamAgentConfig(env);
   const apiKey = env.STEAM_WEB_API_KEY?.trim();
   const keyPresent = Boolean(apiKey);
+  const generatedAt = new Date().toISOString();
 
   if (!config.enabled) {
     return {
@@ -40,7 +45,10 @@ export async function collectSteamScoutData(options: {
       keyPresent,
       scoutStatus: "Steam-Scout deaktiviert: STEAM_SCOUT_ENABLED ist nicht true",
       releaseStatus: "Steam-Releases derzeit nicht verfügbar: Steam-Scout deaktiviert",
-      trendStatus: "Steam-Trends derzeit nicht verfügbar: Steam-Scout deaktiviert"
+      topSellerStatus: "Steam-Topseller derzeit nicht verfügbar: Steam-Scout deaktiviert",
+      mostPlayedStatus: "Steam Most Played deaktiviert: Steam-Scout deaktiviert",
+      topSellerRegion: "DE",
+      topSellerFetchedAt: generatedAt
     };
   }
 
@@ -66,7 +74,7 @@ export async function collectSteamScoutData(options: {
     ? await getOfficialSteamReleases()
     : {
         records: [] as [],
-        status: "Steam-Releases deaktiviert: Feature-Flag fehlt"
+        status: "Steam-Releases deaktiviert: Feature-Flag ist false"
       };
   const releaseRecords: SteamScoutRecord[] = releaseResult.records.map(
     (record) => ({
@@ -81,20 +89,41 @@ export async function collectSteamScoutData(options: {
       sourceReviewed: true
     })
   );
-  const trendResult = await getOfficialSteamTrends({
-    enabled: config.trendsEnabled,
+
+  const topSellerResult = await getSteamTopSellers({
+    enabled: config.topSellersEnabled,
+    fetchImpl: options.fetchImpl,
+    cacheDirectory: options.cacheDirectory
+  });
+  const topSellerRecords: SteamScoutRecord[] = topSellerResult.records
+    .slice(0, config.maxTopSellerCandidates)
+    .map((record) => ({
+      sourceType: "steam-top-seller",
+      sourceName: record.sourceName,
+      sourceUrl: record.steamStoreUrl,
+      title: record.title,
+      gameTitle: record.title,
+      steamAppId: record.steamAppId,
+      steamRank: record.rank,
+      steamRegion: record.region,
+      steamFetchedAt: record.fetchedAt,
+      sourceReviewed: true
+    }));
+
+  const mostPlayedResult = await getSteamMostPlayed({
+    enabled: config.mostPlayedEnabled,
     apiKey,
     fetchImpl: options.fetchImpl,
     cacheDirectory: options.cacheDirectory
   });
-  const trendRecords = trendResult.records
+  const mostPlayedRecords = mostPlayedResult.records
     .flatMap((record): SteamScoutRecord[] => {
       const name =
         record.name ??
         appCatalog.find((app) => String(app.appid) === record.appId)?.name;
       if (!name) return [];
       return [{
-        sourceType: "steam-trend",
+        sourceType: "steam-most-played",
         sourceName: "Steam",
         sourceUrl: getSteamStoreUrl(record.appId),
         title: name,
@@ -105,16 +134,20 @@ export async function collectSteamScoutData(options: {
           : {}),
         sourceReviewed: true
       }];
-    });
+    })
+    .slice(0, config.maxMostPlayedCandidates);
 
   return {
-    records: [...releaseRecords, ...trendRecords],
+    records: [...releaseRecords, ...topSellerRecords, ...mostPlayedRecords],
     appCatalog,
     keyPresent,
     scoutStatus:
-      `Steam-Scout aktiv. ${statusPart(catalogStatus)}; ${statusPart(releaseResult.status)}; ${statusPart(trendResult.status)}`,
+      `Steam-Scout aktiv. ${statusPart(catalogStatus)}; ${statusPart(releaseResult.status)}; ${statusPart(topSellerResult.status)}; ${statusPart(mostPlayedResult.status)}`,
     releaseStatus: releaseResult.status,
-    trendStatus: trendResult.status
+    topSellerStatus: topSellerResult.status,
+    mostPlayedStatus: mostPlayedResult.status,
+    topSellerRegion: topSellerResult.region,
+    topSellerFetchedAt: topSellerResult.fetchedAt
   };
 }
 

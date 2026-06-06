@@ -1,6 +1,7 @@
 export type EditorialSourceType =
   | "steam-release"
-  | "steam-trend"
+  | "steam-top-seller"
+  | "steam-most-played"
   | "rss-news"
   | "free-promotion";
 
@@ -10,7 +11,8 @@ export type EditorialArticleType =
   | "news-overview"
   | "free-promotion"
   | "free-promotion-candidate"
-  | "steam-trend"
+  | "steam-top-seller"
+  | "steam-most-played"
   | "test-candidate";
 
 export type FreeReferenceType =
@@ -40,6 +42,9 @@ export type EditorialCandidate = {
   steamAppId?: string;
   steamStoreUrl?: string;
   concurrentPlayers?: number;
+  steamRank?: number;
+  steamRegion?: "DE" | "global";
+  steamFetchedAt?: string;
   genre?: string;
   category?: string;
   releaseDate?: string;
@@ -63,7 +68,8 @@ export type EditorialCandidate = {
 export type EditorialQueueSummary = {
   rssCandidates: number;
   steamReleaseCandidates: number;
-  steamTrendCandidates: number;
+  steamTopSellerCandidates: number;
+  steamMostPlayedCandidates: number;
   possibleFreePromotions: number;
   confirmedFreePromotions: number;
   imageCandidates: number;
@@ -80,7 +86,11 @@ export type EditorialQueueReport = {
   sourceErrors: string[];
   steamScoutStatus: string;
   steamReleaseStatus: string;
-  steamTrendStatus: string;
+  steamTopSellerStatus: string;
+  steamMostPlayedStatus: string;
+  steamTopSellerRegion: "DE" | "global";
+  steamTopSellerFetchedAt: string;
+  steamTopSellerSource: "Steam";
   steamApiKeyPresent: boolean;
   summary: EditorialQueueSummary;
   safeguards: {

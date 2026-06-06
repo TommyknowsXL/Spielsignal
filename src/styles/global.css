@@ -907,6 +907,7 @@ a.card-link {
   object-fit: cover;
   border: 1px solid var(--line);
   border-radius: 7px;
+  background: var(--surface) url("/images/categories/news-default.svg") center / cover no-repeat;
 }
 
 .sidebar-entry__copy {
@@ -930,7 +931,6 @@ a.card-link {
   display: grid;
   margin: 0;
   padding: 0;
-  counter-reset: steam-entry;
   list-style: none;
 }
 
@@ -941,14 +941,48 @@ a.card-link {
   gap: 0.5rem;
   padding-block: 0.65rem;
   border-top: 1px solid var(--line);
-  counter-increment: steam-entry;
 }
 
-.steam-sidebar-list li::before {
-  content: counter(steam-entry);
+.steam-rank {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 800;
+  text-align: center;
+}
+
+.sidebar-kicker {
+  margin: -0.35rem 0 0.4rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.steam-price {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.steam-price b {
+  color: var(--color-accent-amber);
+  font-size: 0.7rem;
+}
+
+.steam-sidebar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.steam-sidebar-meta time {
+  color: inherit;
+}
+
+.steam-sidebar-meta a {
+  color: var(--muted);
 }
 
 .steam-fallback {

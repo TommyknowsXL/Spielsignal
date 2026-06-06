@@ -74,12 +74,20 @@ export function buildEditorialQueue(
   let rssCount = 0;
   let hardwareCount = 0;
   let steamReleaseCount = 0;
+  let steamTopSellerCount = 0;
+  let steamMostPlayedCount = 0;
   const maximum = Math.min(limit, MAX_DAILY_CANDIDATES);
 
   const canSelect = (candidate: EditorialCandidate): boolean => {
     if (selected.some((entry) => entry.id === candidate.id)) return false;
     if (candidate.category === "Hardware" && hardwareCount >= 2) return false;
     if (candidate.sourceType === "steam-release" && steamReleaseCount >= 5) {
+      return false;
+    }
+    if (candidate.sourceType === "steam-top-seller" && steamTopSellerCount >= 5) {
+      return false;
+    }
+    if (candidate.sourceType === "steam-most-played" && steamMostPlayedCount >= 2) {
       return false;
     }
     if (candidate.sourceType !== "rss-news") return true;
@@ -90,6 +98,8 @@ export function buildEditorialQueue(
     selected.push(candidate);
     if (candidate.category === "Hardware") hardwareCount += 1;
     if (candidate.sourceType === "steam-release") steamReleaseCount += 1;
+    if (candidate.sourceType === "steam-top-seller") steamTopSellerCount += 1;
+    if (candidate.sourceType === "steam-most-played") steamMostPlayedCount += 1;
     if (candidate.sourceType === "rss-news") {
       rssCount += 1;
       rssSourceCounts.set(
@@ -105,10 +115,19 @@ export function buildEditorialQueue(
     .forEach((candidate) => {
       if (canSelect(candidate)) select(candidate);
     });
-  const topTrend = ranked.find(
-    (candidate) => candidate.sourceType === "steam-trend"
-  );
-  if (topTrend && canSelect(topTrend)) select(topTrend);
+  ranked
+    .filter((candidate) => candidate.sourceType === "steam-top-seller")
+    .sort((left, right) => (left.steamRank ?? 999) - (right.steamRank ?? 999))
+    .slice(0, 5)
+    .forEach((candidate) => {
+      if (selected.length < maximum && canSelect(candidate)) select(candidate);
+    });
+  ranked
+    .filter((candidate) => candidate.sourceType === "steam-most-played")
+    .slice(0, 2)
+    .forEach((candidate) => {
+      if (selected.length < maximum && canSelect(candidate)) select(candidate);
+    });
 
   for (const candidate of ranked) {
     if (selected.length >= maximum) break;

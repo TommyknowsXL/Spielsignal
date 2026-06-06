@@ -8,30 +8,67 @@ interface Props {
 const { items } = Astro.props;
 const visibleItems = items.slice(0, 5);
 const fallback = officialSteamFallback("trends");
+const formatUpdatedAt = (value: string) =>
+  new Intl.DateTimeFormat("de-DE", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "Europe/Berlin"
+  }).format(new Date(value));
 ---
 
 <section class="sidebar-panel" data-module="steam-trends">
   <h2 class="sidebar-title"><span></span>Steam-Trends</h2>
+  <p class="sidebar-kicker">Top-Seller in Deutschland</p>
   {
     visibleItems.length ? (
-      <ol class="steam-sidebar-list">
-        {visibleItems.map((item) => (
-          <li>
-            <a class="sidebar-entry" href={item.url} target="_blank" rel="noopener noreferrer">
-              <img src={item.image} alt={item.imageAlt} width="120" height="80" loading="lazy" />
-              <span class="sidebar-entry__copy">
-                <strong>{item.title}</strong>
-                <small>Quelle: Steam</small>
-                {item.valueLabel ? <small>{item.valueLabel}</small> : null}
-                {item.updatedAt ? <time datetime={item.updatedAt}>Stand: {item.updatedAt}</time> : null}
-              </span>
-            </a>
-          </li>
-        ))}
-      </ol>
+      <>
+        <ol class="steam-sidebar-list">
+          {visibleItems.map((item) => (
+            <li>
+              <span class="steam-rank" aria-label={`Rang ${item.rank}`}>{item.rank}</span>
+              <a class="sidebar-entry" href={item.url} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={item.image}
+                  data-fallback-src={item.fallbackImage}
+                  alt={item.imageAlt}
+                  width="120"
+                  height="80"
+                  loading="lazy"
+                />
+                <span class="sidebar-entry__copy">
+                  <strong>{item.title}</strong>
+                  {(item.discountText || item.priceText) ? (
+                    <span class="steam-price">
+                      {item.discountText ? <b>{item.discountText}</b> : null}
+                      {item.priceText ? <small>{item.priceText}</small> : null}
+                    </span>
+                  ) : null}
+                  <small>Quelle: Steam</small>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ol>
+        <p class="steam-sidebar-meta">
+          <a
+            href={visibleItems[0]?.sourceUrl ?? fallback.url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {visibleItems[0]?.region === "global"
+              ? "Quelle: Steam Topseller global"
+              : "Quelle: Steam Topseller Deutschland"}
+          </a>
+          {visibleItems[0]?.updatedAt ? (
+            <time datetime={visibleItems[0].updatedAt}>
+              Stand: {formatUpdatedAt(visibleItems[0].updatedAt)}
+            </time>
+          ) : null}
+        </p>
+      </>
     ) : (
       <div class="steam-fallback">
-        <p>Steam-Trends werden gerade vorbereitet.</p>
+        <p>Steam-Topseller sind gerade nicht verfügbar.</p>
         <a class="sidebar-entry" href={fallback.url} target="_blank" rel="noopener noreferrer">
           <img src={fallback.image} alt={fallback.imageAlt} width="120" height="80" loading="lazy" />
           <span class="sidebar-entry__copy">
@@ -43,3 +80,14 @@ const fallback = officialSteamFallback("trends");
     )
   }
 </section>
+
+<script>
+  document.querySelectorAll<HTMLImageElement>("[data-fallback-src]").forEach((image) => {
+    image.addEventListener("error", () => {
+      const fallback = image.dataset.fallbackSrc;
+      if (fallback && image.src !== new URL(fallback, window.location.href).href) {
+        image.src = fallback;
+      }
+    }, { once: true });
+  });
+</script>

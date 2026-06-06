@@ -34,9 +34,16 @@ import {
   STEAM_RELEASE_CACHE_TTL_MS
 } from "../src/lib/steam/steamReleaseProvider";
 import {
-  getOfficialSteamTrends,
+  getSteamMostPlayed,
   STEAM_TREND_CACHE_TTL_MS
-} from "../src/lib/steam/steamTrendsProvider";
+} from "../src/lib/steam/steamMostPlayedProvider";
+import {
+  getSteamTopSellers,
+  parseSteamTopSellersHtml,
+  STEAM_TOP_SELLER_CACHE_TTL_MS,
+  STEAM_TOP_SELLERS_DE_URL,
+  STEAM_TOP_SELLERS_GLOBAL_URL
+} from "../src/lib/steam/steamTopSellersProvider";
 import type { EditorialCandidate } from "./agents/types";
 
 const baseCandidate: EditorialCandidate = {
@@ -238,7 +245,8 @@ assert.match(workflow, /workflow_dispatch/);
 assert.match(workflow, /schedule/);
 assert.match(workflow, /STEAM_WEB_API_KEY: \$\{\{ secrets\.STEAM_WEB_API_KEY \}\}/);
 assert.match(workflow, /STEAM_SCOUT_ENABLED: "true"/);
-assert.match(workflow, /STEAM_TRENDS_ENABLED: "true"/);
+assert.match(workflow, /STEAM_TOP_SELLERS_ENABLED: "true"/);
+assert.match(workflow, /PUBLIC_STEAM_MOST_PLAYED_ENABLED: "false"/);
 const queueStep = workflow.match(
   /- name: Tagesqueue erzeugen[\s\S]*?(?=\n\s+- name: Tests ausführen)/
 )?.[0];
@@ -351,7 +359,7 @@ const mixedReport = await runDailyEditorialQueue({
       sourceReviewed: true
     },
     {
-      sourceType: "steam-trend",
+      sourceType: "steam-top-seller",
       sourceName: "Offizieller Steam Store",
       sourceUrl: "https://store.steampowered.com/app/222222/Survival_Two/",
       title: "Survival Two erhält großes Update",
@@ -375,6 +383,9 @@ await new Promise<void>((resolve, reject) =>
 
 assert.equal(STEAM_RELEASE_CACHE_TTL_MS >= 6 * 60 * 60 * 1000, true);
 assert.equal(STEAM_TREND_CACHE_TTL_MS >= 60 * 60 * 1000, true);
+assert.equal(STEAM_TOP_SELLER_CACHE_TTL_MS, 60 * 60 * 1000);
+assert.match(STEAM_TOP_SELLERS_DE_URL, /topselling\/DE$/);
+assert.match(STEAM_TOP_SELLERS_GLOBAL_URL, /topselling\/global$/);
 assert.equal(STEAM_APP_LIST_CACHE_TTL_MS >= 6 * 60 * 60 * 1000, true);
 let releaseLoadCount = 0;
 const releaseCacheRoot = await mkdtemp(
@@ -430,6 +441,69 @@ assert.equal(
 
 let steamFetchCount = 0;
 const secretSentinel = ["STEAM", "TEST", "SENTINEL"].join("_");
+const topSellerFixture = `
+<a href="https://store.steampowered.com/app/1001/Alpha/" data-ds-appid="1001" class="search_result_row">
+  <div class="search_capsule"><img src="https://shared.fastly.steamstatic.com/alpha.jpg"></div>
+  <div class="search_name"><span class="title">Alpha Strategy</span></div>
+  <div class="discount_pct">-20%</div><div class="discount_final_price">31,99€</div>
+</a>
+<a href="https://store.steampowered.com/app/1002/Tool/" data-ds-appid="1002" class="search_result_row">
+  <span class="title">Wallpaper Engine</span>
+</a>
+<a href="https://store.steampowered.com/app/1003/Beta/" data-ds-appid="1003" class="search_result_row">
+  <div class="search_capsule"><img src="https://shared.fastly.steamstatic.com/beta.jpg"></div>
+  <span class="title">Beta Survival</span><div class="search_price">19,99€</div>
+</a>
+<a href="https://store.steampowered.com/app/1004/Deck/" data-ds-appid="1004" class="search_result_row">
+  <span class="title">Steam Deck</span>
+</a>
+<a href="https://store.steampowered.com/app/1005/DLC/" data-ds-appid="1005" class="search_result_row">
+  <span class="title">Beta Survival DLC</span>
+</a>
+<a href="https://store.steampowered.com/app/1006/Hardware/" data-ds-appid="1006" class="search_result_row">
+  <span class="title">Gaming Hardware</span>
+</a>`;
+const parsedTopSellers = parseSteamTopSellersHtml(topSellerFixture, {
+  region: "DE",
+  fetchedAt: "2026-06-06T10:00:00.000Z",
+  sourceUrl: STEAM_TOP_SELLERS_DE_URL
+});
+assert.deepEqual(parsedTopSellers.map((record) => record.rank), [1, 3]);
+assert.deepEqual(parsedTopSellers.map((record) => record.title), [
+  "Alpha Strategy",
+  "Beta Survival"
+]);
+assert.equal(parsedTopSellers[0].discountText, "-20%");
+assert.equal(parsedTopSellers[0].priceText, "31,99€");
+assert.equal(parsedTopSellers.every((record) => Boolean(record.imageUrl)), true);
+const topSellerProviderSource = await readFile(
+  "src/lib/steam/steamTopSellersProvider.ts",
+  "utf8"
+);
+assert.doesNotMatch(topSellerProviderSource, /Gothic/i);
+
+const globalFallback = await getSteamTopSellers({
+  cacheDirectory: await mkdtemp(join(tmpdir(), "spielsignal-top-global-")),
+  fetchImpl: async (input) => {
+    const url = new URL(String(input));
+    return url.searchParams.get("cc") === "DE"
+      ? new Response("Fehler", { status: 503 })
+      : new Response(
+          JSON.stringify({ success: 1, results_html: topSellerFixture }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+  }
+});
+assert.equal(globalFallback.region, "global");
+assert.equal(globalFallback.records[0].region, "global");
+
+const failedTopSellers = await getSteamTopSellers({
+  cacheDirectory: await mkdtemp(join(tmpdir(), "spielsignal-top-failure-")),
+  fetchImpl: async () => new Response("Fehler", { status: 503 })
+});
+assert.deepEqual(failedTopSellers.records, []);
+assert.match(failedTopSellers.status, /derzeit nicht verfügbar/);
+
 const mockSteamFetch: typeof fetch = async (input) => {
   steamFetchCount += 1;
   const url = new URL(String(input));
@@ -464,6 +538,12 @@ const mockSteamFetch: typeof fetch = async (input) => {
       { status: 200, headers: { "content-type": "application/json" } }
     );
   }
+  if (url.pathname.includes("/search/results/")) {
+    return new Response(
+      JSON.stringify({ success: 1, results_html: topSellerFixture }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+  }
   return new Response("{}", { status: 404 });
 };
 const steamCacheRoot = await mkdtemp(join(tmpdir(), "spielsignal-steam-cache-"));
@@ -472,21 +552,25 @@ const providerResult = await collectSteamScoutData({
     STEAM_WEB_API_KEY: secretSentinel,
     STEAM_SCOUT_ENABLED: "true",
     STEAM_RELEASES_ENABLED: "true",
-    STEAM_TRENDS_ENABLED: "true"
+    STEAM_TOP_SELLERS_ENABLED: "true",
+    PUBLIC_STEAM_MOST_PLAYED_ENABLED: "false"
   },
   fetchImpl: mockSteamFetch,
   cacheDirectory: steamCacheRoot
 });
 assert.equal(providerResult.keyPresent, true);
-assert.equal(providerResult.records.length, 1);
+assert.equal(providerResult.records.length, 2);
 assert.match(providerResult.releaseStatus, /derzeit nicht verfügbar/);
-assert.match(providerResult.trendStatus, /aktiv/);
+assert.match(providerResult.topSellerStatus, /aktiv/);
+assert.match(providerResult.mostPlayedStatus, /deaktiviert/);
+assert.equal(providerResult.topSellerRegion, "DE");
 
 const noKeyProvider = await collectSteamScoutData({
   env: {
     STEAM_SCOUT_ENABLED: "true",
     STEAM_RELEASES_ENABLED: "true",
-    STEAM_TRENDS_ENABLED: "true"
+    STEAM_TOP_SELLERS_ENABLED: "true",
+    PUBLIC_STEAM_MOST_PLAYED_ENABLED: "false"
   },
   fetchImpl: mockSteamFetch,
   cacheDirectory: await mkdtemp(join(tmpdir(), "spielsignal-steam-no-key-"))
@@ -494,7 +578,7 @@ const noKeyProvider = await collectSteamScoutData({
 assert.equal(noKeyProvider.keyPresent, false);
 assert.match(noKeyProvider.scoutStatus, /API-Key fehlt/);
 
-const failedTrend = await getOfficialSteamTrends({
+const failedTrend = await getSteamMostPlayed({
   enabled: true,
   apiKey: "test-key",
   fetchImpl: async () => new Response("Fehler", { status: 503 }),
@@ -512,14 +596,13 @@ assert.equal(enriched[0].imageStatus, "pending-review");
 assert.equal(enriched[0].imageSourceType, "steam-store");
 assert.equal(enriched[0].imagePath, "/images/demo/general.svg");
 
-const beforeCachedTrend = steamFetchCount;
-await getOfficialSteamTrends({
+const beforeCachedTopSellers = steamFetchCount;
+await getSteamTopSellers({
   enabled: true,
-  apiKey: secretSentinel,
   fetchImpl: mockSteamFetch,
   cacheDirectory: steamCacheRoot
 });
-assert.equal(steamFetchCount, beforeCachedTrend);
+assert.equal(steamFetchCount, beforeCachedTopSellers);
 
 const secretReportRoot = await mkdtemp(join(tmpdir(), "spielsignal-secret-report-"));
 const secretReport = await runDailyEditorialQueue({
@@ -530,7 +613,8 @@ const secretReport = await runDailyEditorialQueue({
     STEAM_WEB_API_KEY: secretSentinel,
     STEAM_SCOUT_ENABLED: "true",
     STEAM_RELEASES_ENABLED: "true",
-    STEAM_TRENDS_ENABLED: "true"
+    STEAM_TOP_SELLERS_ENABLED: "true",
+    PUBLIC_STEAM_MOST_PLAYED_ENABLED: "false"
   },
   fetchImpl: mockSteamFetch,
   steamCacheDirectory: steamCacheRoot

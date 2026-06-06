@@ -39,7 +39,8 @@ jobs:
           STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
           STEAM_SCOUT_ENABLED: "true"
           STEAM_RELEASES_ENABLED: "true"
-          STEAM_TRENDS_ENABLED: "true"
+          STEAM_TOP_SELLERS_ENABLED: "true"
+          PUBLIC_STEAM_MOST_PLAYED_ENABLED: "false"
 
       - name: Tests ausführen
         run: npm test
