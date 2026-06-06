@@ -1,5 +1,4 @@
-import { resolveNewsImage } from "../config/newsImageRules";
-import type { AggregatedNewsItem } from "./newsFeed";
+import type { PresentedNewsItem } from "./newsPresentation";
 
 export type TrendingItem = {
   title: string;
@@ -51,25 +50,20 @@ async function readClickRanking(): Promise<Map<string, number>> {
   }
 }
 
-function toTrendingItem(item: AggregatedNewsItem, clickCount?: number): TrendingItem {
-  const image = resolveNewsImage({
-    articleUrl: item.url,
-    title: item.title,
-    category: item.category
-  });
+function toTrendingItem(item: PresentedNewsItem, clickCount?: number): TrendingItem {
   return {
     title: item.title,
     url: item.url,
     source: item.sourceName,
-    image: image.src,
-    imageAlt: image.alt,
+    image: item.image,
+    imageAlt: item.imageAlt,
     clickCount,
     external: true
   };
 }
 
 export async function getTrendingItems(
-  newsItems: AggregatedNewsItem[]
+  newsItems: PresentedNewsItem[]
 ): Promise<TrendingResult> {
   const ranking = await readClickRanking();
   const ranked = newsItems

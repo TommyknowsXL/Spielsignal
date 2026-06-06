@@ -39,6 +39,69 @@ export interface AggregatedNewsResult {
   statuses: FeedSourceStatus[];
 }
 
+const BLOCKED_NEWS_TERMS = [
+  "[anzeige]",
+  "anzeige",
+  "smartphone",
+  "handy",
+  "iphone",
+  "samsung galaxy",
+  "tonies",
+  "kaffeevollautomat",
+  "kaffeemaschine",
+  "e-bike",
+  "tennis",
+  "film",
+  "netflix",
+  "schauspieler",
+  "will smith",
+  "james bond",
+  "ps5-angebot",
+  "nintendo-angebot",
+  "lego",
+  "mediamarkt",
+  "lidl",
+  "amazon-angebot",
+  "podcast",
+  "quiz",
+  "playstation",
+  "xbox-angebot",
+  "apps für den alltag"
+] as const;
+
+const GAMING_TERMS = [
+  "pc",
+  "steam",
+  "spiel",
+  "game",
+  "gaming",
+  "rollenspiel",
+  "rpg",
+  "shooter",
+  "strategie",
+  "survival",
+  "simulation",
+  "rennspiel",
+  "cyberpunk",
+  "early access",
+  "gameplay",
+  "remake",
+  "addon",
+  "update",
+  "patch",
+  "release",
+  "demo",
+  "open world",
+  "multiplayer",
+  "singleplayer"
+] as const;
+
+export function isRelevantPcGamingNews(item: Pick<AggregatedNewsItem, "title">): boolean {
+  const title = item.title.toLocaleLowerCase("de");
+  if (BLOCKED_NEWS_TERMS.some((term) => title.includes(term))) return false;
+  return GAMING_TERMS.some((term) => title.includes(term));
+}
+
 interface SourceCacheEntry {
   items: AggregatedNewsItem[];
   fetchedAt: number;
@@ -292,7 +355,7 @@ export async function getAggregatedNews(
   );
 
   return {
-    items: deduplicateAndMarkSimilar(collected),
+    items: deduplicateAndMarkSimilar(collected).filter(isRelevantPcGamingNews),
     generatedAt: new Date().toISOString(),
     activeSourceCount: enabledSources.length,
     usedFallbackCache,

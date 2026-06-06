@@ -1,17 +1,11 @@
 ---
-import type { AggregatedNewsItem } from "../lib/newsFeed";
-import { resolveNewsImage } from "../config/newsImageRules";
+import type { PresentedNewsItem } from "../lib/newsPresentation";
 
 interface Props {
-  item: AggregatedNewsItem;
+  item: PresentedNewsItem;
 }
 
 const { item } = Astro.props;
-const image = resolveNewsImage({
-  articleUrl: item.url,
-  title: item.title,
-  category: item.category
-});
 const published = new Date(item.date).toLocaleString("de-DE", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -21,25 +15,33 @@ const published = new Date(item.date).toLocaleString("de-DE", {
 
 <article class="card news-card" data-category={item.category}>
   <a class="card-link" href={item.url} rel="noopener noreferrer" target="_blank">
-    <img class="card-image" src={image.src} alt={image.alt} width="800" height="450" loading="lazy" />
+    <img
+      class="card-image"
+      src={item.image}
+      data-fallback-src={item.fallbackImage}
+      alt={item.imageAlt}
+      width="800"
+      height="450"
+      loading="lazy"
+      data-image-kind={item.imageKind}
+    />
     <div class="card-body">
       <span class="badge">{item.category}</span>
       <h3>{item.title}</h3>
       <div class="meta">
         <time datetime={item.date}>{published} Uhr</time>
-        <span>Externe Quelle: {item.sourceName}</span>
+        <span>Quelle: {item.sourceName}</span>
       </div>
-      {
-        item.similarTo && (
-          <p class="similar-note">Ähnliches Thema bereits im Feed: „{item.similarTo}“</p>
-        )
-      }
-      <p class="muted card-teaser">
-        Der vollständige Beitrag befindet sich auf der Webseite der Quelle.
-      </p>
-      <span class="button secondary">
-        Originalmeldung lesen ↗
-      </span>
+      <span class="text-link">Originalmeldung lesen ↗</span>
     </div>
   </a>
 </article>
+
+<script>
+  document.querySelectorAll<HTMLImageElement>(".news-card img[data-fallback-src]").forEach((image) => {
+    image.addEventListener("error", () => {
+      const fallback = image.dataset.fallbackSrc;
+      if (fallback) image.src = fallback;
+    }, { once: true });
+  });
+</script>

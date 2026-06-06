@@ -2,14 +2,11 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import ExternalNewsCard from "../../components/ExternalNewsCard.astro";
-import NewsCard from "../../components/NewsCard.astro";
-import ReleaseCalendar from "../../components/ReleaseCalendar.astro";
 import SteamTrendsSidebar from "../../components/SteamTrendsSidebar.astro";
 import TrendingSidebar from "../../components/TrendingSidebar.astro";
-import { demoNews } from "../../data/demoNews";
-import { demoImageAlt, demoImageFor } from "../../data/demoImages";
 import { getAggregatedNews } from "../../lib/newsFeed";
-import { getSteamReleases, getSteamTrends } from "../../lib/steamData";
+import { prepareNewsItems } from "../../lib/newsPresentation";
+import { getSteamTrends } from "../../lib/steamData";
 import { getTrendingItems } from "../../lib/trending";
 
 export const prerender = false;
@@ -20,110 +17,64 @@ Astro.response.headers.set(
 );
 
 const result = await getAggregatedNews();
-const hasExternalItems = result.items.length > 0;
-const trendingResult = await getTrendingItems(result.items);
+const news = await prepareNewsItems(result.items, { limit: 24 });
+const trendingResult = await getTrendingItems(news);
 const steamTrends = await getSteamTrends();
-const steamReleases = await getSteamReleases();
-const filters = [
-  "Alle",
-  ...new Set(
-    (hasExternalItems ? result.items : demoNews).map((item) => item.category)
-  )
-];
+const filters = ["Alle", ...new Set(news.map((item) => item.category))];
 ---
 
 <BaseLayout
   title="Aktuelle PC-Gaming-News | SpielSignal"
-  description="Automatisch aktualisierte PC-Gaming-Meldungen aus ausdrücklich freigegebenen Quellen mit sichtbarem Link zur Originalmeldung."
+  description="Aktuelle PC-Gaming-Meldungen aus freigegebenen Quellen mit direktem Link zur Originalmeldung."
 >
   <header class="page-hero page-hero--compact container">
     <nav class="breadcrumbs" aria-label="Brotkrumen">
       <a href="/">Startseite</a><span>/</span><span>News</span>
     </nav>
     <p class="eyebrow">PC-Gaming im Überblick</p>
-    <h1>Aktuelle Meldungen</h1>
-    <p>
-      Kurze Metadaten aus freigegebenen Quellen. Vollständige Beiträge bleiben immer auf der
-      Seite der jeweiligen Quelle.
-    </p>
+    <h1>Aktuelle Gaming-News</h1>
+    <p>Ausgewählte Meldungen mit klarem Gaming-Bezug. Die vollständigen Beiträge liegen bei der Quelle.</p>
   </header>
 
   <section class="section section--compact container">
-    {
-      hasExternalItems ? (
-        <div class="feed-status success">
-          <strong>Automatische Aktualisierung aktiv</strong>
-          <span>
-            {result.activeSourceCount} freigegebene Quelle{result.activeSourceCount === 1 ? "" : "n"} ·
-            Aktualisierung etwa stündlich
-          </span>
-        </div>
-      ) : (
-        <div class="feed-status">
-          <strong>Demo-Fallback aktiv</strong>
-          <span>
-            Es ist noch keine geprüfte Quelle aktiviert. Daher werden weiterhin eindeutig
-            markierte Beispieldaten gezeigt.
-          </span>
-        </div>
-      )
-    }
+    <div class="feed-status success">
+      <strong>Automatische Aktualisierung aktiv</strong>
+      <span>{result.activeSourceCount} freigegebene Gaming-Quelle · Aktualisierung etwa stündlich</span>
+    </div>
 
     {
       result.statuses.some((status) => !status.ok) && (
         <details class="feed-diagnostics">
-          <summary>Hinweis zu nicht erreichbaren Quellen</summary>
-          <ul>
-            {result.statuses.filter((status) => !status.ok).map((status) => (
-              <li>
-                <strong>{status.name}:</strong> {status.error}
-                {status.fromCache && " – letzter erfolgreicher Stand wird angezeigt."}
-              </li>
-            ))}
-          </ul>
+          <summary>Quellenhinweis</summary>
+          <ul>{result.statuses.filter((status) => !status.ok).map((status) => (
+            <li><strong>{status.name}:</strong> {status.error}</li>
+          ))}</ul>
         </details>
       )
     }
 
-    <div class="filters" aria-label="News filtern">
-      {filters.map((filter, index) => (
-        <button class="filter" type="button" data-filter={filter} aria-pressed={index === 0 ? "true" : "false"}>
-          {filter}
-        </button>
-      ))}
-    </div>
+    {filters.length > 1 ? (
+      <div class="filters" aria-label="News filtern">
+        {filters.map((filter, index) => (
+          <button class="filter" type="button" data-filter={filter} aria-pressed={index === 0 ? "true" : "false"}>
+            {filter}
+          </button>
+        ))}
+      </div>
+    ) : null}
 
     <div class="news-layout">
       <div class="grid news-grid">
-        {
-          hasExternalItems
-            ? result.items.map((item, index) => (
-                <>
-                  <ExternalNewsCard item={item} />
-                  {index === 7 && <AdSlot format="feed" />}
-                </>
-              ))
-            : demoNews.map((item, index) => (
-                <>
-                  <NewsCard
-                    title={item.title}
-                    category={item.category}
-                    time={item.publishedLabel}
-                    source={item.sourceName}
-                    sourceUrl={item.sourceUrl}
-                    note={item.note}
-                    image={demoImageFor(item.category)}
-                    imageAlt={demoImageAlt(item.category)}
-                  />
-                  {index === 7 && <AdSlot format="feed" />}
-                </>
-              ))
-        }
+        {news.map((item, index) => (
+          <>
+            <ExternalNewsCard item={item} />
+            {index === 7 && <AdSlot format="feed" />}
+          </>
+        ))}
       </div>
       <aside class="news-sidebar">
-        <TrendingSidebar result={trendingResult} />
+        {trendingResult.items.length ? <TrendingSidebar result={trendingResult} /> : null}
         <SteamTrendsSidebar items={steamTrends} />
-        <ReleaseCalendar items={steamReleases} />
         <AdSlot format="sidebar" />
       </aside>
     </div>

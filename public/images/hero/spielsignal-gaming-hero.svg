@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 650" role="img" aria-labelledby="title desc">
+  <title id="title">SpielSignal Gaming-Landschaft</title>
+  <desc id="desc">Abstrakte futuristische Landschaft mit leuchtendem Horizont, Signalringen und einer PC-Gaming-Station.</desc>
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#111b36"/><stop offset=".55" stop-color="#0b1020"/><stop offset="1" stop-color="#060914"/></linearGradient>
+    <linearGradient id="ground" x2="1"><stop stop-color="#10182c"/><stop offset=".5" stop-color="#151b2e"/><stop offset="1" stop-color="#080c18"/></linearGradient>
+    <radialGradient id="sun"><stop stop-color="#f3f5f7"/><stop offset=".22" stop-color="#3ce6ff"/><stop offset="1" stop-color="#4f7cff" stop-opacity="0"/></radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="12"/></filter>
+  </defs>
+  <rect width="1000" height="650" fill="url(#sky)"/>
+  <circle cx="720" cy="220" r="155" fill="url(#sun)" opacity=".7"/>
+  <circle cx="720" cy="220" r="106" fill="none" stroke="#3ce6ff" stroke-width="2" opacity=".32"/>
+  <circle cx="720" cy="220" r="150" fill="none" stroke="#4f7cff" opacity=".22"/>
+  <path d="M0 440 190 300l105 74 138-158 137 136 92-80 167 168Z" fill="#131c31" stroke="#26385d" stroke-width="3"/>
+  <path d="M0 480 180 390l170 78 175-113 200 92 125-80 150 90v193H0Z" fill="url(#ground)"/>
+  <path d="M0 520h1000M100 490 20 650M260 470l-30 180M430 455l20 195M610 455l70 195M780 470l125 180" stroke="#3ce6ff" stroke-width="2" opacity=".22"/>
+  <path d="M90 565h820" stroke="#3ce6ff" stroke-width="4" opacity=".7" filter="url(#glow)"/>
+  <g transform="translate(190 185)">
+    <rect width="310" height="185" rx="18" fill="#080d18" stroke="#3ce6ff" stroke-width="5"/>
+    <rect x="18" y="18" width="274" height="149" rx="10" fill="#101a31"/>
+    <path d="m42 132 56-57 50 40 64-76 55 93Z" fill="#172a48" stroke="#4f7cff" stroke-width="3"/>
+    <path d="M155 185v48M104 236h102" stroke="#3ce6ff" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="246" cy="52" r="16" fill="#ffb84d"/>
+  </g>
+  <path d="M720 220 930 92" stroke="#3ce6ff" stroke-width="3" opacity=".45"/>
+  <circle cx="930" cy="92" r="7" fill="#3ce6ff"/>
+</svg>

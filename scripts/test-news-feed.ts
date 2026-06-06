@@ -6,6 +6,8 @@ import {
   parseFeedXml,
   type AggregatedNewsItem
 } from "../src/lib/newsFeed";
+import { isRelevantPcGamingNews } from "../src/lib/newsFeed";
+import { prepareNewsItems, resolveSteamAppId, resolveSteamImage } from "../src/lib/newsPresentation";
 import type { NewsSource } from "../src/config/newsSources";
 
 const source: NewsSource = {
@@ -53,6 +55,47 @@ assert.equal(rssItems[0].url, "https://example.test/news/update");
 assert.equal("description" in rssItems[0], false);
 assert.equal(atomItems.length, 1);
 assert.equal(atomItems[0].category, "News");
+
+for (const title of [
+  "Smartphone - Samsung Galaxy im Angebot",
+  "Kaffeevollautomat jetzt besonders günstig [Anzeige]",
+  "Tonies zum Hammerpreis",
+  "Will Smith spricht über seinen neuen Film",
+  "Tennis-Roboter im Test"
+]) {
+  assert.equal(isRelevantPcGamingNews({ title }), false);
+}
+assert.equal(
+  isRelevantPcGamingNews({ title: "Neues PC-Rollenspiel erscheint auf Steam" }),
+  true
+);
+
+const steamSearchHtml = `
+<a href="https://store.steampowered.com/app/123456/Test_Game/" data-ds-appid="123456" class="search_result_row">
+  <img src="https://shared.fastly.steamstatic.com/test-game.jpg">
+  <span class="title">Test Game</span>
+</a>`;
+const steamFetch: typeof fetch = async () => new Response(
+  JSON.stringify({ results_html: steamSearchHtml }),
+  { status: 200, headers: { "content-type": "application/json" } }
+);
+assert.equal((await resolveSteamAppId("Test Game - Großes Update", steamFetch))?.appId, "123456");
+assert.equal(
+  resolveSteamImage("123456"),
+  "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/123456/header.jpg"
+);
+const preparedSteamNews = await prepareNewsItems([{
+  id: "steam-test",
+  title: "Test Game - Großes Update",
+  url: "https://example.test/test-game",
+  date: "2026-06-06T10:00:00.000Z",
+  category: "Gaming-News",
+  sourceName: "Testquelle",
+  sourceHomepageUrl: "https://example.test/"
+}], { fetchImpl: steamFetch });
+assert.equal(preparedSteamNews[0].imageKind, "steam");
+assert.equal(preparedSteamNews[0].steamAppId, "123456");
+assert.equal(preparedSteamNews[0].image, "https://shared.fastly.steamstatic.com/test-game.jpg");
 
 const duplicate: AggregatedNewsItem = {
   ...rssItems[0],

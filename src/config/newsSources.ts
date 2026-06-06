@@ -20,10 +20,19 @@ export interface NewsSource {
  */
 export const newsSources: NewsSource[] = [
   {
+    name: "GameStar Gaming-News",
+    homepageUrl: "https://www.gamestar.de/",
+    feedUrl: "https://www.gamestar.de/rss/gaming.rss",
+    enabled: true,
+    categoryMapping: "Gaming-News",
+    usageNotes:
+      "Offizieller GameStar-Gaming-RSS-Feed. Nur Titel, Datum, Quelle und Link anzeigen. Bilder nur aus eindeutig zugeordneten offiziellen Steam-Store-Assets oder freigegebenen Quellen."
+  },
+  {
     name: "GameStar News",
     homepageUrl: "https://www.gamestar.de/",
     feedUrl: "https://www.gamestar.de/news/rss/news.rss",
-    enabled: true,
+    enabled: false,
     categoryMapping: "News",
     usageNotes:
       "Offizieller GameStar-RSS-Feed. Nur Überschrift, Veröffentlichungszeitpunkt, Quelle und Link zum Originalartikel anzeigen. Keine vollständigen Texte oder fremden Bilder übernehmen."
@@ -32,7 +41,7 @@ export const newsSources: NewsSource[] = [
     name: "GameStar Deals",
     homepageUrl: "https://www.gamestar.de/",
     feedUrl: "https://www.gamestar.de/rss/deals.rss",
-    enabled: true,
+    enabled: false,
     categoryMapping: "Deals",
     usageNotes:
       "Offizieller GameStar-RSS-Feed. Nur Überschrift, Veröffentlichungszeitpunkt, Quelle und Link zum Originalartikel anzeigen. Keine vollständigen Texte oder fremden Bilder übernehmen."
@@ -41,7 +50,7 @@ export const newsSources: NewsSource[] = [
     name: "GameStar Hardware",
     homepageUrl: "https://www.gamestar.de/",
     feedUrl: "https://www.gamestar.de/rss/hardware.rss",
-    enabled: true,
+    enabled: false,
     categoryMapping: "Hardware",
     usageNotes:
       "Offizieller GameStar-RSS-Feed. Nur Überschrift, Veröffentlichungszeitpunkt, Quelle und Link zum Originalartikel anzeigen. Keine vollständigen Texte oder fremden Bilder übernehmen."

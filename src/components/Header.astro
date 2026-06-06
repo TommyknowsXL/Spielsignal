@@ -5,23 +5,17 @@ const links = [
   ["/news/", "News"],
   ["/tests/", "Tests"],
   ["/lohnt-sich-das/", "Lohnt sich das?"],
-  ["/deals/", "Deals"],
-  ["/releases/", "Releases"],
   ["/ueber-spielsignal/", "Über SpielSignal"]
 ];
 ---
 
 <header class="site-header">
   <div class="container nav-wrap">
-    <a class="brand" href="/" aria-label="SpielSignal Startseite">
-      <Logo />
-    </a>
+    <a class="brand" href="/" aria-label="SpielSignal Startseite"><Logo /></a>
     <nav class="desktop-nav" aria-label="Hauptnavigation">
-      {
-        links.map(([href, label]) => (
-          <a href={href} aria-current={path === href ? "page" : undefined}>{label}</a>
-        ))
-      }
+      {links.map(([href, label]) => (
+        <a href={href} aria-current={path === href ? "page" : undefined}>{label}</a>
+      ))}
     </nav>
     <div class="header-actions">
       <a class="search-button" href="/suche/" aria-label="Suche öffnen"><span aria-hidden="true">⌕</span><span>Suche</span></a>
@@ -31,9 +25,7 @@ const links = [
   </div>
   <details class="mobile-nav container">
     <summary>Navigation</summary>
-    <nav aria-label="Mobile Navigation">
-      {links.map(([href, label]) => <a href={href}>{label}</a>)}
-    </nav>
+    <nav aria-label="Mobile Navigation">{links.map(([href, label]) => <a href={href}>{label}</a>)}</nav>
   </details>
 </header>
 

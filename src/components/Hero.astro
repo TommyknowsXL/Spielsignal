@@ -2,27 +2,33 @@
 import PrimaryButton from "./PrimaryButton.astro";
 import SecondaryButton from "./SecondaryButton.astro";
 ---
+
 <section class="hero">
   <div class="container hero-grid">
     <div class="hero-copy">
-      <p class="eyebrow">PC-Gaming. Klar eingeordnet.</p>
-      <h1>Alles Wichtige aus der PC-Gaming-Welt. <span>An einem Ort.</span></h1>
-      <p class="lead">Aktuelle Meldungen, ehrliche Tests, interessante Deals und neue Spiele, die einen Blick wert sind.</p>
+      <p class="eyebrow">PC-Gaming. Klar auf den Punkt.</p>
+      <h1>Dein Signal für gute <span>PC-Spiele.</span></h1>
+      <p class="lead">
+        Aktuelle Gaming-News, offizielle Steam-Trends und später ehrliche Tests:
+        kompakt, nachvollziehbar und ohne Themenballast.
+      </p>
       <div class="actions">
-        <PrimaryButton href="#aktuelle-meldungen">Neueste News ansehen</PrimaryButton>
-        <SecondaryButton href="/tests/">Unsere Tests entdecken</SecondaryButton>
+        <PrimaryButton href="#aktuelle-meldungen">Gaming-News entdecken</PrimaryButton>
+        <SecondaryButton href="/news/">Alle Meldungen</SecondaryButton>
       </div>
     </div>
-    <article class="featured-card">
-      <img class="featured-card__image" src="/images/demo/sci-fi.svg" alt="Abstrakter Sci-Fi-Platzhalter für den Featured-Demo-Artikel" width="800" height="450" />
-      <div class="featured-card__overlay" aria-hidden="true"></div>
-      <div class="featured-card__content">
-        <span class="badge">Demo-Featured</span>
-        <h2>Warum uns dieses PC-Projekt neugierig macht</h2>
-        <p>Ein Muster für den wichtigsten redaktionellen Beitrag des Tages.</p>
-        <a class="button button--secondary" href="/artikel/demo-ersteindruck-survival/">Artikel lesen <span aria-hidden="true">→</span></a>
-      </div>
+    <div class="hero-art" aria-label="Abstrakte SpielSignal Gaming-Landschaft">
+      <img
+        src="/images/hero/spielsignal-gaming-hero.svg"
+        alt="Futuristische, abstrakte PC-Gaming-Landschaft in den SpielSignal-Farben"
+        width="1000"
+        height="650"
+      />
       <div class="featured-radar" aria-hidden="true"></div>
-    </article>
+      <div class="hero-art__caption">
+        <span class="badge">SpielSignal</span>
+        <strong>PC-Gaming-News ohne Umwege</strong>
+      </div>
+    </div>
   </div>
 </section>

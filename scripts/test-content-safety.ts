@@ -6,6 +6,8 @@ import { approvedSteamImages } from "../src/config/approvedSteamImages";
 import { getSteamReleases, getSteamTrends, officialSteamFallback } from "../src/lib/steamData";
 import { getTrendingItems } from "../src/lib/trending";
 import type { AggregatedNewsItem } from "../src/lib/newsFeed";
+import { newsSources } from "../src/config/newsSources";
+import { prepareNewsItems } from "../src/lib/newsPresentation";
 
 const news: AggregatedNewsItem[] = Array.from({ length: 5 }, (_, index) => ({
   id: `item-${index}`,
@@ -17,13 +19,26 @@ const news: AggregatedNewsItem[] = Array.from({ length: 5 }, (_, index) => ({
   sourceHomepageUrl: "https://example.test/"
 }));
 
-const trending = await getTrendingItems(news);
+const presentedNews = await prepareNewsItems(news, {
+  fetchImpl: async () => new Response(JSON.stringify({ results_html: "" }), {
+    status: 200,
+    headers: { "content-type": "application/json" }
+  })
+});
+const trending = await getTrendingItems(presentedNews);
 assert.equal(trending.heading, "Neu eingetroffen");
 assert.equal(trending.usesClickData, false);
 assert.equal(trending.items.length, 3);
 assert.equal(trending.items.every((item) => Boolean(item.image)), true);
 assert.equal(trending.items.every((item) => item.clickCount === undefined), true);
 assert.equal(trending.items.every((item) => item.external), true);
+
+const enabledSources = newsSources.filter((source) => source.enabled);
+assert.deepEqual(enabledSources.map((source) => source.name), ["GameStar Gaming-News"]);
+assert.equal(enabledSources[0].feedUrl, "https://www.gamestar.de/rss/gaming.rss");
+for (const disabledName of ["GameStar News", "GameStar Hardware", "GameStar Deals"]) {
+  assert.equal(newsSources.find((source) => source.name === disabledName)?.enabled, false);
+}
 
 assert.equal((await getSteamTrends()).length <= 5, true);
 assert.equal((await getSteamReleases()).length <= 30, true);
@@ -92,6 +107,18 @@ assert.match(steamTrendsComponent, /Top-Seller in Deutschland/);
 assert.match(steamTrendsComponent, /target="_blank"/);
 assert.match(steamTrendsComponent, /Quelle: Steam/);
 assert.match(steamTrendsComponent, /<img/);
+
+const homePage = readFileSync("src/pages/index.astro", "utf8");
+assert.doesNotMatch(homePage, /demoNews|example\.com|Beispielpreis|DealCard|ReleaseCalendar|Newsletter/i);
+assert.match(homePage, /slice\(0, 6\)/);
+assert.match(homePage, /imageKind === "fallback"/);
+assert.match(homePage, /ExternalNewsCard/);
+const newsPage = readFileSync("src/pages/news/index.astro", "utf8");
+assert.match(newsPage, /limit: 24/);
+assert.doesNotMatch(newsPage, /demoNews|import NewsCard/);
+const hero = readFileSync("src/components/Hero.astro", "utf8");
+assert.match(hero, /spielsignal-gaming-hero\.svg/);
+assert.equal(readFileSync("public/images/hero/spielsignal-gaming-hero.svg", "utf8").includes("<svg"), true);
 
 const widget = readFileSync("src/components/SteamStoreWidgetPlaceholder.astro", "utf8");
 assert.equal(widget.includes("<iframe"), false);

@@ -5,19 +5,15 @@ import Logo from "./Logo.astro";
   <div class="container">
     <div class="footer-grid">
       <div>
-        <a class="brand" href="/">
-          <Logo tagline={true} />
-        </a>
+        <a class="brand" href="/"><Logo tagline={true} /></a>
         <p class="muted" style="margin-top: 1rem; max-width: 34rem;">
-          PC-Gaming-News, Tests und Deals auf einen Blick. Klar eingeordnet, ohne unnötige Umwege.
+          PC-Gaming-News und Steam-Trends auf einen Blick. Klar eingeordnet, ohne unnötige Umwege.
         </p>
       </div>
       <nav class="footer-links" aria-label="Inhalte">
         <strong>Inhalte</strong>
         <a href="/news/">News</a>
         <a href="/tests/">Tests</a>
-        <a href="/deals/">Deals</a>
-        <a href="/releases/">Releases</a>
         <a href="/rss.xml">RSS-Feed</a>
       </nav>
       <nav class="footer-links" aria-label="Rechtliches">
@@ -30,7 +26,7 @@ import Logo from "./Logo.astro";
     </div>
     <div class="footer-bottom">
       <span>© {new Date().getFullYear()} SpielSignal</span>
-      <span>Werbung und Affiliate-Links werden transparent gekennzeichnet.</span>
+      <span>Werbung und externe Quellen werden transparent gekennzeichnet.</span>
     </div>
   </div>
 </footer>

@@ -1,19 +1,14 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import AdSlot from "../components/AdSlot.astro";
-import DealCard from "../components/DealCard.astro";
+import ExternalNewsCard from "../components/ExternalNewsCard.astro";
 import Hero from "../components/Hero.astro";
-import NewsCard from "../components/NewsCard.astro";
-import RecommendationCard from "../components/RecommendationCard.astro";
-import ReleaseCalendar from "../components/ReleaseCalendar.astro";
-import ReviewCard from "../components/ReviewCard.astro";
 import SectionHeader from "../components/SectionHeader.astro";
 import SteamTrendsSidebar from "../components/SteamTrendsSidebar.astro";
 import TrendingSidebar from "../components/TrendingSidebar.astro";
-import { demoNews } from "../data/demoNews";
-import { demoImageAlt, demoImageFor } from "../data/demoImages";
 import { getAggregatedNews } from "../lib/newsFeed";
-import { getSteamReleases, getSteamTrends } from "../lib/steamData";
+import { prepareNewsItems } from "../lib/newsPresentation";
+import { getSteamTrends } from "../lib/steamData";
 import { getTrendingItems } from "../lib/trending";
 
 export const prerender = false;
@@ -24,163 +19,62 @@ Astro.response.headers.set(
 );
 
 const feedResult = await getAggregatedNews();
-const trendingResult = await getTrendingItems(feedResult.items);
+const preparedNews = await prepareNewsItems(feedResult.items, { limit: 24 });
+const seenSteamApps = new Set<string>();
+const topNews = preparedNews
+  .filter((item) => {
+    if (item.imageKind === "fallback" || !item.steamAppId) return false;
+    if (seenSteamApps.has(item.steamAppId)) return false;
+    seenSteamApps.add(item.steamAppId);
+    return true;
+  })
+  .slice(0, 6);
+const trendingResult = await getTrendingItems(preparedNews);
 const steamTrends = await getSteamTrends();
-const steamReleases = await getSteamReleases();
-
-const recommendations = [
-  ["Lohnt sich das auch für Solo-Spieler?", "Welche Systeme alleine funktionieren und wo Mitspieler wirklich nötig sind."],
-  ["Wie viel Spielzeit steckt wirklich drin?", "Umfang, Wiederholungen und Endgame werden getrennt und nachvollziehbar betrachtet."],
-  ["Für wen ist das Spiel geeignet?", "Eine Empfehlung nach Spielstil, Zeitbudget und Erwartungen statt pauschalem Urteil."]
-];
-
-const tests = [
-  ["Demo-Test: Wenn gute Planung wichtiger als Tempo ist", "Strategie", "28. Mai 2026", "82", "demo-test-taktikspiel"],
-  ["Demo-Ersteindruck: Survival mit ruhigem Einstieg", "Survival", "25. Mai 2026", "–", "demo-ersteindruck-survival"],
-  ["Demo-Empfehlung: Lohnt sich das auch für Solo-Spieler?", "Rollenspiele", "22. Mai 2026", "–", "demo-empfehlung-solo"]
-];
-
-const releases = [
-  ["Demo-Projekt Nord", "Rollenspiel", "24. Mai"],
-  ["Demo-Projekt Orbit", "Strategie", "28. Mai"],
-  ["Demo-Projekt Werkstatt", "Simulation", "02. Juni"],
-  ["Demo-Projekt Tiefsee", "Survival", "06. Juni"]
-];
-
-const deals = [
-  ["Demo-Projekt Nord", "39,99 €", "Beispielpreis · nicht aktiv"],
-  ["Demo-Projekt Orbit", "29,99 €", "Beispielpreis · nicht aktiv"],
-  ["Demo-Projekt Tiefsee", "23,99 €", "Beispielpreis · nicht aktiv"]
-];
 ---
 
 <BaseLayout
-  title="SpielSignal – PC-Gaming-News, Tests und Deals"
-  description="Aktuelle PC-Gaming-News, ehrliche Tests, Deals und Release-Übersichten auf einen Blick."
+  title="SpielSignal – Aktuelle PC-Gaming-News"
+  description="Aktuelle PC-Gaming-News und offizielle Steam-Trends, kompakt und ohne Themenballast."
 >
   <Hero />
-
-  <div class="container" style="padding-top: 1rem;"><AdSlot format="wide" /></div>
 
   <section class="section section--compact" id="aktuelle-meldungen">
     <div class="container home-magazine">
       <div class="home-main">
-        <SectionHeader
-          eyebrow="Direkt im Blick"
-          title="Top-Meldungen"
-          href="/news/"
-          linkLabel="Alle News"
-        />
-        <p class="muted" style="margin: -1rem 0 1.2rem;">Alle Einträge sind deutlich markierte Beispieldaten.</p>
-        <div class="filters" aria-label="News filtern">
-          {["Alle", "Rollenspiele", "Survival", "Strategie", "Shooter", "Simulation", "Indie", "Updates", "Deals"].map((filter, index) => (
-            <button class="filter" type="button" data-filter={filter} aria-pressed={index === 0 ? "true" : "false"}>{filter}</button>
-          ))}
-        </div>
-        <div class="grid news-grid">
-          {demoNews.slice(0, 10).map((item, index) => (
-            <>
-              <NewsCard
-                title={item.title}
-                category={item.category}
-                time={item.publishedLabel}
-                source={item.sourceName}
-                sourceUrl={item.sourceUrl}
-                note={item.note}
-                image={demoImageFor(item.category)}
-                imageAlt={demoImageAlt(item.category)}
-              />
-              {index === 5 && <AdSlot format="feed" />}
-            </>
-          ))}
-        </div>
+        <SectionHeader eyebrow="Aktuell im PC-Gaming" title="Top-Meldungen" href="/news/" linkLabel="Alle News" />
+        {
+          topNews.length ? (
+            <div class="grid news-grid">
+              {topNews.map((item) => <ExternalNewsCard item={item} />)}
+            </div>
+          ) : (
+            <div class="empty-editorial-state">
+              <strong>Neue Meldungen werden gerade geprüft.</strong>
+              <p>Hier erscheinen nur Gaming-News mit eindeutig zugeordnetem offiziellem Spielbild.</p>
+              <a class="text-link" href="/news/">Alle geprüften Meldungen ansehen →</a>
+            </div>
+          )
+        }
       </div>
 
       <aside class="home-sidebar">
-        <TrendingSidebar result={trendingResult} />
+        {trendingResult.items.length ? <TrendingSidebar result={trendingResult} /> : null}
         <SteamTrendsSidebar items={steamTrends} />
-        <ReleaseCalendar items={steamReleases} />
         <AdSlot format="sidebar" />
       </aside>
     </div>
   </section>
 
-  <section class="section">
+  <section class="section section--compact">
     <div class="container">
-      <SectionHeader eyebrow="Aus der Redaktion" title="Neueste Tests" href="/tests/" linkLabel="Alle Tests" />
-      <div class="grid grid-3">
-        {tests.map(([title, category, date, score, slug]) => (
-          <ReviewCard title={title} category={category} date={date} score={score} href={`/artikel/${slug}/`} image={demoImageFor(category)} />
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="container">
-      <SectionHeader eyebrow="Persönlich eingeordnet" title="Lohnt sich das?" href="/lohnt-sich-das/" linkLabel="Alle Empfehlungen" />
-      <div class="grid grid-3">
-        {recommendations.map(([title, text], index) => (
-          <RecommendationCard title={title} text={text} href="/artikel/demo-empfehlung-solo/" image={demoImageFor(["Fantasy", "Indie", "Shooter"][index])} />
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="container">
-      <SectionHeader eyebrow="Spiele-Beobachtung" title="Deals und interessante PC-Spiele" href="/deals/" linkLabel="Alle Deals" />
-      <div class="grid deal-grid">
-        {deals.map(([title, price, discount]) => <DealCard title={title} price={price} discount={discount} image="/images/demo/deals.svg" href="/deals/" />)}
-      </div>
-      <p class="demo-note" style="margin-top: 1rem;">Keine echten Angebote. Preise und Titel dienen ausschließlich der Layout-Vorschau.</p>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="container">
-      <SectionHeader eyebrow="Release-Vorschau" title="Diese PC-Spiele solltest du im Blick behalten" href="/releases/" linkLabel="Alle Releases" />
-      <div class="grid grid-3">
-        {releases.slice(0, 3).map(([title, genre, date], index) => (
-          <a class="card release-card card-link" href="/artikel/demo-release/">
-            <img class="card-image" src={demoImageFor(["Fantasy", "Strategie", "Simulation"][index])} alt={`Abstrakter Demo-Platzhalter für ${title}`} width="800" height="450" loading="lazy" />
-            <div class="card-body"><span class="badge">Demo-Release</span><h3>{title}</h3><p class="muted">{genre} · PC</p><div class="meta"><span>{date}</span><span>Termin nur Demo</span></div></div>
-          </a>
-        ))}
+      <SectionHeader eyebrow="Aus der Redaktion" title="Neueste Tests" href="/tests/" linkLabel="Zum Testbereich" />
+      <div class="empty-editorial-state empty-editorial-state--inline">
+        <strong>Die ersten SpielSignal-Tests sind in Vorbereitung.</strong>
+        <p>Wir veröffentlichen Bewertungen erst, wenn Spiele gründlich geprüft wurden.</p>
       </div>
     </div>
   </section>
 
   <div class="container"><AdSlot format="wide" /></div>
-
-  <section class="section">
-    <div class="container newsletter">
-      <div>
-        <p class="eyebrow">Wochenbrief</p>
-        <h2>Die wichtigsten PC-Gaming-News einmal pro Woche.</h2>
-        <p class="muted" style="margin-top: 1rem;">Kurz, übersichtlich und ohne tägliche Benachrichtigungsflut.</p>
-      </div>
-      <form class="demo-form" aria-label="Newsletter Demo" onsubmit="return false">
-        <label class="sr-only" for="newsletter-email">E-Mail-Adresse</label>
-        <input id="newsletter-email" type="email" placeholder="du@beispiel.de" disabled />
-        <button class="button" type="submit" disabled>Vorbereitet</button>
-      </form>
-      <p class="demo-note">Die Newsletter-Funktion ist vorbereitet, aber noch nicht aktiviert. Es werden keine Daten gespeichert.</p>
-    </div>
-  </section>
 </BaseLayout>
-
-<script>
-  const filterButtons = document.querySelectorAll<HTMLButtonElement>("[data-filter]");
-  const newsCards = document.querySelectorAll<HTMLElement>(".news-card");
-  filterButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      filterButtons.forEach((item) => item.setAttribute("aria-pressed", "false"));
-      button.setAttribute("aria-pressed", "true");
-      const selected = button.dataset.filter;
-      newsCards.forEach((card) => {
-        card.hidden = selected !== "Alle" && card.dataset.category !== selected;
-      });
-    });
-  });
-</script>
