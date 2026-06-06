@@ -1,7 +1,14 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import AdSlot from "../components/AdSlot.astro";
+import DealCard from "../components/DealCard.astro";
+import Hero from "../components/Hero.astro";
 import NewsCard from "../components/NewsCard.astro";
+import RecommendationCard from "../components/RecommendationCard.astro";
+import ReleaseCalendar from "../components/ReleaseCalendar.astro";
+import ReviewCard from "../components/ReviewCard.astro";
+import SectionHeader from "../components/SectionHeader.astro";
+import TrendingSidebar from "../components/TrendingSidebar.astro";
 import { demoNews } from "../data/demoNews";
 
 const recommendations = [
@@ -17,10 +24,24 @@ const tests = [
 ];
 
 const releases = [
-  ["Demo-Projekt Nord", "Rollenspiel", "Termin offen", "Beobachtung"],
-  ["Demo-Projekt Orbit", "Strategie", "Termin offen", "Angekündigt"],
-  ["Demo-Projekt Werkstatt", "Simulation", "Termin offen", "Demo-Eintrag"],
-  ["Demo-Projekt Tiefsee", "Survival", "Termin offen", "Demo-Eintrag"]
+  ["Demo-Projekt Nord", "Rollenspiel", "24. Mai"],
+  ["Demo-Projekt Orbit", "Strategie", "28. Mai"],
+  ["Demo-Projekt Werkstatt", "Simulation", "02. Juni"],
+  ["Demo-Projekt Tiefsee", "Survival", "06. Juni"]
+];
+
+const trending = [
+  "Demo: Welche PC-Neuheiten diese Woche auffallen",
+  "Demo: Das steckt im nächsten großen Update",
+  "Demo: Drei Indie-Projekte auf der Beobachtungsliste",
+  "Demo: Neue Systemanforderungen richtig lesen",
+  "Demo: Diese Genres bewegen die Redaktion"
+];
+
+const deals = [
+  ["Demo-Projekt Nord", "39,99 €", "Beispielpreis · nicht aktiv"],
+  ["Demo-Projekt Orbit", "29,99 €", "Beispielpreis · nicht aktiv"],
+  ["Demo-Projekt Tiefsee", "23,99 €", "Beispielpreis · nicht aktiv"]
 ];
 ---
 
@@ -28,42 +49,27 @@ const releases = [
   title="SpielSignal – PC-Gaming-News, Tests und Deals"
   description="Aktuelle PC-Gaming-News, ehrliche Tests, Deals und Release-Übersichten auf einen Blick."
 >
-  <section class="hero">
-    <div class="container hero-grid">
-      <div class="hero-copy">
-        <p class="eyebrow">PC-Gaming. Klar eingeordnet.</p>
-        <h1>Alles Wichtige aus der PC-Gaming-Welt. An einem Ort.</h1>
-        <p class="lead">Aktuelle Meldungen, ehrliche Tests, interessante Deals und neue Spiele, die einen Blick wert sind.</p>
-        <div class="actions">
-          <a class="button" href="#aktuelle-meldungen">Neueste News ansehen</a>
-          <a class="button secondary" href="/tests/">Unsere Tests entdecken</a>
-        </div>
-      </div>
-      <div class="hero-panel" aria-label="Themenübersicht">
-        <div class="signal-row"><span class="signal-dot"></span><strong>Neue Meldungen</strong><small>kompakt</small></div>
-        <div class="signal-row"><span class="signal-dot"></span><strong>Eigene Tests</strong><small>transparent</small></div>
-        <div class="signal-row"><span class="signal-dot"></span><strong>PC-Releases</strong><small>übersichtlich</small></div>
-        <div class="signal-row"><span class="signal-dot"></span><strong>Deals</strong><small>gekennzeichnet</small></div>
-      </div>
-    </div>
-  </section>
+  <Hero />
 
-  <div class="container"><AdSlot format="wide" /></div>
+  <div class="container" style="padding-top: 1rem;"><AdSlot format="wide" /></div>
 
   <section class="section" id="aktuelle-meldungen">
-    <div class="container">
-      <div class="section-head">
-        <div><p class="eyebrow">News-Radar</p><h2>Aktuelle Meldungen</h2></div>
-        <p class="muted">Alle Einträge sind derzeit ausdrücklich markierte Beispieldaten.</p>
-      </div>
-      <div class="filters" aria-label="News filtern">
-        {["Alle", "Rollenspiele", "Survival", "Strategie", "Shooter", "Simulation", "Indie", "Updates", "Deals"].map((filter, index) => (
-          <button class="filter" type="button" data-filter={filter} aria-pressed={index === 0 ? "true" : "false"}>{filter}</button>
-        ))}
-      </div>
-      <div class="news-layout">
+    <div class="container home-magazine">
+      <div class="home-main">
+        <SectionHeader
+          eyebrow="News-Radar"
+          title="Aktuelle Meldungen"
+          href="/news/"
+          linkLabel="Alle News"
+        />
+        <p class="muted" style="margin: -1rem 0 1.2rem;">Alle Einträge sind deutlich markierte Beispieldaten.</p>
+        <div class="filters" aria-label="News filtern">
+          {["Alle", "Rollenspiele", "Survival", "Strategie", "Shooter", "Simulation", "Indie", "Updates", "Deals"].map((filter, index) => (
+            <button class="filter" type="button" data-filter={filter} aria-pressed={index === 0 ? "true" : "false"}>{filter}</button>
+          ))}
+        </div>
         <div class="grid news-grid">
-          {demoNews.map((item, index) => (
+          {demoNews.slice(0, 10).map((item, index) => (
             <>
               <NewsCard
                 title={item.title}
@@ -73,72 +79,61 @@ const releases = [
                 sourceUrl={item.sourceUrl}
                 note={item.note}
               />
-              {index === 7 && <AdSlot format="feed" />}
+              {index === 5 && <AdSlot format="feed" />}
             </>
           ))}
         </div>
-        <aside><AdSlot format="sidebar" /></aside>
       </div>
+
+      <aside class="home-sidebar">
+        <TrendingSidebar items={trending} />
+        <ReleaseCalendar items={releases} />
+        <AdSlot format="sidebar" />
+      </aside>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <SectionHeader eyebrow="Aus der Redaktion" title="Neueste Tests" href="/tests/" linkLabel="Alle Tests" />
+      <div class="grid grid-3">
+        {tests.map(([title, category, date, score, slug]) => (
+          <ReviewCard title={title} category={category} date={date} score={score} href={`/artikel/${slug}/`} />
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <SectionHeader eyebrow="Persönlich eingeordnet" title="Lohnt sich das?" href="/lohnt-sich-das/" linkLabel="Alle Empfehlungen" />
+      <div class="grid grid-3">
+        {recommendations.map(([title, text]) => (
+          <RecommendationCard title={title} text={text} href="/artikel/demo-empfehlung-solo/" />
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <SectionHeader eyebrow="Spiele-Beobachtung" title="Deals und interessante PC-Spiele" href="/deals/" linkLabel="Alle Deals" />
+      <div class="grid deal-grid">
+        {deals.map(([title, price, discount]) => <DealCard title={title} price={price} discount={discount} />)}
+      </div>
+      <p class="demo-note" style="margin-top: 1rem;">Keine echten Angebote. Preise und Titel dienen ausschließlich der Layout-Vorschau.</p>
     </div>
   </section>
 
   <div class="container"><AdSlot format="mobile" /></div>
 
   <section class="section">
-    <div class="container">
-      <div class="section-head">
-        <div><p class="eyebrow">Persönlich eingeordnet</p><h2>Lohnt sich das?</h2></div>
-        <a class="text-link" href="/lohnt-sich-das/">Alle Empfehlungen →</a>
-      </div>
-      <div class="grid grid-3">
-        {recommendations.map(([title, text]) => (
-          <article class="card"><div class="card-body"><span class="badge">Demo-Empfehlung</span><h3>{title}</h3><p class="muted">{text}</p><a class="text-link" href="/artikel/demo-empfehlung-solo/">Beispiel lesen →</a></div></article>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="container">
-      <div class="section-head">
-        <div><p class="eyebrow">Aus der Redaktion</p><h2>Neueste Tests</h2></div>
-        <a class="text-link" href="/tests/">Alle Tests →</a>
-      </div>
-      <div class="grid grid-3">
-        {tests.map(([title, category, date, score, slug]) => (
-          <article class="card">
-            <div class="visual" aria-hidden="true">SS</div>
-            <div class="card-body">
-              <div style="display:flex; justify-content:space-between; gap:1rem;"><span class="badge">{category}</span><span class="score">{score}</span></div>
-              <h3>{title}</h3>
-              <p class="muted">Ein klar gekennzeichneter Musterartikel für die Vorschau des künftigen Testformats.</p>
-              <div class="meta"><span>{date}</span><span>Demo-Inhalt</span></div>
-              <a class="button secondary" href={`/artikel/${slug}/`}>Test lesen</a>
-            </div>
-          </article>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="container">
-      <div class="section-head">
-        <div><p class="eyebrow">Release-Vorschau</p><h2>Diese PC-Spiele solltest du im Blick behalten</h2></div>
-        <a class="text-link" href="/releases/">Alle Releases →</a>
-      </div>
-      <div class="release-list">
-        {releases.map(([title, genre, date, status]) => (
-          <div class="release-row"><strong>{title}</strong><span class="muted">{genre}</span><span>{date}</span><span class="badge">PC · {status}</span></div>
-        ))}
-      </div>
-      <p class="demo-note" style="margin-top: 1rem;">Alle Namen und Angaben in dieser Vorschau sind reine Demo-Platzhalter.</p>
-    </div>
-  </section>
-
-  <section class="section">
     <div class="container newsletter">
-      <div><p class="eyebrow">Wochenbrief</p><h2>Die wichtigsten PC-Gaming-News einmal pro Woche.</h2><p class="muted" style="margin-top: 1rem;">Kurz, übersichtlich und ohne tägliche Benachrichtigungsflut.</p></div>
+      <div>
+        <p class="eyebrow">Wochenbrief</p>
+        <h2>Die wichtigsten PC-Gaming-News einmal pro Woche.</h2>
+        <p class="muted" style="margin-top: 1rem;">Kurz, übersichtlich und ohne tägliche Benachrichtigungsflut.</p>
+      </div>
       <form class="demo-form" aria-label="Newsletter Demo" onsubmit="return false">
         <label class="sr-only" for="newsletter-email">E-Mail-Adresse</label>
         <input id="newsletter-email" type="email" placeholder="du@beispiel.de" disabled />

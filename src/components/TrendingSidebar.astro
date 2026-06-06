@@ -1,0 +1,11 @@
+---
+interface Props { items: string[]; }
+const { items } = Astro.props;
+---
+<section class="sidebar-panel">
+  <h2 class="sidebar-title"><span></span>Trending</h2>
+  <ol class="trending-list">
+    {items.map((item) => <li><span class="trend-thumb" aria-hidden="true"></span><strong>{item}</strong></li>)}
+  </ol>
+  <p class="demo-note">Beispielthemen, keine Reichweitenangaben</p>
+</section>

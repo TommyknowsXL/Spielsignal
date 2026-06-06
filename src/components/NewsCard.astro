@@ -13,7 +13,7 @@ const { title, category, time, source, sourceUrl, note } = Astro.props;
 <article class="card news-card" data-category={category}>
   <div class="visual" aria-hidden="true">S</div>
   <div class="card-body">
-    <span class="badge">{category}</span>
+    <span class:list={["badge", category === "Deals" && "badge--deal"]}>{category}</span>
     <h3>{title}</h3>
     <div class="meta"><span>{time}</span><span>Quelle: {source}</span></div>
     <p class="muted">{note}</p>

@@ -1,7 +1,7 @@
 ---
+import Logo from "./Logo.astro";
 const path = Astro.url.pathname;
 const links = [
-  ["/", "Startseite"],
   ["/news/", "News"],
   ["/tests/", "Tests"],
   ["/lohnt-sich-das/", "Lohnt sich das?"],
@@ -14,8 +14,7 @@ const links = [
 <header class="site-header">
   <div class="container nav-wrap">
     <a class="brand" href="/" aria-label="SpielSignal Startseite">
-      <span class="signal-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-      <span>SpielSignal</span>
+      <Logo />
     </a>
     <nav class="desktop-nav" aria-label="Hauptnavigation">
       {
@@ -25,9 +24,9 @@ const links = [
       }
     </nav>
     <div class="header-actions">
-      <a class="search-button" href="/suche/" aria-label="Suche öffnen">⌕</a>
+      <a class="search-button" href="/suche/" aria-label="Suche öffnen"><span aria-hidden="true">⌕</span><span>Suche</span></a>
       <a class="button" href="/news/">Alle News</a>
-      <button class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false">☰</button>
+      <button class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false"><span aria-hidden="true">☰</span></button>
     </div>
   </div>
   <details class="mobile-nav container">

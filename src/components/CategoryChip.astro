@@ -1,0 +1,5 @@
+---
+interface Props { label: string; active?: boolean; tone?: "default" | "deal"; }
+const { label, active = false, tone = "default" } = Astro.props;
+---
+<span class:list={["category-chip", active && "is-active", tone === "deal" && "is-deal"]}>{label}</span>

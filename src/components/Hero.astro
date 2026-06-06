@@ -1,0 +1,23 @@
+---
+import PrimaryButton from "./PrimaryButton.astro";
+import SecondaryButton from "./SecondaryButton.astro";
+---
+<section class="hero">
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">PC-Gaming. Klar eingeordnet.</p>
+      <h1>Alles Wichtige aus der PC-Gaming-Welt. <span>An einem Ort.</span></h1>
+      <p class="lead">Aktuelle Meldungen, ehrliche Tests, interessante Deals und neue Spiele, die einen Blick wert sind.</p>
+      <div class="actions">
+        <PrimaryButton href="#aktuelle-meldungen">Neueste News ansehen</PrimaryButton>
+        <SecondaryButton href="/tests/">Unsere Tests entdecken</SecondaryButton>
+      </div>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+      <div class="radar"><i></i><i></i><i></i><b></b></div>
+      <div class="terrain terrain--one"></div>
+      <div class="terrain terrain--two"></div>
+      <div class="pulse-line"></div>
+    </div>
+  </div>
+</section>

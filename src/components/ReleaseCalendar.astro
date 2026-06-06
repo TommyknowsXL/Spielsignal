@@ -1,0 +1,11 @@
+---
+interface Props { items: string[][]; }
+const { items } = Astro.props;
+---
+<section class="sidebar-panel">
+  <h2 class="sidebar-title"><span></span>Release-Kalender</h2>
+  <div class="calendar-list">
+    {items.map(([title, genre, date]) => <div><time>{date}</time><strong>{title}</strong><small>{genre} · PC</small></div>)}
+  </div>
+  <p class="demo-note">Demo-Termine</p>
+</section>

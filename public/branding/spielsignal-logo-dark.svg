@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 72" role="img" aria-labelledby="title">
+  <title id="title">SpielSignal, dunkle Logo-Variante</title>
+  <g fill="none" stroke="#0B1020" stroke-width="5" stroke-linecap="round"><path d="M10 41A25 25 0 0 1 50 20M18 47A18 18 0 0 1 45 26M27 50A10 10 0 0 1 40 35M51 32a25 25 0 0 1-2 28"/><path d="m40 40 17-17" stroke-width="4"/></g><circle cx="36" cy="44" r="5" fill="#0B1020"/>
+  <text x="78" y="48" fill="#0B1020" font-family="Arial, Helvetica, sans-serif" font-size="35" font-weight="800">SpielSignal</text>
+</svg>

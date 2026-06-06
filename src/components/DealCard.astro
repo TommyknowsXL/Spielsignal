@@ -1,0 +1,8 @@
+---
+interface Props { title: string; price: string; discount: string; }
+const { title, price, discount } = Astro.props;
+---
+<article class="deal-card">
+  <div class="deal-card__visual" aria-hidden="true">%</div>
+  <div><span class="badge badge--deal">Demo-Deal</span><h3>{title}</h3><strong>{price}</strong><small>{discount}</small></div>
+</article>
