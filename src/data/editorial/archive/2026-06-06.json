@@ -1,0 +1,239 @@
+{
+  "generatedAt": "2026-06-06T13:56:30.150Z",
+  "reportDate": "2026-06-06",
+  "candidates": [
+    {
+      "id": "rss-734eb03d4d862da6",
+      "createdAt": "2026-06-05T12:00:00.000Z",
+      "sourceType": "free-promotion",
+      "sourceName": "GameStar News",
+      "sourceUrl": "https://www.gamestar.de/artikel/neues-fussballspiel-will-ea-fc-konkurrenz-machen,3454065.html",
+      "title": "Goals - Das neue Gratis-FIFA? Auf Steam will ein neues Fußballspiel EA FC Konkurrenz machen, ich habe es für euch gespielt",
+      "articleType": "free-promotion",
+      "score": 40,
+      "scoreReasons": [
+        "Mögliche Gratis-Aktion, Bestätigung noch erforderlich",
+        "Erkennbarer PC-Gaming-Bezug",
+        "Potenziell hoher Nutzwert für Besucher",
+        "Aktuelle Meldung"
+      ],
+      "imageStatus": "fallback",
+      "imagePath": "/images/demo/general.svg",
+      "rightsNotes": "Lokales SpielSignal-Fallback bis Quelle und Nutzungsgrundlage manuell geprüft sind.",
+      "editorialStatus": "needs-review",
+      "openChecks": [
+        "Laufzeit und Bedingungen der möglichen Gratis-Aktion bestätigen."
+      ],
+      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
+    },
+    {
+      "id": "rss-412b8834c16d02de",
+      "createdAt": "2026-06-05T10:35:00.000Z",
+      "sourceType": "free-promotion",
+      "sourceName": "GameStar News",
+      "sourceUrl": "https://www.gamestar.de/artikel/kostenlos-am-wochenende-marathon,3454073.html",
+      "title": "Kostenlos am Wochenende - Auf Steam und Co. spielt ihr gerade Marathon gratis und kriegt 3 Spielgeschenke obendrauf",
+      "articleType": "free-promotion",
+      "score": 40,
+      "scoreReasons": [
+        "Mögliche Gratis-Aktion, Bestätigung noch erforderlich",
+        "Erkennbarer PC-Gaming-Bezug",
+        "Potenziell hoher Nutzwert für Besucher",
+        "Aktuelle Meldung"
+      ],
+      "imageStatus": "fallback",
+      "imagePath": "/images/demo/general.svg",
+      "rightsNotes": "Lokales SpielSignal-Fallback bis Quelle und Nutzungsgrundlage manuell geprüft sind.",
+      "editorialStatus": "needs-review",
+      "openChecks": [
+        "Laufzeit und Bedingungen der möglichen Gratis-Aktion bestätigen."
+      ],
+      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
+    },
+    {
+      "id": "rss-c4ddd9f404f1bd69",
+      "createdAt": "2026-06-05T23:00:00.000Z",
+      "sourceType": "rss-news",
+      "sourceName": "GameStar News",
+      "sourceUrl": "https://www.gamestar.de/videos/star-wars-zero-company-das-neue-taktik-rollenspiel-hat-endlich-einen-release-termin,141056.html",
+      "title": "Star Wars Zero Company: Das neue Taktik-Rollenspiel hat endlich einen Release-Termin",
+      "articleType": "news-overview",
+      "score": 34,
+      "scoreReasons": [
+        "Erkennbarer PC-Gaming-Bezug",
+        "Potenziell hoher Nutzwert für Besucher",
+        "Aktuelle Meldung"
+      ],
+      "imageStatus": "fallback",
+      "imagePath": "/images/demo/general.svg",
+      "rightsNotes": "Lokales SpielSignal-Fallback bis Quelle und Nutzungsgrundlage manuell geprüft sind.",
+      "editorialStatus": "needs-review",
+      "openChecks": [
+        "Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen."
+      ],
+      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
+    },
+    {
+      "id": "rss-fd15dcc61d08c3c4",
+      "createdAt": "2026-06-05T17:00:00.000Z",
+      "sourceType": "rss-news",
+      "sourceName": "GameStar Hardware",
+      "sourceUrl": "https://www.gamestar.de/artikel/gothic-1-remake-tuning-guide,3454086.html",
+      "title": "Gothic 1 Remake - Eines der besten Spiele aller Zeiten ist nach einem Vierteljahrhundert wieder da, aber wie könnt ihr es zähmen? Unser Tuning-Guide gibt wertvolle Tipps",
+      "articleType": "news-overview",
+      "score": 34,
+      "scoreReasons": [
+        "Erkennbarer PC-Gaming-Bezug",
+        "Potenziell hoher Nutzwert für Besucher",
+        "Aktuelle Meldung"
+      ],
+      "imageStatus": "fallback",
+      "imagePath": "/images/demo/general.svg",
+      "rightsNotes": "Lokales SpielSignal-Fallback bis Quelle und Nutzungsgrundlage manuell geprüft sind.",
+      "editorialStatus": "needs-review",
+      "openChecks": [
+        "Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen."
+      ],
+      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
+    },
+    {
+      "id": "rss-4b73aff5cf8abd31",
+      "createdAt": "2026-06-06T12:06:00.000Z",
+      "sourceType": "rss-news",
+      "sourceName": "GameStar News",
+      "sourceUrl": "https://www.gamestar.de/videos/1666-amsterdam-die-ersten-10-minuten-der-demo-eines-spiels-mit-dem-niemand-mehr-gerechnet-haette,141076.html",
+      "title": "1666: Amsterdam - Die ersten 10 Minuten der Demo eines Spiels, mit dem niemand mehr gerechnet hätte",
+      "articleType": "news-overview",
+      "score": 24,
+      "scoreReasons": [
+        "Erkennbarer PC-Gaming-Bezug",
+        "Aktuelle Meldung"
+      ],
+      "imageStatus": "fallback",
+      "imagePath": "/images/demo/general.svg",
+      "rightsNotes": "Lokales SpielSignal-Fallback bis Quelle und Nutzungsgrundlage manuell geprüft sind.",
+      "editorialStatus": "needs-review",
+      "openChecks": [
+        "Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen."
+      ],
+      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
+    },
+    {
+      "id": "rss-eb98ef05c81fa5cf",
+      "createdAt": "2026-06-05T23:32:00.000Z",
+      "sourceType": "rss-news",
+      "sourceName": "GameStar News",
+      "sourceUrl": "https://www.gamestar.de/videos/mech-fans-aufgepasst-endlich-kommt-ein-neues-grosses-gundam-spiel,141065.html",
+      "title": "Mech-Fans aufgepasst: Endlich kommt ein neues großes Gundam-Spiel",
+      "articleType": "news-overview",
+      "score": 24,
+      "scoreReasons": [
+        "Erkennbarer PC-Gaming-Bezug",
+        "Aktuelle Meldung"
+      ],
+      "imageStatus": "fallback",
+      "imagePath": "/images/demo/general.svg",
+      "rightsNotes": "Lokales SpielSignal-Fallback bis Quelle und Nutzungsgrundlage manuell geprüft sind.",
+      "editorialStatus": "needs-review",
+      "openChecks": [
+        "Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen."
+      ],
+      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
+    },
+    {
+      "id": "rss-dca47e9b922babd4",
+      "createdAt": "2026-06-05T23:30:00.000Z",
+      "sourceType": "rss-news",
+      "sourceName": "GameStar News",
+      "sourceUrl": "https://www.gamestar.de/videos/strategie-rollenspiel-im-early-access-noch-2026-schnallt-euch-chronicles-medieval-die-ritterruestung-um,141025.html",
+      "title": "Strategie-Rollenspiel im Early Access: Noch 2026 schnallt euch Chronicles: Medieval die Ritterrüstung um",
+      "articleType": "news-overview",
+      "score": 24,
+      "scoreReasons": [
+        "Erkennbarer PC-Gaming-Bezug",
+        "Aktuelle Meldung"
+      ],
+      "imageStatus": "fallback",
+      "imagePath": "/images/demo/general.svg",
+      "rightsNotes": "Lokales SpielSignal-Fallback bis Quelle und Nutzungsgrundlage manuell geprüft sind.",
+      "editorialStatus": "needs-review",
+      "openChecks": [
+        "Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen."
+      ],
+      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
+    },
+    {
+      "id": "rss-44574bdd4d15cc56",
+      "createdAt": "2026-06-05T23:23:00.000Z",
+      "sourceType": "rss-news",
+      "sourceName": "GameStar News",
+      "sourceUrl": "https://www.gamestar.de/videos/final-fantasy-7-revelations-schliesst-die-grosse-remake-trilogie-ab-und-erscheint-im-fruehling-2027-direkt-auf-dem-pc,141067.html",
+      "title": "Final Fantasy 7: Revelations schließt die große Remake-Trilogie ab und erscheint im Frühling 2027 direkt auf dem PC",
+      "articleType": "news-overview",
+      "score": 24,
+      "scoreReasons": [
+        "Erkennbarer PC-Gaming-Bezug",
+        "Aktuelle Meldung"
+      ],
+      "imageStatus": "fallback",
+      "imagePath": "/images/demo/general.svg",
+      "rightsNotes": "Lokales SpielSignal-Fallback bis Quelle und Nutzungsgrundlage manuell geprüft sind.",
+      "editorialStatus": "needs-review",
+      "openChecks": [
+        "Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen."
+      ],
+      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
+    },
+    {
+      "id": "rss-e8cec51b37e725a8",
+      "createdAt": "2026-06-05T23:21:00.000Z",
+      "sourceType": "rss-news",
+      "sourceName": "GameStar News",
+      "sourceUrl": "https://www.gamestar.de/videos/haex-im-neuen-neuen-sci-fi-survival-shooter-formt-eine-mysterioese-alien-technologie-die-open-world-um-euch-herum,141064.html",
+      "title": "Haex: Im neuen neuen Sci-Fi-Survival-Shooter formt eine mysteriöse Alien-Technologie die Open World um euch herum",
+      "articleType": "news-overview",
+      "score": 24,
+      "scoreReasons": [
+        "Erkennbarer PC-Gaming-Bezug",
+        "Aktuelle Meldung"
+      ],
+      "imageStatus": "fallback",
+      "imagePath": "/images/demo/general.svg",
+      "rightsNotes": "Lokales SpielSignal-Fallback bis Quelle und Nutzungsgrundlage manuell geprüft sind.",
+      "editorialStatus": "needs-review",
+      "openChecks": [
+        "Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen."
+      ],
+      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
+    },
+    {
+      "id": "rss-46925afad72d4125",
+      "createdAt": "2026-06-05T23:12:00.000Z",
+      "sourceType": "rss-news",
+      "sourceName": "GameStar News",
+      "sourceUrl": "https://www.gamestar.de/artikel/stellar-blade-ueberrascht-auf-dem-summer-game-fest-mit-einem-sequel,3454136.html",
+      "title": "Stellar Blade Bloodrain - Unfassbar schöne Cyberpunk-Kulisse und wuchtige Nahkämpfe: Das gefeierte Stellar Blade überrascht auf dem Summer Game Fest mit einem Sequel",
+      "articleType": "news-overview",
+      "score": 24,
+      "scoreReasons": [
+        "Erkennbarer PC-Gaming-Bezug",
+        "Aktuelle Meldung"
+      ],
+      "imageStatus": "fallback",
+      "imagePath": "/images/demo/general.svg",
+      "rightsNotes": "Lokales SpielSignal-Fallback bis Quelle und Nutzungsgrundlage manuell geprüft sind.",
+      "editorialStatus": "needs-review",
+      "openChecks": [
+        "Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen."
+      ],
+      "recommendedNextAction": "Originalmeldung öffnen, Fakten prüfen und bei Interesse einen eigenen Entwurf beauftragen."
+    }
+  ],
+  "sourceErrors": [],
+  "safeguards": {
+    "automaticPublishing": false,
+    "automaticMainMerge": false,
+    "automaticImageApproval": false,
+    "paidAiEnabled": false
+  }
+}

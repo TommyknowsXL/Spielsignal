@@ -9,7 +9,9 @@
     "preview": "astro preview",
     "test:feeds": "tsx scripts/test-news-feed.ts",
     "test:content": "tsx scripts/test-content-safety.ts",
-    "test": "npm run test:feeds && npm run test:content",
+    "test:agents": "tsx scripts/test-agent-system.ts",
+    "test": "npm run test:feeds && npm run test:content && npm run test:agents",
+    "editorial:daily": "tsx scripts/agents/runDailyEditorialQueue.ts",
     "steam:prepare": "tsx scripts/prepare-steam-suggestions.ts",
     "astro": "astro"
   },

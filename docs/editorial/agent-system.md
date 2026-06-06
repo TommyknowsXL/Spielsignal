@@ -1,0 +1,82 @@
+# SpielSignal Agenten-System
+
+Die Agenten-Infrastruktur bereitet ausschließlich redaktionelle Vorschläge vor. Sie schreibt
+keine Artikel in Content Collections, veröffentlicht nichts, erstellt keinen automatischen
+Pull Request und führt keinen Merge oder Push auf `main` aus.
+
+## Rollen
+
+### Steam-Scout
+
+- akzeptiert nur überprüfbare Datensätze aus zulässigen Quellen
+- dokumentiert App-ID, Titel, Genre, Datum, Store-Link und Quelle
+- akzeptiert ausschließlich offizielle Steam-Store-Links
+- markiert unsichere Daten als `needs-review`
+- bestätigt Gratis-Aktionen niemals ohne belegte Quelle
+- fragt SteamDB nicht ab
+
+Aktuell ist keine automatische Steam-Datenquelle freigegeben. Der sichere Basislauf erzeugt
+daher keine Steam-Kandidaten.
+
+### News-Scout
+
+- ruft nur aktivierte Quellen aus `src/config/newsSources.ts` ab
+- verarbeitet Titel, Datum, Kategorie, Quelle und Original-URL
+- übernimmt keine Volltexte, RSS-Bilder oder Open-Graph-Bilder
+- filtert offensichtlich themenfremde Meldungen
+- kennzeichnet externe Meldungen immer als externe Vorschläge
+
+### Bild-Scout
+
+- verwendet zunächst den Resolver aus `src/config/newsImageRules.ts`
+- nutzt ein freigegebenes Bild nur bei Status `approved`
+- verwendet sonst ein lokales SpielSignal-Fallback
+- erzeugt Bildkandidaten ausschließlich als `pending-review`
+- genehmigt niemals selbst Bilder
+
+### Redaktions-Agent
+
+- führt Kandidaten zusammen und dedupliziert URL und Titel
+- sortiert anhand der zentralen Score-Regeln
+- begrenzt den Tagesbericht auf zehn Vorschläge
+- empfiehlt ausschließlich sichere Artikeltypen
+- verwendet `test-candidate` nur als Prüfhilfe, niemals als fertigen Test
+- setzt Vorschläge höchstens auf `needs-review`
+
+## Score-Logik
+
+Die Werte stehen zentral in `scripts/agents/agentConfig.ts`. Positive Signale sind zum Beispiel:
+
+- neue überprüfbare Steam-Veröffentlichung
+- erkennbarer PC-Gaming-Bezug
+- überprüfbarer Steam-Trend
+- mögliche beziehungsweise bestätigte Gratis-Aktion
+- großes Update
+- hoher praktischer Nutzwert
+- bereits freigegebenes Bild
+- Aktualität
+
+Abzüge entstehen unter anderem bei fehlendem Gaming-Bezug, themenfremden Titeln, Duplikaten
+oder ungeprüften Quellen. Der Score ist ausschließlich eine Sortierhilfe und keine
+Qualitätswertung eines Spiels. Es werden keine Reichweitenzahlen erfunden.
+
+## Ausgabe
+
+`npm run editorial:daily` erzeugt:
+
+- `src/data/editorial/latest-queue.json`
+- `src/data/editorial/archive/YYYY-MM-DD.json`
+- `docs/editorial/daily-reports/YYYY-MM-DD.md`
+
+GitHub Actions lädt diese Dateien als Workflow-Artefakt hoch. Der Workflow schreibt sie nicht
+zurück ins Repository.
+
+## Optionale KI-Schnittstelle
+
+`scripts/agents/providers/editorialAiProvider.ts` ist standardmäßig deaktiviert und sendet
+keine API-Anfrage. Eine spätere API-Nutzung verursacht separate Kosten. Schlüssel dürfen nur
+als GitHub Actions Secret oder serverseitige Umgebungsvariable hinterlegt werden.
+
+Vor jeder Aktivierung sind Kosten, Datenschutz, Prompt-Grenzen und redaktionelle Kontrolle
+manuell zu prüfen. Die Schnittstelle darf nur strukturierte Entwurfsvorschläge liefern und
+niemals veröffentlichen, Bilder freigeben oder Tests beziehungsweise Bewertungen erfinden.

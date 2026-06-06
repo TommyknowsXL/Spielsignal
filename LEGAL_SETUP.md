@@ -157,3 +157,13 @@ Bilder anderer Gaming-Magazine, ungeprüfte Suchmaschinenbilder und automatisier
 SteamDB wird nicht automatisch ausgelesen, gecrawlt oder gescrapt.
 
 Offizielle Steam-Widgets dürfen auf Detailseiten über eine datenschutzfreundliche Zwei-Klick-Lösung eingebunden werden.
+
+## Agenten und redaktionelle Freigabe
+
+Automatisierte Agenten dürfen ausschließlich Vorschläge und Entwürfe vorbereiten. Artikel, Tests, Bewertungen, Bilder und Gratis-Aktionen dürfen nicht ungeprüft veröffentlicht werden.
+
+Ein echter Test darf nur veröffentlicht werden, wenn das Spiel tatsächlich gespielt wurde oder belastbare Gameplay-Notizen vorhanden sind.
+
+Externe Bilder dürfen nur veröffentlicht werden, wenn Quelle und Nutzungsgrundlage dokumentiert und der Status manuell auf `approved` gesetzt wurde.
+
+API-Schlüssel dürfen ausschließlich über serverseitige Umgebungsvariablen oder GitHub Actions Secrets gespeichert werden. Sie dürfen niemals im Repository oder in Logs erscheinen.

@@ -1,0 +1,46 @@
+name: Daily Editorial Queue
+
+on:
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-editorial-queue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Tagesqueue erzeugen
+        run: npm run editorial:daily
+
+      - name: Tests ausführen
+        run: npm test
+
+      - name: Produktions-Build prüfen
+        run: npm run build
+
+      - name: Tagesberichte als Artefakt bereitstellen
+        uses: actions/upload-artifact@v4
+        with:
+          name: spielsignal-editorial-queue-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            src/data/editorial/latest-queue.json
+            src/data/editorial/archive/*.json
+            docs/editorial/daily-reports/*.md

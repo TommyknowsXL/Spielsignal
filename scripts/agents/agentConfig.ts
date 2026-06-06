@@ -1,0 +1,159 @@
+import type {
+  EditorialArticleType,
+  EditorialCandidate
+} from "./types";
+
+export const MAX_DAILY_CANDIDATES = 10;
+
+export const agentRoles = {
+  steamScout: {
+    name: "Steam-Scout",
+    enabled: true,
+    automaticPublishing: false,
+    allowedHosts: ["store.steampowered.com"],
+    notes:
+      "Verarbeitet nur überprüfbare Steam-Daten aus zulässigen Quellen. SteamDB ist ausgeschlossen."
+  },
+  newsScout: {
+    name: "News-Scout",
+    enabled: true,
+    automaticPublishing: false,
+    notes:
+      "Verarbeitet nur Metadaten aktivierter RSS-Feeds, keine Volltexte und keine RSS-Bilder."
+  },
+  imageScout: {
+    name: "Bild-Scout",
+    enabled: true,
+    automaticApproval: false,
+    notes:
+      "Externe Kandidaten beginnen immer als pending-review. Bis zur Freigabe gilt ein lokales Fallback."
+  },
+  editorialAgent: {
+    name: "Redaktions-Agent",
+    enabled: true,
+    automaticPublishing: false,
+    automaticMainMerge: false,
+    maxDailyCandidates: MAX_DAILY_CANDIDATES,
+    notes:
+      "Erstellt nur eine priorisierte Prüfliste. Keine Bewertungen und keine automatische Veröffentlichung."
+  }
+} as const;
+
+export const scoringRules = {
+  newSteamRelease: 18,
+  pcGamingReference: 16,
+  verifiedSteamTrend: 14,
+  confirmedFreePromotion: 18,
+  possibleFreePromotion: 6,
+  majorUpdate: 12,
+  visitorUtility: 10,
+  approvedImage: 5,
+  recentItem: 8,
+  unrelatedTopic: -40,
+  duplicate: -50,
+  unreviewedSource: -25,
+  missingGamingReference: -20
+} as const;
+
+export const pcGamingKeywords = [
+  "pc",
+  "spiel",
+  "spiele",
+  "spielbar",
+  "game",
+  "gaming",
+  "steam",
+  "demo",
+  "rpg",
+  "rollenspiel",
+  "shooter",
+  "strategie",
+  "survival",
+  "indie",
+  "grafikkarte",
+  "gpu",
+  "cpu",
+  "hardware",
+  "windows",
+  "mod"
+] as const;
+
+export const unrelatedTopicKeywords = [
+  "kino",
+  "film",
+  "fernsehserie",
+  "smartphone",
+  "iphone",
+  "ios",
+  "playstation",
+  "ps5",
+  "anzeige",
+  "haushalt",
+  "roboter-ballmaschine"
+] as const;
+
+export function recommendArticleType(input: {
+  sourceType: EditorialCandidate["sourceType"];
+  title: string;
+}): EditorialArticleType {
+  if (input.sourceType === "steam-release") return "release-check";
+  if (input.sourceType === "steam-trend") return "steam-trend";
+  if (input.sourceType === "free-promotion") return "free-promotion";
+  return "news-overview";
+}
+
+export function scoreCandidate(
+  candidate: Pick<
+    EditorialCandidate,
+    "sourceType" | "title" | "imageStatus" | "createdAt"
+  >
+): { score: number; reasons: string[] } {
+  const title = candidate.title.toLocaleLowerCase("de");
+  const reasons: string[] = [];
+  let score = 0;
+
+  const hasGamingReference = pcGamingKeywords.some((keyword) => title.includes(keyword));
+  const isUnrelated = unrelatedTopicKeywords.some((keyword) => title.includes(keyword));
+
+  if (candidate.sourceType === "steam-release") {
+    score += scoringRules.newSteamRelease;
+    reasons.push("Neue überprüfbare Steam-Veröffentlichung");
+  }
+  if (candidate.sourceType === "steam-trend") {
+    score += scoringRules.verifiedSteamTrend;
+    reasons.push("Steam-Trend aus zulässiger Quelle");
+  }
+  if (candidate.sourceType === "free-promotion") {
+    score += scoringRules.possibleFreePromotion;
+    reasons.push("Mögliche Gratis-Aktion, Bestätigung noch erforderlich");
+  }
+  if (hasGamingReference) {
+    score += scoringRules.pcGamingReference;
+    reasons.push("Erkennbarer PC-Gaming-Bezug");
+  } else {
+    score += scoringRules.missingGamingReference;
+    reasons.push("Gaming-Bezug muss redaktionell geprüft werden");
+  }
+  if (/(update|patch|erweiterung|dlc)/i.test(candidate.title)) {
+    score += scoringRules.majorUpdate;
+    reasons.push("Update oder Erweiterung mit möglichem Nutzwert");
+  }
+  if (/(guide|systemanforderung|kostenlos|gratis|release|termin)/i.test(candidate.title)) {
+    score += scoringRules.visitorUtility;
+    reasons.push("Potenziell hoher Nutzwert für Besucher");
+  }
+  if (candidate.imageStatus === "approved") {
+    score += scoringRules.approvedImage;
+    reasons.push("Freigegebenes Bild vorhanden");
+  }
+  if (Date.now() - Date.parse(candidate.createdAt) <= 48 * 60 * 60 * 1000) {
+    score += scoringRules.recentItem;
+    reasons.push("Aktuelle Meldung");
+  }
+  if (isUnrelated) {
+    score += scoringRules.unrelatedTopic;
+    reasons.push("Möglicherweise themenfremd");
+  }
+
+  return { score, reasons };
+}

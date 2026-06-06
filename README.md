@@ -253,6 +253,78 @@ Die Bildregeln liegen in `src/config/newsImageRules.ts`. Externe Bildkandidaten 
 aus `approvedNewsImages.ts` oder `approvedSteamImages.ts` können ein lokales Fallback ersetzen.
 Details stehen in `docs/content-image-rights.md` und `docs/editorial/image-workflow.md`.
 
+## Tägliche redaktionelle Agenten-Queue
+
+Der Workflow `Daily Editorial Queue` läuft täglich um `05:30 UTC`. Das entspricht in
+Deutschland ungefähr `06:30 Uhr` während der Winterzeit und `07:30 Uhr` während der
+Sommerzeit. GitHub-Cron berücksichtigt Zeitzonen und Zeitumstellungen nicht automatisch.
+
+Der Lauf:
+
+1. installiert die Abhängigkeiten
+2. erstellt maximal zehn Vorschläge
+3. führt alle Tests aus
+4. prüft den Produktions-Build
+5. stellt JSON- und Markdown-Berichte als Workflow-Artefakt bereit
+
+Er commitet nichts, pusht nichts, veröffentlicht keine Artikel und führt keinen Merge aus.
+
+Lokal:
+
+```bash
+npm run editorial:daily
+```
+
+Berichte:
+
+```text
+src/data/editorial/latest-queue.json
+src/data/editorial/archive/YYYY-MM-DD.json
+docs/editorial/daily-reports/YYYY-MM-DD.md
+```
+
+### Workflow manuell starten
+
+1. GitHub-Repository öffnen.
+2. `Actions` öffnen.
+3. `Daily Editorial Queue` auswählen.
+4. `Run workflow` anklicken.
+5. Branch `main` auswählen und bestätigen.
+
+### Optionale GitHub Secrets
+
+Aktuell sind keine Secrets erforderlich, solange nur öffentliche, ausdrücklich erlaubte
+RSS-Quellen verwendet werden.
+
+Für spätere geprüfte Erweiterungen:
+
+```text
+GitHub Repository
+→ Settings
+→ Secrets and variables
+→ Actions
+→ New repository secret
+```
+
+Mögliche spätere Secrets:
+
+```text
+STEAM_WEB_API_KEY
+OPENAI_API_KEY
+```
+
+Schlüssel niemals im Repository speichern oder in Logs ausgeben. Die optionale
+KI-Schnittstelle ist standardmäßig deaktiviert:
+
+```env
+PUBLIC_AI_EDITORIAL_ENABLED=false
+OPENAI_API_KEY=
+```
+
+API-Nutzung verursacht separate Kosten und muss vor Aktivierung manuell geprüft werden.
+Die technische Architektur ist in `docs/editorial/agent-system.md`, der redaktionelle Ablauf
+in `docs/editorial/daily-workflow.md` dokumentiert.
+
 ## Datenschutz- und Diensteschalter
 
 Die zentrale Privacy-Konfiguration liegt in `src/config/privacy.ts`. Die passenden
