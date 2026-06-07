@@ -1,4 +1,4 @@
-import { appendFile, mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { EditorialCandidate, EditorialQueueReport } from "./types";
 
@@ -8,6 +8,13 @@ function markdownValue(value: string | undefined, fallback = "Nicht ermittelt"):
 
 function markdownLink(label: string, value: string | undefined): string {
   return value ? `[${label}](${value})` : "Nicht vorhanden";
+}
+
+function markdownTableValue(value: string): string {
+  return value
+    .replace(/\|/g, "\\|")
+    .replace(/\r?\n/g, " ")
+    .trim();
 }
 
 function candidateMarkdown(candidate: EditorialCandidate, rank: number): string {
@@ -83,6 +90,51 @@ ${candidates}
   return `${markdown.trimEnd()}\n`;
 }
 
+export function renderGitHubSummary(report: EditorialQueueReport): string {
+  const steamCandidates =
+    report.summary.steamReleaseCandidates +
+    report.summary.steamTopSellerCandidates +
+    report.summary.steamMostPlayedCandidates +
+    report.candidates.filter(
+      (candidate) => candidate.sourceType === "free-promotion"
+    ).length;
+  const topCandidates = report.candidates.slice(0, 10);
+  const candidateRows = topCandidates.length
+    ? topCandidates
+        .map(
+          (candidate) =>
+            `| ${markdownTableValue(candidate.id)} | ${markdownTableValue(candidate.title)} | ${markdownTableValue(candidate.sourceName)} | ${markdownTableValue(candidate.articleType)} |`
+        )
+        .join("\n")
+    : "| - | Keine geeigneten Kandidaten | - | - |";
+
+  return `# SpielSignal Tagesauswahl
+
+- **Datum:** ${report.reportDate}
+- **Anzahl RSS-Kandidaten:** ${report.summary.rssCandidates}
+- **Anzahl Steam-Kandidaten:** ${steamCandidates}
+- **Anzahl Bildkandidaten:** ${report.summary.imageCandidates}
+- **Quellenfehler:** ${report.summary.sourceErrors}
+
+## Top-Kandidaten
+
+| Candidate ID | Titel | Quelle | Artikeltyp |
+| --- | --- | --- | --- |
+${candidateRows}
+
+> Diese Liste enthält ausschließlich redaktionelle Vorschläge. Es werden keine Artikel veröffentlicht oder nach \`main\` gemergt.
+`;
+}
+
+export async function writeGitHubSummary(
+  report: EditorialQueueReport,
+  summaryPath: string | undefined
+): Promise<boolean> {
+  if (!summaryPath?.trim()) return false;
+  await writeFile(summaryPath, renderGitHubSummary(report), "utf8");
+  return true;
+}
+
 export async function writeEditorialReport(
   report: EditorialQueueReport,
   rootDirectory = process.cwd()
@@ -109,14 +161,6 @@ export async function writeEditorialReport(
     writeFile(archiveJson, json, "utf8"),
     writeFile(markdownReport, renderMarkdownReport(report), "utf8")
   ]);
-
-  if (process.env.GITHUB_STEP_SUMMARY) {
-    await appendFile(
-      process.env.GITHUB_STEP_SUMMARY,
-      renderMarkdownReport(report),
-      "utf8"
-    );
-  }
 
   return { latestJson, archiveJson, markdownReport };
 }

@@ -49,6 +49,10 @@ import {
   createEditorialDraft,
   isSuitablePrimarySource
 } from "./agents/createEditorialDraft";
+import {
+  renderGitHubSummary,
+  writeGitHubSummary
+} from "./agents/reportWriter";
 
 const baseCandidate: EditorialCandidate = {
   id: "candidate-1",
@@ -297,13 +301,23 @@ assert.equal(
   (workflow.match(/STEAM_WEB_API_KEY:/g) ?? []).length,
   1
 );
-assert.match(workflow, /GITHUB_STEP_SUMMARY|Summary bestätigen/);
+assert.match(workflow, /actions\/checkout@v6/);
+assert.match(workflow, /actions\/setup-node@v6/);
+assert.match(workflow, /actions\/cache@v5/);
+assert.match(workflow, /actions\/upload-artifact@v6/);
+assert.match(
+  workflow,
+  /- name: Tagesberichte als Artefakt bereitstellen\s*\n\s*if: always\(\)/
+);
+assert.doesNotMatch(workflow, /Summary bestätigen/);
 
 const draftWorkflow = await readFile(
   ".github/workflows/create-editorial-draft.yml",
   "utf8"
 );
 assert.match(draftWorkflow, /name: Create Editorial Draft/);
+assert.match(draftWorkflow, /actions\/checkout@v6/);
+assert.match(draftWorkflow, /actions\/setup-node@v6/);
 assert.match(draftWorkflow, /candidate_id:[\s\S]*required: true/);
 assert.match(draftWorkflow, /contents: write/);
 assert.match(draftWorkflow, /pull-requests: write/);
@@ -354,6 +368,28 @@ assert.match(safeMarkdown, /## Zusammenfassung/);
 assert.match(safeMarkdown, /Steam-Scout/);
 assert.equal(safeReport.summary.rssCandidates, 0);
 assert.match(safeMarkdown, /veröffentlicht keine Artikel/);
+const safeSummary = renderGitHubSummary(safeReport);
+assert.match(safeSummary, /SpielSignal Tagesauswahl/);
+assert.match(safeSummary, /Anzahl RSS-Kandidaten/);
+assert.match(safeSummary, /Anzahl Steam-Kandidaten/);
+assert.match(safeSummary, /Anzahl Bildkandidaten/);
+assert.match(safeSummary, /Quellenfehler/);
+assert.match(safeSummary, /Candidate ID/);
+const actionSummaryPath = join(safeRoot, "action-summary.md");
+await runDailyEditorialQueue({
+  reportDate: "2026-06-06",
+  rootDirectory: safeRoot,
+  newsSources: [],
+  steamRecords: [],
+  env: {
+    GITHUB_ACTIONS: "true",
+    GITHUB_STEP_SUMMARY: actionSummaryPath,
+    STEAM_SCOUT_ENABLED: "false"
+  }
+});
+const actionSummary = await readFile(actionSummaryPath, "utf8");
+assert.match(actionSummary, /Datum:\*\* 2026-06-06/);
+assert.match(actionSummary, /Top-Kandidaten/);
 
 const rss = `<?xml version="1.0"?>
 <rss version="2.0"><channel><title>Agententest</title>
@@ -684,6 +720,16 @@ assert.equal(secretReport.steamApiKeyPresent, true);
 assert.equal(secretJson.includes(secretSentinel), false);
 assert.equal(secretMarkdown.includes(secretSentinel), false);
 assert.match(secretMarkdown, /Steam-API-Key vorhanden:\*\* ja/);
+const secretSummaryPath = join(secretReportRoot, "github-step-summary.md");
+assert.equal(
+  await writeGitHubSummary(secretReport, secretSummaryPath),
+  true
+);
+const secretSummary = await readFile(secretSummaryPath, "utf8");
+assert.equal(secretSummary.includes(secretSentinel), false);
+assert.doesNotMatch(secretSummary, /API-Key|secret|token/i);
+assert.match(secretSummary, /Candidate ID/);
+assert.equal(await writeGitHubSummary(secretReport, undefined), false);
 
 const releaseRecords = Array.from({ length: 7 }, (_, index) => ({
   sourceType: "steam-release" as const,

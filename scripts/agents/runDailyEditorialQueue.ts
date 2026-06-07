@@ -6,7 +6,10 @@ import {
   collectSteamScoutData,
   enrichRssCandidatesWithSteam
 } from "./providers/steamScoutProvider";
-import { writeEditorialReport } from "./reportWriter";
+import {
+  writeEditorialReport,
+  writeGitHubSummary
+} from "./reportWriter";
 import { runSteamScout, type SteamScoutRecord } from "./steamScout";
 import type { EditorialCandidate, EditorialQueueReport } from "./types";
 
@@ -128,6 +131,16 @@ export async function runDailyEditorialQueue(options: {
   };
 
   await writeEditorialReport(report, options.rootDirectory);
+  const summaryPath =
+    options.env?.GITHUB_STEP_SUMMARY ?? process.env.GITHUB_STEP_SUMMARY;
+  const summaryWritten = await writeGitHubSummary(report, summaryPath);
+  const runningInGitHubActions =
+    (options.env?.GITHUB_ACTIONS ?? process.env.GITHUB_ACTIONS) === "true";
+  if (runningInGitHubActions && !summaryWritten) {
+    throw new Error(
+      "GITHUB_STEP_SUMMARY ist im GitHub-Actions-Lauf nicht verfügbar."
+    );
+  }
   return report;
 }
 

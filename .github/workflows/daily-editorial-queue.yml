@@ -14,10 +14,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Repository auschecken
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Node.js einrichten
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -26,7 +26,7 @@ jobs:
         run: npm ci
 
       - name: Steam-Cache wiederherstellen
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .cache/steam
           key: steam-provider-${{ runner.os }}-${{ github.run_number }}
@@ -42,9 +42,6 @@ jobs:
           STEAM_TOP_SELLERS_ENABLED: "true"
           PUBLIC_STEAM_MOST_PLAYED_ENABLED: "false"
 
-      - name: Summary bestätigen
-        run: test -s "$GITHUB_STEP_SUMMARY"
-
       - name: Tests ausführen
         run: npm test
 
@@ -52,7 +49,8 @@ jobs:
         run: npm run build
 
       - name: Tagesberichte als Artefakt bereitstellen
-        uses: actions/upload-artifact@v4
+        if: always()
+        uses: actions/upload-artifact@v6
         with:
           name: spielsignal-editorial-queue-${{ github.run_id }}
           if-no-files-found: error

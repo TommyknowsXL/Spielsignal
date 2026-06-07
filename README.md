@@ -102,6 +102,11 @@ Der Workflow:
 
 Er veröffentlicht keine Artikel, genehmigt keine Bilder und führt keinen Merge aus.
 
+Die GitHub Actions verwenden Node-24-kompatible Hauptversionen. Diese benötigen mindestens
+GitHub Actions Runner `2.327.1`; GitHub-gehostete Runner werden automatisch aktuell gehalten.
+Für selbst gehostete Runner muss die Runner-Version vor der Nutzung aktualisiert werden. Es
+werden keine unsicheren Kompatibilitäts- oder Downgrade-Optionen gesetzt.
+
 Lokaler Lauf:
 
 ```bash
