@@ -4,7 +4,7 @@ slug: "gothic-1-remake-news-overview"
 articleType: "news-overview"
 status: "draft"
 createdAt: "2026-06-07T23:34:31.746Z"
-updatedAt: "2026-06-07T23:45:52.766Z"
+updatedAt: "2026-06-07T23:51:43.147Z"
 author: "SpielSignal-Redaktion"
 gameTitle: "Gothic 1 Remake"
 steamAppId: "1297900"
@@ -17,8 +17,13 @@ heroImageSourceType: "steam-store"
 heroImageSourceUrl: "https://store.steampowered.com/app/1297900/Gothic_1_Remake/"
 imageRightsStatus: "approved"
 externalTipSources: []
-primarySources: ["https://store.steampowered.com/app/1297900/Gothic_1_Remake/", "https://gothic.thqnordic.com/"]
-editorialNotes: ["Steam-Topseller-Snapshot: Rang 1 in Deutschland am 7. Juni 2026 um 22:54:09 UTC. Ranglisten sind Momentaufnahmen.", "Vor Veröffentlichung Fakten, Links, Bildfreigabe und zwischenzeitliche Änderungen der offiziellen Angaben erneut prüfen.", "Kein eigener Spieletest und keine Wertung."]
+primarySources:
+  - "https://store.steampowered.com/app/1297900/Gothic_1_Remake/"
+  - "https://gothic.thqnordic.com/"
+editorialNotes:
+  - "Steam-Topseller-Snapshot: Rang 1 in Deutschland am 7. Juni 2026 um 22:54:09 UTC. Ranglisten sind Momentaufnahmen."
+  - "Vor Veröffentlichung Fakten, Links, Bildfreigabe und zwischenzeitliche Änderungen der offiziellen Angaben erneut prüfen."
+  - "Kein eigener Spieletest und keine Wertung."
 ---
 
 # Gothic 1 Remake sorgt auf Steam für Aufmerksamkeit
