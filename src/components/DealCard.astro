@@ -1,8 +1,0 @@
----
-interface Props { title: string; price: string; discount: string; image: string; href: string; }
-const { title, price, discount, image, href } = Astro.props;
----
-<a class="deal-card card-link" href={href}>
-  <img class="deal-card__visual" src={image} alt={`Abstrakter Deals-Platzhalter zu ${title}`} width="800" height="450" loading="lazy" />
-  <div><span class="badge badge--deal">Demo-Deal</span><h3>{title}</h3><strong>{price}</strong><small>{discount}</small></div>
-</a>

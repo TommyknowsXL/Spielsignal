@@ -1,286 +1,114 @@
 # SpielSignal
 
-SpielSignal ist eine überwiegend statische, deutschsprachige Gaming-Magazin-Webseite auf Basis von Astro und TypeScript. Der News-Aggregator wird gezielt serverseitig ausgeführt.
+SpielSignal ist eine deutschsprachige Astro-Seite für PC-Gaming-News, eigene redaktionelle
+Artikel und offizielle Steam-Trends.
 
-**Unterzeile:** PC-Gaming-News, Tests und Deals auf einen Blick
-
-Die aktuelle Version nutzt ausschließlich klar gekennzeichnete Demo-Inhalte. Sie übernimmt keine fremden Artikel oder Bilder, sendet keine Formulardaten und lädt standardmäßig keine Werbe- oder Tracking-Skripte.
-
-## Technik
-
-- Astro 6 mit statischer Ausgabe und zwei On-Demand-Routen
-- Vercel-Adapter für `/news/` und `/api/news.json`
-- TypeScript im strikten Modus
-- Astro Content Collections
-- Responsives CSS ohne UI-Framework
-- Sehr wenig Browser-JavaScript
-- Sitemap, RSS, robots.txt, Canonical URLs und JSON-LD
-- Für Vercel vorbereitet; keine besondere Adapter-Konfiguration nötig
+**Positionierung:** PC-Gaming-News, Tests und Deals auf einen Blick
 
 ## Lokal starten
-
-Voraussetzung ist eine aktuelle Node.js-LTS-Version.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Anschließend die von Astro angezeigte Adresse öffnen, normalerweise:
-
-```text
-http://localhost:4321
-```
-
-Unter Windows kann bei einer restriktiven PowerShell-Richtlinie `npm.cmd` statt `npm` verwendet werden.
-
-## Produktions-Build
+Produktionsprüfung:
 
 ```bash
+npm run test
 npm run build
 ```
 
-Der Befehl führt zuerst `astro check` aus und erzeugt danach die statische Webseite im Ordner `dist/`.
+Unter Windows kann bei einer restriktiven PowerShell-Richtlinie `npm.cmd` verwendet werden.
 
-Für eine lokale Vorschau des Builds:
+## Öffentliche Inhalte
 
-```bash
-npm run preview
-```
+Es gibt zwei getrennte Inhaltsarten:
 
-## Inhalte pflegen
+1. **Externe Kurzmeldungen:** Titel, Quelle, Datum, Bildfläche und direkter Link zur
+   Originalmeldung. Es werden keine Volltexte oder Magazinbilder übernommen.
+2. **Eigene SpielSignal-Artikel:** eigenständig strukturierte Beiträge mit Quellen,
+   SEO-Daten, Bildnachweis und redaktioneller Einordnung.
 
-Eigene Inhalte liegen in:
-
-```text
-src/content/tests/
-src/content/recommendations/
-src/content/news/
-src/content/deals/
-src/content/releases/
-src/content/steam-suggestions/
-```
-
-Die Schemas sind in `src/content.config.ts` definiert. Ein Beitrag wird automatisch unter `/artikel/<dateiname>/` erzeugt. Vor Veröffentlichung eines echten Beitrags:
-
-1. `demo: false` setzen.
-2. Titel, Beschreibung, Datum, Autor und SEO-Angaben prüfen.
-3. Testbedingungen, Quellen und mögliche geschäftliche Beziehungen ergänzen.
-4. Keine fremden Volltexte oder Bilder ohne eindeutige Erlaubnis übernehmen.
-
-`steam-suggestions` sind reine redaktionelle Entwürfe und werden nicht automatisch als
-Artikelseiten veröffentlicht.
-
-## Steam-Vorschläge pflegen
-
-Das Grundgerüst des späteren täglichen Steam-Release-Agenten liegt in:
+Öffentlich erscheinen ausschließlich Dateien aus:
 
 ```text
-src/config/steamAgent.ts
-src/content/steam-suggestions/
-scripts/prepare-steam-suggestions.ts
+src/content/articles/
 ```
 
-Der Agent ist absichtlich mit `enabled: false` deaktiviert. Der sichere Vorbereitungsbefehl:
-
-```bash
-npm run steam:prepare
-```
-
-Ein Vorschlag enthält Spielname, Genre, Release-Datum, Preis, Entwickler, Publisher,
-Steam-Link, Kurzbeschreibung, Kategorie, offizielle Bild-URL, Artikeltyp und Status.
-
-Erlaubte Statuswerte:
+Dateien aus diesem Verzeichnis benötigen `status: published`. Entwürfe liegen getrennt in:
 
 ```text
-Entwurf
-geprüft
-veröffentlicht
+src/content/drafts/
 ```
 
-Ein Eintrag mit `articleType: "Test"` wird vom Content-Schema abgelehnt, wenn weder
-`played: true` noch belastbare `gameplayNotes` vorhanden sind.
+Drafts werden von keiner öffentlichen Route geladen.
 
-Für den nächsten produktiven Schritt werden eine ausdrücklich erlaubte Datenquelle,
-geklärte Bildrechte, persistenter Speicher und ein täglicher Scheduler benötigt. Ein
-Vercel-Cron kann später eine geschützte Serverroute aufrufen; derzeit wird kein automatischer
-Abruf aktiviert.
+Das Schema steht in `src/content/config.ts` und wird über `src/content.config.ts` eingebunden.
+Ein Artikel vom Typ `test` benötigt eine dokumentierte `playedMinutes`-Angabe größer als null.
 
-## Geprüfte RSS-Feeds ergänzen
+## RSS-Quellen
 
-Die zentrale Quellenkonfiguration liegt in:
+Aktiv ist derzeit ausschließlich:
 
 ```text
-src/config/newsSources.ts
+GameStar Gaming-News
+https://www.gamestar.de/rss/gaming.rss
 ```
 
-**Genau dort werden erlaubte Feed-Adressen im Feld `feedUrl` eingetragen.**
-
-Aktiviert sind derzeit ausschließlich die ausdrücklich freigegebenen offiziellen Feeds
-`GameStar News`, `GameStar Deals` und `GameStar Hardware`. Weitere Quellen sind als
-deaktivierte Kandidaten dokumentiert.
-
-Vorgehen:
-
-1. Nutzungsbedingungen und technische Dokumentation der Quelle prüfen.
-2. Bevorzugt offizielle RSS-Feeds oder ausdrücklich erlaubte APIs verwenden.
-3. Beim gewünschten Eintrag eine echte `feedUrl` eintragen.
-4. `usageNotes` um Prüfdatum, Freigabegrundlage und erlaubten Umfang ergänzen.
-5. Erst danach `enabled: true` setzen.
-6. Zum Deaktivieren jederzeit wieder `enabled: false` setzen. Die Adresse kann zur Dokumentation stehen bleiben.
-7. Eine feste Zielkategorie als Text oder mehrere Regeln über `categoryMapping` festlegen.
-8. Nur Titel, URL, Datum, Quellenname und Kategorie verarbeiten.
-9. Keine fremden Bilder, Beschreibungen oder vollständigen Texte automatisiert kopieren.
-
-Beispiel für einen später freigegebenen Eintrag:
-
-```ts
-{
-  name: "Name der geprüften Quelle",
-  homepageUrl: "https://quelle.example/",
-  feedUrl: "https://quelle.example/ausdruecklich-erlaubter-feed.xml",
-  enabled: true,
-  usageNotes: "Am TT.MM.JJJJ geprüft: Titel, URL, Datum und Kategorie erlaubt.",
-  categoryMapping: {
-    patch: "Updates",
-    roleplaying: "Rollenspiele",
-    news: "News"
-  }
-}
-```
-
-### Funktionsweise des Aggregators
-
-`src/lib/newsFeed.ts`:
-
-- lädt ausschließlich Quellen mit `enabled: true`
-- unterstützt RSS 2.0, Atom und einfache RDF-RSS-Feeds
-- bricht einzelne Abrufe nach acht Sekunden ab
-- akzeptiert höchstens 2 MB pro Feed und 40 Einträge pro Quelle
-- übernimmt keine Feed-Beschreibungen, Volltexte oder Bilder
-- entfernt doppelte und Tracking-bereinigte URLs
-- entfernt exakt gleiche normalisierte Titel
-- markiert sehr ähnliche Überschriften
-- sortiert alle Meldungen nach Datum
-- fängt Fehler pro Quelle ab, ohne andere Quellen zu blockieren
-- verwendet bei einem Fehler nach Möglichkeit den letzten erfolgreichen Stand
-
-Die serverseitige API liegt unter `/api/news.json`. Die sichtbare Seite `/news/` verwendet dieselbe Logik. Sind keine verwertbaren Feed-Meldungen verfügbar, werden die Demo-News aus `src/data/demoNews.ts` angezeigt.
-
-### Cache
-
-- Erfolgreiche Ergebnisse werden im laufenden Serverprozess 60 Minuten pro Quelle wiederverwendet.
-- `/news/` und `/api/news.json` senden `s-maxage=3600`.
-- Vercel liefert dadurch eine Stunde lang eine schnelle CDN-Antwort.
-- Danach kann Vercel mit `stale-while-revalidate=86400` den vorhandenen Stand ausliefern, während im Hintergrund aktualisiert wird.
-- Bei einem Feed-Fehler verwendet die Feed-Schicht vorhandene letzte Erfolgsdaten. Bei einem kalten Server ohne Erfolgsdaten greift der Demo-Fallback.
-
-### Lokal testen
-
-```bash
-npm run test:feeds
-npm run dev
-```
-
-Der automatische Test startet kurzzeitig einen lokalen Feed auf `127.0.0.1`. Er prüft RSS,
-Atom, Abruf, Cache und den letzten erfolgreichen Stand bei einem simulierten Ausfall. Es wird
-keine externe Quelle abgerufen.
-
-Danach öffnen:
+Vorbereitet, aber deaktiviert:
 
 ```text
-http://localhost:4321/news/
-http://localhost:4321/api/news.json
+GameStar News
+GameStar Hardware
+GameStar Deals
+GamePro
+PC Games
+PC Games Hardware
+MeinMMO
+XboxDynasty
 ```
 
-Ohne aktivierte Quelle muss `mode: "demo"` erscheinen. Nach Freigabe und Aktivierung einer funktionierenden Quelle erscheint `mode: "feeds"`.
+Die zentrale Konfiguration liegt in `src/config/newsSources.ts`. Neue Quellen dürfen erst nach
+Prüfung der offiziellen Feed-URL, Nutzungsbedingungen, Aggregator-Nutzung und Bildstrategie
+aktiviert werden. Scraping ersetzt keinen RSS-Feed.
 
-### Fehler eines Feeds erkennen
+Der Aggregator verarbeitet ausschließlich Titel, Datum, Quelle, Kategorie und Original-URL.
+Er filtert themenfremde Einträge, entfernt Duplikate und übernimmt weder Volltexte noch
+Feed-Bilder. Eindeutige Steam-App-IDs können mit einem offiziellen Steam-Store-Bild verknüpft
+werden; bei Unsicherheit wird ein lokales SpielSignal-Fallback verwendet.
 
-In `/api/news.json` enthält `statuses` für jede aktivierte Quelle:
+## Tägliche Themenliste öffnen
 
-- `ok: true`, wenn der Feed erfolgreich verarbeitet wurde
-- `fromCache: true`, wenn ein zwischengespeicherter Stand verwendet wurde
-- `lastSuccessfulAt` mit dem letzten erfolgreichen Zeitpunkt
-- `error` mit einer knappen technischen Fehlerbeschreibung
-
-Auf `/news/` erscheint bei einem Fehler zusätzlich ein aufklappbarer Hinweis. In Vercel können dieselben Fehler in den Function-Logs nachvollzogen werden.
-
-Der öffentliche Feed `/rss.xml` enthält ausschließlich eigene SpielSignal-Inhalte.
-
-## Werbung und AdSense
-
-Die Seite zeigt standardmäßig nur klar beschriftete Werbeplatzhalter. Das AdSense-Skript wird ausschließlich geladen, wenn alle drei Bedingungen erfüllt sind:
-
-```env
-PUBLIC_ADS_ENABLED=true
-PUBLIC_ADSENSE_CLIENT=ca-pub-...
-PUBLIC_CONSENT_MODE_READY=true
+```text
+GitHub
+→ Actions
+→ Daily Editorial Queue
+→ letzten Lauf öffnen
+→ Summary ansehen
 ```
 
-Ohne vollständige Konfiguration bleibt das Skript deaktiviert.
+Der Workflow:
 
-Einrichtung:
+1. ruft freigegebene RSS-Feeds ab
+2. entfernt irrelevante Inhalte und Duplikate
+3. erkennt Spielnamen
+4. ordnet eindeutige Steam-App-IDs und Bildkandidaten zu
+5. priorisiert maximal zehn Vorschläge
+6. erzeugt Markdown- und JSON-Berichte
+7. schreibt die Tagesauswahl in `$GITHUB_STEP_SUMMARY`
+8. lädt die Berichte als Artefakt hoch
+9. führt Tests und Produktions-Build aus
 
-1. AdSense-Konto einrichten.
-2. `spielsignal.de` als Webseite hinzufügen.
-3. Freigabe durch Google abwarten.
-4. Eine zertifizierte Consent-Management-Lösung einrichten und rechtlich konfigurieren.
-5. Die echte Publisher-ID als `PUBLIC_ADSENSE_CLIENT` eintragen.
-6. `public/ads.txt.example` mit der echten, von AdSense bereitgestellten Zeile als `public/ads.txt` speichern.
-7. Die drei Umgebungsvariablen in Vercel setzen.
-8. Neu deployen und Einwilligungsverhalten prüfen.
+Er veröffentlicht keine Artikel, genehmigt keine Bilder und führt keinen Merge aus.
 
-Keine Publisher-ID raten oder aus Beispielen übernehmen. `PUBLIC_CONSENT_MODE_READY` erst aktivieren, wenn die Consent-Lösung tatsächlich eingerichtet und getestet ist.
-
-Die wiederverwendbare Werbekomponente liegt in `src/components/AdSlot.astro`. Der Affiliate-Hinweis liegt in `src/components/AffiliateNotice.astro`.
-
-## Trending und Bildfreigabe
-
-`Trending auf SpielSignal` liest echte persistierte Klickwerte ausschließlich serverseitig aus
-Upstash Redis. Die optionalen Variablen heißen:
-
-```env
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-```
-
-Sind sie nicht gesetzt oder liegen keine Klickdaten vor, zeigt das Modul als `Neu eingetroffen`
-die drei neuesten Feed-Meldungen ohne Klickzahlen.
-
-Die Bildregeln liegen in `src/config/newsImageRules.ts`. Externe Bildkandidaten beginnen in
-`src/data/editorialImageQueue.ts` immer als `pending-review`. Nur manuell freigegebene Einträge
-aus `approvedNewsImages.ts` oder `approvedSteamImages.ts` können ein lokales Fallback ersetzen.
-Details stehen in `docs/content-image-rights.md` und `docs/editorial/image-workflow.md`.
-
-## Tägliche redaktionelle Agenten-Queue
-
-Der Workflow `Daily Editorial Queue` läuft täglich um `05:30 UTC`. Das entspricht in
-Deutschland ungefähr `06:30 Uhr` während der Winterzeit und `07:30 Uhr` während der
-Sommerzeit. GitHub-Cron berücksichtigt Zeitzonen und Zeitumstellungen nicht automatisch.
-
-Der Lauf:
-
-1. installiert die Abhängigkeiten
-2. erstellt maximal zehn Vorschläge
-3. führt alle Tests aus
-4. prüft den Produktions-Build
-5. stellt JSON- und Markdown-Berichte als Workflow-Artefakt bereit
-
-Er commitet nichts, pusht nichts, veröffentlicht keine Artikel und führt keinen Merge aus.
-
-Der Bericht zeigt den Steam-Scout-Status ausdrücklich an. Solange
-`src/config/steamAgent.ts` deaktiviert ist, werden keine Steam-Daten erfunden oder aus
-inoffiziellen Quellen ergänzt. Erkannte Gratis-Bezüge bleiben bis zur Prüfung einer
-offiziellen Quelle unbestätigt.
-
-Lokal:
+Lokaler Lauf:
 
 ```bash
 npm run editorial:daily
 ```
 
-Berichte:
+Ausgaben:
 
 ```text
 src/data/editorial/latest-queue.json
@@ -288,20 +116,69 @@ src/data/editorial/archive/YYYY-MM-DD.json
 docs/editorial/daily-reports/YYYY-MM-DD.md
 ```
 
-### Workflow manuell starten
+## Entwurf erstellen
 
-1. GitHub-Repository öffnen.
-2. `Actions` öffnen.
-3. `Daily Editorial Queue` auswählen.
-4. `Run workflow` anklicken.
-5. Branch `main` auswählen und bestätigen.
+```text
+GitHub
+→ Actions
+→ Create Editorial Draft
+→ Run workflow
+→ Candidate ID eintragen
+→ Artikeltyp wählen
+→ offizielle Quellen ergänzen
+→ Workflow starten
+```
 
-### Optionale GitHub Secrets
+Der Workflow lädt den Kandidaten aus `latest-queue.json`, behandelt eine RSS-Meldung nur als
+Tippquelle und schreibt einen Entwurf nach `src/content/drafts/`.
 
-Aktuell sind keine Secrets erforderlich, solange nur öffentliche, ausdrücklich erlaubte
-RSS-Quellen verwendet werden.
+Ohne geeignete offizielle Primärquelle entsteht nur ein Gerüst mit:
 
-Für spätere geprüfte Erweiterungen:
+```text
+status: needs-source-review
+Offizielle Primärquelle fehlt. Vor Veröffentlichung ergänzen.
+```
+
+Mit Primärquelle entsteht `status: draft`. Anschließend werden Tests und Build ausgeführt,
+ein Branch `editorial-draft/[slug]` gepusht und ein Pull Request erstellt. Es gibt keinen
+automatischen Merge und kein automatisches Deployment.
+
+## Entwurf prüfen
+
+```text
+GitHub
+→ Pull requests
+→ Editorial Draft öffnen
+→ Dateien prüfen
+→ Quellen prüfen
+→ Bild prüfen
+→ Text prüfen
+```
+
+Vor der Veröffentlichung muss der Beitrag aus `src/content/drafts/` redaktionell überarbeitet,
+auf `status: published` gesetzt und nach `src/content/articles/` verschoben werden.
+
+## Artikel veröffentlichen
+
+```text
+Pull Request
+→ Merge pull request
+→ Confirm merge
+```
+
+Der Merge erfolgt ausschließlich manuell. Nach dem Merge nach `main` veröffentlicht Vercel
+automatisch die neue Version.
+
+GitHub Actions benötigt gegebenenfalls Repository-Schreibrechte für Pull Requests. Der
+Workflow verwendet nur:
+
+```yaml
+permissions:
+  contents: write
+  pull-requests: write
+```
+
+## Optionale KI aktivieren
 
 ```text
 GitHub Repository
@@ -309,105 +186,58 @@ GitHub Repository
 → Secrets and variables
 → Actions
 → New repository secret
+→ OPENAI_API_KEY
 ```
 
-Mögliche spätere Secrets:
+Repository-Variable:
+
+```text
+AI_EDITORIAL_ENABLED=true
+```
+
+Die KI-Schnittstelle ist standardmäßig deaktiviert und führt derzeit keine kostenpflichtige
+Anfrage aus. Eine spätere Aktivierung darf ausschließlich geprüfte Fakten aus offiziellen
+Primärquellen verwenden und niemals veröffentlichen.
+
+API-Nutzung verursacht separate Kosten und ist nicht im ChatGPT-Abonnement enthalten.
+
+## Optionale Secrets und Variablen
 
 ```text
 STEAM_WEB_API_KEY
 OPENAI_API_KEY
+AI_EDITORIAL_ENABLED
+UPSTASH_REDIS_REST_URL
+UPSTASH_REDIS_REST_TOKEN
 ```
 
-Der Steam-Scout verwendet `STEAM_WEB_API_KEY` ausschließlich serverseitig. Der Workflow setzt:
+Schlüssel werden nur serverseitig beziehungsweise als GitHub Secrets verwendet. Sie dürfen
+nicht in Logs, JSON, Markdown oder das Repository geschrieben werden.
 
-```env
-STEAM_SCOUT_ENABLED=true
-STEAM_RELEASES_ENABLED=true
-STEAM_TRENDS_ENABLED=true
+## Redaktionelle Regeln
+
+Die verbindlichen Regeln stehen in:
+
+```text
+LEGAL_SETUP.md
+docs/editorial/editorial-policy.md
+docs/editorial/rss-source-onboarding.md
+docs/content-image-rights.md
 ```
 
-Der offizielle Steam-App-Katalog wird über `IStoreService/GetAppList/v1/` abgerufen. Die
-experimentellen Steam-Charts laufen nur mit `STEAM_TRENDS_ENABLED=true`. Für einen stabilen
-offiziellen Release-Feed bietet die dokumentierte Steam Web API derzeit keine geeignete
-Schnittstelle; dieser Status wird transparent im Tagesbericht angezeigt.
+Kurzfassung:
 
-Schlüssel niemals im Repository speichern oder in Logs ausgeben. Die optionale
-KI-Schnittstelle ist standardmäßig deaktiviert:
+- keine Magazinartikel kopieren oder absatzweise umformulieren
+- keine fremden Gliederungen oder Meinungen übernehmen
+- RSS nur als Themenradar und externe Kurzmeldung verwenden
+- eigene Artikel auf offizielle Primärquellen stützen
+- keine Bewertungen, Spielzeiten, Deals oder Termine erfinden
+- keine Magazinbilder, Google-Bilder oder SteamDB-Bilder übernehmen
+- keine automatische Veröffentlichung
 
-```env
-PUBLIC_AI_EDITORIAL_ENABLED=false
-OPENAI_API_KEY=
-```
+## Werbung und Datenschutz
 
-API-Nutzung verursacht separate Kosten und muss vor Aktivierung manuell geprüft werden.
-Die technische Architektur ist in `docs/editorial/agent-system.md`, der redaktionelle Ablauf
-in `docs/editorial/daily-workflow.md` dokumentiert.
-
-## Datenschutz- und Diensteschalter
-
-Die zentrale Privacy-Konfiguration liegt in `src/config/privacy.ts`. Die passenden
-Umgebungsvariablen sind in `.env.example` dokumentiert. Standardmäßig bleiben Werbung,
-Analyse, externe Einbettungen, Newsletter und Consent-Modus deaktiviert.
-
-Der aktuelle technische und rechtliche Prüfstand steht ausführlich in `LEGAL_SETUP.md`.
-
-## Rechtliche Pflichtaufgaben
-
-Vor jeder öffentlichen Veröffentlichung:
-
-- Impressum und Datenschutzerklärung abschließend rechtlich prüfen.
-- Hosting-Anbieter, Tarif und Vertragsunterlagen festlegen und dokumentieren.
-- Datenschutzerklärung auf Hosting, Kontaktwege, Werbung und weitere Dienste anpassen.
-- Keine Analyse-, Werbe- oder externen Tracking-Skripte ohne passende Einwilligung aktivieren.
-- Bei Unsicherheit eine rechtliche Prüfung einholen.
-
-Das Kontakt- und Newsletter-Formular ist nur eine nicht sendende Frontend-Demo.
-
-## GitHub
-
-1. Das Repository `TommyknowsXL/Spielsignal` verwenden.
-2. Falls nötig, in diesem Projekt Git initialisieren: `git init`.
-3. Dateien hinzufügen: `git add .`.
-4. Commit erstellen: `git commit -m "Initiale SpielSignal-Version"`.
-5. Das GitHub-Repository als Remote verbinden.
-6. Auf den Hauptbranch pushen.
-
-Keine `.env`-Datei oder Zugangsdaten committen. `.env.example` enthält nur sichere Platzhalter.
-
-## Heute mit Vercel veröffentlichen
-
-1. Bei Vercel anmelden und das GitHub-Repository importieren.
-2. Vercel erkennt Astro automatisch.
-3. Vercel erkennt den installierten `@astrojs/vercel`-Adapter und die beiden Serverless-Routen automatisch.
-4. Build-Befehl `npm run build` prüfen. Die statischen Dateien und Serverless Functions werden vom Adapter passend ausgegeben.
-5. Zunächst ohne aktive Werbung deployen.
-6. Die erzeugte Vercel-URL sowie `/news/` und `/api/news.json` testen.
-7. In den Projekteinstellungen `spielsignal.de` als Domain hinzufügen.
-8. Die von Vercel angezeigten DNS-Einträge beim Domainanbieter exakt hinterlegen.
-9. `www.spielsignal.de` hinzufügen und auf die bevorzugte Domain weiterleiten.
-10. Nach der DNS-Aktualisierung HTTPS, Weiterleitung und Canonical URLs prüfen.
-
-## Checkliste vor dem Start
-
-- [ ] Impressumsdaten vollständig eingetragen
-- [ ] Datenschutzerklärung geprüft und angepasst
-- [ ] Demo-Inhalte ersetzt oder weiterhin klar als Demo sichtbar
-- [ ] Mobile Ansicht getestet
-- [ ] Menü und interne Links getestet
-- [ ] Werbeflächen als „WERBUNG“ gekennzeichnet
-- [ ] Keine AdSense-Skripte vor Consent-Einrichtung aktiv
-- [ ] Keine fremden Artikel oder Bilder kopiert
-- [ ] `/sitemap-index.xml` erreichbar
-- [ ] `/robots.txt` erreichbar
-- [ ] `/rss.xml` erreichbar
-- [ ] Produktions-Build erfolgreich
-
-## Sinnvolle Version 2
-
-- Persistenten, regionsübergreifenden Feed-Cache mit Überwachung ergänzen
-- Titelähnlichkeit zusätzlich per Levenshtein- oder semantischem Vergleich verfeinern
-- Lokale Volltextsuche aus einem beim Build erzeugten Index
-- Echtes Newsletter-Backend mit Double-Opt-in
-- Bildpipeline für eigene oder sauber lizenzierte Titelbilder
-- Redaktionsworkflow mit Entwürfen, Vorschau und Veröffentlichungsstatus
-- Automatisierte Link-, Accessibility- und Lighthouse-Prüfungen
+Werbeplätze sind sichtbar mit `WERBUNG` gekennzeichnet und bleiben ohne gültige Konfiguration
+dezente Platzhalter. Analyse, Werbung und externe Einbettungen sind standardmäßig deaktiviert.
+Details stehen in `.env.example`, `src/config/privacy.ts`, `LEGAL_SETUP.md` und der
+Datenschutzerklärung.

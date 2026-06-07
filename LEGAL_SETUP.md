@@ -77,18 +77,34 @@ und gegebenenfalls eine Consent-Management-Plattform zu ergänzen.
 
 ## RSS-Feeds
 
-Aktiv sind ausschließlich:
+Aktiv ist ausschließlich:
 
-- GameStar News: `https://www.gamestar.de/news/rss/news.rss`
-- GameStar Deals: `https://www.gamestar.de/rss/deals.rss`
-- GameStar Hardware: `https://www.gamestar.de/rss/hardware.rss`
+- GameStar Gaming-News: `https://www.gamestar.de/rss/gaming.rss`
 
 Die Verarbeitung übernimmt nur Quelle, Überschrift, Zeitpunkt, Kategorie und Original-URL.
 Feed-Beschreibungen, Volltexte und fremde Bilder werden nicht übernommen. Die Konfiguration
 liegt zentral in `src/config/newsSources.ts`.
 
-Deaktivierte Kandidaten sind GamePro News, PC Games, PC Games Hardware und MeinMMO. Sie dürfen
+Deaktivierte Kandidaten sind GameStar News, GameStar Deals, GameStar Hardware, GamePro,
+PC Games, PC Games Hardware, MeinMMO und XboxDynasty. Sie dürfen
 erst nach redaktioneller und rechtlicher Prüfung aktiviert werden.
+
+## Verbindliche redaktionelle Regeln
+
+RSS-Feeds dürfen als Themenradar und für klar gekennzeichnete externe Kurzmeldungen verwendet
+werden. Eigene SpielSignal-Artikel benötigen eine eigenständige Struktur, belegbare Fakten,
+eine Quellenbox und eine klare Trennung von Fakten und Einordnung.
+
+Erlaubt sind offizielle Steam-Store-Seiten, Steam-News-Hubs, Publisher- und Entwicklerseiten,
+Patchnotes, Trailer, Pressemitteilungen, eigene Screenshots sowie dokumentierte
+Steam-Store-Bilder bei eindeutiger App-ID.
+
+Nicht erlaubt sind das Kopieren oder absatzweise Umformulieren fremder Magazinartikel, das
+Übernehmen fremder Gliederungen oder Meinungen, fremde Magazinbilder, ungeprüfte Google-Bilder,
+SteamDB-Scraping, erfundene Tests, Bewertungen, Spielzeiten, Deals oder Releases sowie jede
+ungeprüfte automatische Veröffentlichung.
+
+Die vollständige Arbeitsrichtlinie steht in `docs/editorial/editorial-policy.md`.
 
 ## Abschnitte der Datenschutzerklärung später anpassen
 

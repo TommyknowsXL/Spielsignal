@@ -57,7 +57,9 @@ const BLOCKED_NEWS_TERMS = [
   "will smith",
   "james bond",
   "ps5-angebot",
+  "ps5 angebot",
   "nintendo-angebot",
+  "nintendo angebot",
   "lego",
   "mediamarkt",
   "lidl",
@@ -65,6 +67,7 @@ const BLOCKED_NEWS_TERMS = [
   "podcast",
   "quiz",
   "playstation",
+  "unterhaltung",
   "xbox-angebot",
   "apps für den alltag"
 ] as const;

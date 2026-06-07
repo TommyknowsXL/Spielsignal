@@ -12,6 +12,7 @@
     "test:agents": "tsx scripts/test-agent-system.ts",
     "test": "npm run test:feeds && npm run test:content && npm run test:agents",
     "editorial:daily": "tsx scripts/agents/runDailyEditorialQueue.ts",
+    "editorial:create-draft": "tsx scripts/agents/createEditorialDraft.ts",
     "steam:prepare": "tsx scripts/prepare-steam-suggestions.ts",
     "astro": "astro"
   },

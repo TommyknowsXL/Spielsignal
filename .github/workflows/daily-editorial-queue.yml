@@ -42,6 +42,9 @@ jobs:
           STEAM_TOP_SELLERS_ENABLED: "true"
           PUBLIC_STEAM_MOST_PLAYED_ENABLED: "false"
 
+      - name: Summary bestätigen
+        run: test -s "$GITHUB_STEP_SUMMARY"
+
       - name: Tests ausführen
         run: npm test
 

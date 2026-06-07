@@ -1,8 +1,9 @@
 # SpielSignal Agenten-System
 
 Die Agenten-Infrastruktur bereitet ausschließlich redaktionelle Vorschläge vor. Sie schreibt
-keine Artikel in Content Collections, veröffentlicht nichts, erstellt keinen automatischen
-Pull Request und führt keinen Merge oder Push auf `main` aus.
+keine Artikel automatisch, veröffentlicht nichts und führt keinen Merge oder Push auf `main`
+aus. Der manuelle Workflow `Create Editorial Draft` darf einen Entwurf auf einem eigenen
+Branch speichern und einen Pull Request zur menschlichen Prüfung öffnen.
 
 ## Rollen
 
@@ -71,9 +72,20 @@ Qualitätswertung eines Spiels. Es werden keine Reichweitenzahlen erfunden.
 GitHub Actions lädt diese Dateien als Workflow-Artefakt hoch. Der Workflow schreibt sie nicht
 zurück ins Repository.
 
+## Manueller Draft-Workflow
+
+`scripts/agents/createEditorialDraft.ts` lädt einen ausgewählten Kandidaten aus
+`latest-queue.json`. Eine RSS-Meldung bleibt Tippquelle. Geeignete offizielle Quellen werden
+als `primarySources` dokumentiert. Ohne Primärquelle entsteht nur ein
+`needs-source-review`-Gerüst.
+
+Der GitHub-Workflow erstellt `editorial-draft/[slug]` und einen Pull Request. Er enthält weder
+automatischen Merge noch Deployment.
+
 ## Optionale KI-Schnittstelle
 
-`scripts/agents/providers/editorialAiProvider.ts` ist standardmäßig deaktiviert und sendet
+`scripts/agents/providers/editorialAiProvider.ts` ist über `AI_EDITORIAL_ENABLED=false`
+standardmäßig deaktiviert und sendet
 keine API-Anfrage. Eine spätere API-Nutzung verursacht separate Kosten. Schlüssel dürfen nur
 als GitHub Actions Secret oder serverseitige Umgebungsvariable hinterlegt werden.
 

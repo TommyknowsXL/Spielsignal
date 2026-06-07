@@ -9,15 +9,15 @@ Steam-Asset, lokales Kategoriebild, allgemeines lokales SpielSignal-Fallback.
 
 | Dateipfad oder externe URL | Verwendet für | Spiel oder Artikel | Quelle | Quellentyp | Nutzungsgrundlage | Freigabestatus | Datum geprüft |
 |---|---|---|---|---|---|---|---|
-| `/images/demo/general.svg` | allgemeines Fallback | unbekannte Meldungen | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-06 |
-| `/images/demo/steam.svg` | Steam-Fallback | Steam-Trends und Releases | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-06 |
-| `/images/demo/sci-fi.svg` | Kategorie News, Updates, Hardware | externe Meldungen | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-06 |
-| `/images/demo/fantasy.svg` | Kategorie Fantasy und Rollenspiele | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-06 |
-| `/images/demo/survival.svg` | Kategorie Survival | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-06 |
-| `/images/demo/strategy.svg` | Strategie und Simulation | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-06 |
-| `/images/demo/shooter.svg` | Kategorie Shooter | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-06 |
-| `/images/demo/indie.svg` | Kategorie Indie | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-06 |
-| `/images/demo/deals.svg` | Deals und Gratis-Aktionen | externe und redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-06 |
+| `/images/categories/news-default.svg` | allgemeines Fallback | unbekannte Meldungen | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 |
+| `/images/categories/updates.svg` | Kategorie Updates | externe Meldungen | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 |
+| `/images/categories/fantasy.svg` | Kategorie Fantasy | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 |
+| `/images/categories/rollenspiele.svg` | Kategorie Rollenspiele | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 |
+| `/images/categories/survival.svg` | Kategorie Survival | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 |
+| `/images/categories/strategie.svg` | Strategie und Simulation | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 |
+| `/images/categories/shooter.svg` | Kategorie Shooter | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 |
+| `/images/categories/hardware.svg` | Kategorie Hardware | externe Meldungen | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 |
+| `/images/categories/deals.svg` | Deals und Gratis-Aktionen | externe und redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 |
 
 ## Zulässige externe Quellen
 
@@ -38,8 +38,14 @@ Nutzungsgrundlage.
 
 ## Steam-Bildfreigabe
 
-Offizielle Steam-Store-Bilder werden zunächst nur als URL-Kandidaten im Tagesbericht geführt.
-Sie bleiben `pending-review`; öffentlich sichtbar bleibt das lokale Kategorie-Fallback.
+Bei externen Kurzmeldungen darf ein offizielles Steam-Store-Bild nur verwendet werden, wenn
+die App-ID durch einen eindeutigen exakten Store-Treffer ermittelt wurde. Unsichere oder
+mehrdeutige Treffer bleiben beim lokalen Fallback. Ein Ladefehler fällt ebenfalls auf das
+lokale Fallback zurück.
+
+Für eigene Artikel werden offizielle Steam-Store-Bilder zunächst nur als URL-Kandidaten im
+Tagesbericht geführt. Sie bleiben `pending-review`, bis Zuordnung und Bildquelle für den
+Artikel dokumentiert wurden.
 
 Nach manueller Prüfung wird ein Bild anhand seiner App-ID in
 `src/config/approvedSteamImages.ts` eingetragen:
@@ -56,4 +62,5 @@ export const approvedSteamImages = {
 };
 ```
 
-Ohne diesen manuellen Eintrag darf der öffentliche Resolver das externe Bild nicht anzeigen.
+Ohne dokumentierte Zuordnung darf ein eigenes SpielSignal-Artikelbild nicht als freigegeben
+gelten.

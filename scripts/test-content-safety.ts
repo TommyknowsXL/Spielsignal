@@ -8,6 +8,7 @@ import { getTrendingItems } from "../src/lib/trending";
 import type { AggregatedNewsItem } from "../src/lib/newsFeed";
 import { newsSources } from "../src/config/newsSources";
 import { prepareNewsItems } from "../src/lib/newsPresentation";
+import { articleSchema, draftSchema } from "../src/content/config";
 
 const news: AggregatedNewsItem[] = Array.from({ length: 5 }, (_, index) => ({
   id: `item-${index}`,
@@ -67,6 +68,42 @@ assert.equal(
   true
 );
 
+const articleBase = {
+  title: "Geprüfter Artikel",
+  slug: "gepruefter-artikel",
+  articleType: "news-overview",
+  status: "published",
+  createdAt: "2026-06-08T10:00:00.000Z",
+  updatedAt: "2026-06-08T10:00:00.000Z",
+  author: "SpielSignal-Redaktion",
+  tags: ["PC"],
+  summary: "Zusammenfassung",
+  seoTitle: "Geprüfter Artikel | SpielSignal",
+  seoDescription: "Geprüfter Artikel mit offizieller Quelle.",
+  heroImage: "/images/categories/news-default.svg",
+  heroImageSourceType: "spielsignal-fallback",
+  imageRightsStatus: "fallback",
+  externalTipSources: [],
+  primarySources: ["https://store.steampowered.com/app/123456/"]
+} as const;
+assert.equal(articleSchema.safeParse(articleBase).success, true);
+assert.equal(
+  articleSchema.safeParse({ ...articleBase, articleType: "test" }).success,
+  false
+);
+assert.equal(
+  articleSchema.safeParse({ ...articleBase, primarySources: [] }).success,
+  false
+);
+assert.equal(
+  draftSchema.safeParse({
+    ...articleBase,
+    status: "needs-source-review",
+    primarySources: []
+  }).success,
+  true
+);
+
 const files = [
   "src/lib/newsFeed.ts",
   "src/lib/steamData.ts",
@@ -85,15 +122,14 @@ assert.match(rightsDoc, /pending-review/);
 assert.match(rightsDoc, /fallback/);
 
 for (const component of [
-  "src/components/NewsCard.astro",
   "src/components/ExternalNewsCard.astro",
-  "src/components/ReviewCard.astro",
-  "src/components/RecommendationCard.astro",
-  "src/components/DealCard.astro"
+  "src/components/ArticleCard.astro",
+  "src/components/SteamTrendsSidebar.astro",
+  "src/components/TrendingSidebar.astro"
 ]) {
   const source = readFileSync(component, "utf8");
   assert.match(source, /<img/);
-  assert.match(source, /card-link/);
+  assert.match(source, /card-link|sidebar-entry/);
 }
 
 const trendingComponent = readFileSync("src/components/TrendingSidebar.astro", "utf8");
@@ -111,14 +147,38 @@ assert.match(steamTrendsComponent, /<img/);
 const homePage = readFileSync("src/pages/index.astro", "utf8");
 assert.doesNotMatch(homePage, /demoNews|example\.com|Beispielpreis|DealCard|ReleaseCalendar|Newsletter/i);
 assert.match(homePage, /slice\(0, 6\)/);
-assert.match(homePage, /imageKind === "fallback"/);
+assert.match(homePage, /imageKind === "steam"/);
 assert.match(homePage, /ExternalNewsCard/);
+assert.match(homePage, /getCollection\("articles"/);
+assert.match(homePage, /data\.status === "published"/);
 const newsPage = readFileSync("src/pages/news/index.astro", "utf8");
 assert.match(newsPage, /limit: 24/);
 assert.doesNotMatch(newsPage, /demoNews|import NewsCard/);
 const hero = readFileSync("src/components/Hero.astro", "utf8");
 assert.match(hero, /spielsignal-gaming-hero\.svg/);
+assert.match(hero, /Alles Wichtige aus der PC-Gaming-Welt/);
 assert.equal(readFileSync("public/images/hero/spielsignal-gaming-hero.svg", "utf8").includes("<svg"), true);
+
+const articleIndex = readFileSync("src/pages/artikel/index.astro", "utf8");
+const articleDetail = readFileSync("src/pages/artikel/[slug].astro", "utf8");
+assert.match(articleIndex, /getCollection\("articles"/);
+assert.match(articleDetail, /getCollection\("articles"/);
+assert.doesNotMatch(articleIndex + articleDetail, /getCollection\("drafts"/);
+assert.match(articleDetail, /data\.status === "published"/);
+assert.match(articleDetail, /application\/ld\+json|jsonLd/);
+assert.match(articleDetail, /noopener noreferrer/);
+
+for (const publicPage of [
+  "src/pages/index.astro",
+  "src/pages/tests/index.astro",
+  "src/pages/deals/index.astro",
+  "src/pages/lohnt-sich-das/index.astro",
+  "src/pages/artikel/index.astro",
+  "src/pages/artikel/[slug].astro"
+]) {
+  const source = readFileSync(publicPage, "utf8");
+  assert.doesNotMatch(source, /example\.com|Demo-Test|Demo-Deal|Beispielpreis/i);
+}
 
 const widget = readFileSync("src/components/SteamStoreWidgetPlaceholder.astro", "utf8");
 assert.equal(widget.includes("<iframe"), false);

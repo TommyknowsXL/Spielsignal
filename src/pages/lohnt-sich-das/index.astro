@@ -1,9 +1,21 @@
 ---
-import ListingPage from "../../components/ListingPage.astro";
-const items = [
-  { title: "Lohnt sich das auch für Solo-Spieler?", description: "Wir prüfen Zugänglichkeit, Matchmaking und Inhalte ohne feste Gruppe.", category: "Solo", href: "/artikel/demo-empfehlung-solo/", label: "Demo lesen" },
-  { title: "Wie viel Spielzeit steckt wirklich drin?", description: "Kampagne, Nebeninhalte und Wiederholungen werden getrennt betrachtet.", category: "Spielzeit", href: "/artikel/demo-empfehlung-solo/", label: "Demo lesen" },
-  { title: "Für wen ist das Spiel geeignet?", description: "Eine Einordnung nach Erfahrung, Spielstil und verfügbarem Zeitbudget.", category: "Zielgruppe", href: "/artikel/demo-empfehlung-solo/", label: "Demo lesen" }
-];
+import BaseLayout from "../../layouts/BaseLayout.astro";
 ---
-<ListingPage title="Lohnt sich das?" eyebrow="Persönliche Empfehlungen" description="Konkrete Antworten auf konkrete Kauf- und Zeitfragen. Derzeit zeigen Demo-Inhalte das spätere Format." items={items} />
+
+<BaseLayout
+  title="Lohnt sich das? | SpielSignal"
+  description="Eigene Einordnungen für PC-Spieler, transparent und quellenbasiert."
+>
+  <header class="page-hero page-hero--compact container">
+    <nav class="breadcrumbs" aria-label="Brotkrumen"><a href="/">Startseite</a><span>/</span><span>Lohnt sich das?</span></nav>
+    <p class="eyebrow">Eigene Einordnung</p>
+    <h1>Lohnt sich das?</h1>
+    <p>Einordnungen erscheinen erst nach eigener Recherche und mit klar dokumentierten offenen Punkten.</p>
+  </header>
+  <section class="section section--compact container">
+    <div class="empty-editorial-state">
+      <strong>Die ersten Einordnungen sind in Vorbereitung.</strong>
+      <p>Keine pauschalen Kaufempfehlungen, keine erfundenen Erfahrungen.</p>
+    </div>
+  </section>
+</BaseLayout>

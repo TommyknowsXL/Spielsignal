@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, readdir } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -45,6 +45,10 @@ import {
   STEAM_TOP_SELLERS_GLOBAL_URL
 } from "../src/lib/steam/steamTopSellersProvider";
 import type { EditorialCandidate } from "./agents/types";
+import {
+  createEditorialDraft,
+  isSuitablePrimarySource
+} from "./agents/createEditorialDraft";
 
 const baseCandidate: EditorialCandidate = {
   id: "candidate-1",
@@ -57,7 +61,7 @@ const baseCandidate: EditorialCandidate = {
   score: 20,
   scoreReasons: ["Erkennbarer PC-Gaming-Bezug"],
   imageStatus: "fallback",
-  imagePath: "/images/demo/general.svg",
+  imagePath: "/images/categories/news-default.svg",
   editorialStatus: "needs-review",
   openChecks: ["Originalquelle prüfen."],
   recommendedNextAction: "Redaktionell prüfen."
@@ -228,11 +232,45 @@ assert.equal(
 );
 
 const aiResult = await prepareEditorialAiDrafts([baseCandidate], {
-  PUBLIC_AI_EDITORIAL_ENABLED: "false",
+  AI_EDITORIAL_ENABLED: "false",
   OPENAI_API_KEY: undefined
 });
 assert.equal(aiResult.enabled, false);
 assert.deepEqual(aiResult.drafts, []);
+
+assert.equal(isSuitablePrimarySource("https://store.steampowered.com/app/123/"), true);
+assert.equal(isSuitablePrimarySource("https://www.gamestar.de/artikel/test.html"), false);
+
+const draftRoot = await mkdtemp(join(tmpdir(), "spielsignal-draft-"));
+await mkdir(join(draftRoot, "src/data/editorial"), { recursive: true });
+await writeFile(
+  join(draftRoot, "src/data/editorial/latest-queue.json"),
+  JSON.stringify({
+    candidates: [baseCandidate]
+  }),
+  "utf8"
+);
+const blockedDraft = await createEditorialDraft({
+  rootDirectory: draftRoot,
+  candidateId: baseCandidate.id,
+  articleType: "news-overview",
+  generatedAt: "2026-06-08T10:00:00.000Z"
+});
+assert.equal(blockedDraft.status, "needs-source-review");
+const blockedDraftMarkdown = await readFile(blockedDraft.filePath, "utf8");
+assert.match(blockedDraftMarkdown, /Offizielle Primärquelle fehlt/);
+assert.match(blockedDraftMarkdown, /externalTipSources/);
+assert.doesNotMatch(blockedDraftMarkdown, /status: "published"/);
+
+const sourcedDraft = await createEditorialDraft({
+  rootDirectory: draftRoot,
+  candidateId: baseCandidate.id,
+  articleType: "release-check",
+  primarySourceUrls: ["https://store.steampowered.com/app/123456/Test/"],
+  generatedAt: "2026-06-08T11:00:00.000Z"
+});
+assert.equal(sourcedDraft.status, "draft");
+assert.equal(sourcedDraft.primarySources.length, 1);
 
 const workflow = await readFile(
   ".github/workflows/daily-editorial-queue.yml",
@@ -259,6 +297,21 @@ assert.equal(
   (workflow.match(/STEAM_WEB_API_KEY:/g) ?? []).length,
   1
 );
+assert.match(workflow, /GITHUB_STEP_SUMMARY|Summary bestätigen/);
+
+const draftWorkflow = await readFile(
+  ".github/workflows/create-editorial-draft.yml",
+  "utf8"
+);
+assert.match(draftWorkflow, /name: Create Editorial Draft/);
+assert.match(draftWorkflow, /candidate_id:[\s\S]*required: true/);
+assert.match(draftWorkflow, /contents: write/);
+assert.match(draftWorkflow, /pull-requests: write/);
+assert.match(draftWorkflow, /git checkout -b/);
+assert.match(draftWorkflow, /gh pr create/);
+assert.doesNotMatch(draftWorkflow, /\bgh\s+pr\s+merge\b|\bgit\s+merge\b/i);
+assert.doesNotMatch(draftWorkflow, /\bvercel\b|\bdeploy\b/i);
+assert.doesNotMatch(draftWorkflow, /run:\s*[^\n]*\$\{\{\s*inputs\./);
 
 const agentFiles = await readdir("scripts/agents", {
   recursive: true,
@@ -594,7 +647,7 @@ const enriched = enrichRssCandidatesWithSteam(
 assert.equal(enriched[0].steamAppId, "1001");
 assert.equal(enriched[0].imageStatus, "pending-review");
 assert.equal(enriched[0].imageSourceType, "steam-store");
-assert.equal(enriched[0].imagePath, "/images/demo/general.svg");
+assert.equal(enriched[0].imagePath, "/images/categories/news-default.svg");
 
 const beforeCachedTopSellers = steamFetchCount;
 await getSteamTopSellers({

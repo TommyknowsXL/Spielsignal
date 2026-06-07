@@ -1,11 +1,13 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
+import { getCollection } from "astro:content";
 import AdSlot from "../components/AdSlot.astro";
+import ArticleCard from "../components/ArticleCard.astro";
 import ExternalNewsCard from "../components/ExternalNewsCard.astro";
 import Hero from "../components/Hero.astro";
 import SectionHeader from "../components/SectionHeader.astro";
 import SteamTrendsSidebar from "../components/SteamTrendsSidebar.astro";
 import TrendingSidebar from "../components/TrendingSidebar.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
 import { getAggregatedNews } from "../lib/newsFeed";
 import { prepareNewsItems } from "../lib/newsPresentation";
 import { getSteamTrends } from "../lib/steamData";
@@ -19,62 +21,81 @@ Astro.response.headers.set(
 );
 
 const feedResult = await getAggregatedNews();
-const preparedNews = await prepareNewsItems(feedResult.items, { limit: 24 });
+const preparedNews = await prepareNewsItems(feedResult.items, { limit: 18 });
+const seenUrls = new Set<string>();
 const seenSteamApps = new Set<string>();
-const topNews = preparedNews
+const topNews = [...preparedNews]
+  .sort((left, right) => {
+    const imagePriority = (item: typeof left) => item.imageKind === "steam" ? 0 : item.imageKind === "approved" ? 1 : 2;
+    return imagePriority(left) - imagePriority(right) || Date.parse(right.date) - Date.parse(left.date);
+  })
   .filter((item) => {
-    if (item.imageKind === "fallback" || !item.steamAppId) return false;
-    if (seenSteamApps.has(item.steamAppId)) return false;
-    seenSteamApps.add(item.steamAppId);
+    if (seenUrls.has(item.url) || item.similarTo) return false;
+    if (item.steamAppId && seenSteamApps.has(item.steamAppId)) return false;
+    seenUrls.add(item.url);
+    if (item.steamAppId) seenSteamApps.add(item.steamAppId);
     return true;
   })
   .slice(0, 6);
 const trendingResult = await getTrendingItems(preparedNews);
 const steamTrends = await getSteamTrends();
+const articles = (await getCollection("articles", ({ data }) => data.status === "published"))
+  .sort((left, right) => right.data.createdAt.valueOf() - left.data.createdAt.valueOf())
+  .slice(0, 3);
 ---
 
 <BaseLayout
   title="SpielSignal – Aktuelle PC-Gaming-News"
-  description="Aktuelle PC-Gaming-News und offizielle Steam-Trends, kompakt und ohne Themenballast."
+  description="Aktuelle PC-Gaming-News, offizielle Steam-Trends und eigene SpielSignal-Artikel."
 >
   <Hero />
 
-  <section class="section section--compact" id="aktuelle-meldungen">
-    <div class="container home-magazine">
-      <div class="home-main">
-        <SectionHeader eyebrow="Aktuell im PC-Gaming" title="Top-Meldungen" href="/news/" linkLabel="Alle News" />
-        {
-          topNews.length ? (
-            <div class="grid news-grid">
-              {topNews.map((item) => <ExternalNewsCard item={item} />)}
-            </div>
-          ) : (
-            <div class="empty-editorial-state">
-              <strong>Neue Meldungen werden gerade geprüft.</strong>
-              <p>Hier erscheinen nur Gaming-News mit eindeutig zugeordnetem offiziellem Spielbild.</p>
-              <a class="text-link" href="/news/">Alle geprüften Meldungen ansehen →</a>
-            </div>
-          )
-        }
-      </div>
+  <div class="container home-ad"><AdSlot format="wide" /></div>
 
-      <aside class="home-sidebar">
-        {trendingResult.items.length ? <TrendingSidebar result={trendingResult} /> : null}
+  <section class="section section--compact" id="aktuelle-meldungen">
+    <div class="container">
+      <SectionHeader eyebrow="Externe Kurzmeldungen" title="Aktuelle Gaming-News" href="/news/" linkLabel="Alle News" />
+      {topNews.length ? (
+        <div class="grid grid-3">{topNews.map((item) => <ExternalNewsCard item={item} />)}</div>
+      ) : (
+        <div class="empty-editorial-state">
+          <strong>Neue Meldungen werden gerade geprüft.</strong>
+          <p>Sobald der freigegebene Gaming-Feed passende PC-Themen liefert, erscheinen sie hier.</p>
+        </div>
+      )}
+    </div>
+  </section>
+
+  <section class="section section--compact">
+    <div class="container home-signal-grid">
+      <div>
+        <p class="eyebrow">Leserinteresse</p>
+        {trendingResult.items.length ? (
+          <TrendingSidebar result={{ ...trendingResult, heading: "Trending auf SpielSignal" }} />
+        ) : (
+          <div class="empty-editorial-state"><p>Noch keine aktuellen Trends verfügbar.</p></div>
+        )}
+      </div>
+      <div>
+        <p class="eyebrow">Offizielle Store-Daten</p>
         <SteamTrendsSidebar items={steamTrends} />
-        <AdSlot format="sidebar" />
-      </aside>
+      </div>
     </div>
   </section>
 
   <section class="section section--compact">
     <div class="container">
-      <SectionHeader eyebrow="Aus der Redaktion" title="Neueste Tests" href="/tests/" linkLabel="Zum Testbereich" />
-      <div class="empty-editorial-state empty-editorial-state--inline">
-        <strong>Die ersten SpielSignal-Tests sind in Vorbereitung.</strong>
-        <p>Wir veröffentlichen Bewertungen erst, wenn Spiele gründlich geprüft wurden.</p>
-      </div>
+      <SectionHeader eyebrow="Aus der Redaktion" title="Eigene SpielSignal-Artikel" href="/artikel/" linkLabel="Alle Artikel" />
+      {articles.length ? (
+        <div class="grid grid-3">{articles.map((entry) => <ArticleCard entry={entry} />)}</div>
+      ) : (
+        <div class="empty-editorial-state empty-editorial-state--inline">
+          <strong>Die ersten eigenen SpielSignal-Artikel sind in Vorbereitung.</strong>
+          <p>Veröffentlicht wird erst nach Quellen-, Fakten- und Bildprüfung.</p>
+        </div>
+      )}
     </div>
   </section>
 
-  <div class="container"><AdSlot format="wide" /></div>
+  <div class="container home-ad home-ad--bottom"><AdSlot format="wide" /></div>
 </BaseLayout>

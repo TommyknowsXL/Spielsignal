@@ -58,7 +58,7 @@ export const newsSources: NewsSource[] = [
   {
     name: "GamePro News",
     homepageUrl: "https://www.gamepro.de/",
-    feedUrl: "https://www.gamepro.de/rss/gpnews.rss",
+    feedUrl: null,
     enabled: false,
     categoryMapping: "Gaming allgemein",
     usageNotes:
@@ -90,6 +90,15 @@ export const newsSources: NewsSource[] = [
     categoryMapping: "Online-Spiele",
     usageNotes:
       "Feed-Adresse und Nutzungsbedingungen vor Aktivierung manuell prüfen."
+  },
+  {
+    name: "XboxDynasty",
+    homepageUrl: "https://www.xboxdynasty.de/",
+    feedUrl: null,
+    enabled: false,
+    categoryMapping: "Gaming allgemein",
+    usageNotes:
+      "Feed-Adresse, Nutzungsbedingungen und PC-Gaming-Bezug vor Aktivierung manuell prüfen."
   }
 ];
 

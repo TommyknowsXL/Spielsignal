@@ -1,7 +1,18 @@
 ---
-import ListingPage from "../../components/ListingPage.astro";
-const items = [
-  { title: "Demo-Deal: Preisvergleich folgt nach Freigabe", description: "Spätere Deals nennen Preisstand, Händler, Plattform und Einschränkungen transparent.", category: "Deals", href: "/artikel/demo-deal/", label: "Deal-Hinweis ansehen" }
-];
+import BaseLayout from "../../layouts/BaseLayout.astro";
 ---
-<ListingPage title="Deals" eyebrow="Transparent gekennzeichnet" description="Geprüfte Angebote und Kaufhinweise sollen hier erscheinen. Es gibt derzeit keine echten Angebote oder Affiliate-Links." items={items} />
+
+<BaseLayout title="Deals | SpielSignal" description="Geprüfte PC-Gaming-Deals bei SpielSignal.">
+  <header class="page-hero page-hero--compact container">
+    <nav class="breadcrumbs" aria-label="Brotkrumen"><a href="/">Startseite</a><span>/</span><span>Deals</span></nav>
+    <p class="eyebrow">Preis und Laufzeit geprüft</p>
+    <h1>Gaming-Deals</h1>
+    <p>Deals erscheinen erst, wenn Preis, Anbieter, Laufzeit und mögliche Einschränkungen geprüft sind.</p>
+  </header>
+  <section class="section section--compact container">
+    <div class="empty-editorial-state">
+      <strong>Aktuell sind keine geprüften Deals veröffentlicht.</strong>
+      <p>Wir zeigen keine erfundenen Preise oder Rabatte.</p>
+    </div>
+  </section>
+</BaseLayout>

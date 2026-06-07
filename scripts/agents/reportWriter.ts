@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { EditorialCandidate, EditorialQueueReport } from "./types";
 
@@ -14,6 +14,7 @@ function candidateMarkdown(candidate: EditorialCandidate, rank: number): string 
   return `## ${rank + 1}. ${candidate.title}
 
 - **Spielname:** ${markdownValue(candidate.gameTitle)}
+- **Candidate ID:** ${candidate.id}
 - **Steam-App-ID:** ${markdownValue(candidate.steamAppId)}
 - **Steam-Store-Link:** ${markdownLink("Steam öffnen", candidate.steamStoreUrl)}
 - **Quelle:** [${candidate.sourceName}](${candidate.sourceUrl})
@@ -40,7 +41,9 @@ export function renderMarkdownReport(report: EditorialQueueReport): string {
     ? report.sourceErrors.map((error) => `- ${error}`).join("\n")
     : "- Keine Quellenfehler gemeldet.";
 
-  return `# SpielSignal Tagesbericht: ${report.reportDate}
+  const markdown = `# SpielSignal Tagesauswahl
+
+**Datum:** ${report.reportDate}
 
 Erzeugt: ${report.generatedAt}
 
@@ -77,6 +80,7 @@ ${errors}
 
 ${candidates}
 `;
+  return `${markdown.trimEnd()}\n`;
 }
 
 export async function writeEditorialReport(
@@ -105,6 +109,14 @@ export async function writeEditorialReport(
     writeFile(archiveJson, json, "utf8"),
     writeFile(markdownReport, renderMarkdownReport(report), "utf8")
   ]);
+
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    await appendFile(
+      process.env.GITHUB_STEP_SUMMARY,
+      renderMarkdownReport(report),
+      "utf8"
+    );
+  }
 
   return { latestJson, archiveJson, markdownReport };
 }

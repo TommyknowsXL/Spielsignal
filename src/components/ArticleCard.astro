@@ -1,0 +1,51 @@
+---
+import type { CollectionEntry } from "astro:content";
+
+interface Props {
+  entry: CollectionEntry<"articles">;
+}
+
+const { entry } = Astro.props;
+const data = entry.data;
+const words = entry.body?.trim().split(/\s+/).length ?? 0;
+const readingMinutes = Math.max(1, Math.ceil(words / 220));
+const formattedDate = data.createdAt.toLocaleDateString("de-DE", {
+  day: "2-digit",
+  month: "long",
+  year: "numeric"
+});
+---
+
+<article class="card article-card">
+  <a class="card-link" href={`/artikel/${data.slug}/`}>
+    <img
+      class="card-image"
+      src={data.heroImage}
+      data-fallback-src="/images/categories/news-default.svg"
+      alt={`Titelbild zu ${data.title}`}
+      width="800"
+      height="450"
+      loading="lazy"
+    />
+    <div class="card-body">
+      <span class="badge">{data.articleType}</span>
+      <h3>{data.title}</h3>
+      <p class="muted card-teaser">{data.summary}</p>
+      <div class="meta">
+        <time datetime={data.createdAt.toISOString()}>{formattedDate}</time>
+        <span>{readingMinutes} Min. Lesezeit</span>
+        {data.gameTitle ? <span>{data.gameTitle}</span> : null}
+      </div>
+      {data.tags.length ? <div class="article-tags">{data.tags.map((tag) => <span>#{tag}</span>)}</div> : null}
+      <span class="text-link">Artikel lesen →</span>
+    </div>
+  </a>
+</article>
+
+<script>
+  document.querySelectorAll<HTMLImageElement>(".article-card img[data-fallback-src]").forEach((image) => {
+    image.addEventListener("error", () => {
+      image.src = image.dataset.fallbackSrc ?? "/images/categories/news-default.svg";
+    }, { once: true });
+  });
+</script>

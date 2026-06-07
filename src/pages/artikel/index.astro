@@ -1,0 +1,35 @@
+---
+import { getCollection } from "astro:content";
+import AdSlot from "../../components/AdSlot.astro";
+import ArticleCard from "../../components/ArticleCard.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const articles = (await getCollection("articles", ({ data }) => data.status === "published"))
+  .sort((left, right) => right.data.createdAt.valueOf() - left.data.createdAt.valueOf());
+---
+
+<BaseLayout
+  title="Eigene SpielSignal-Artikel"
+  description="Eigene Einordnungen, Release-Checks und Guides der SpielSignal-Redaktion."
+>
+  <header class="page-hero page-hero--compact container">
+    <nav class="breadcrumbs" aria-label="Brotkrumen">
+      <a href="/">Startseite</a><span>/</span><span>Artikel</span>
+    </nav>
+    <p class="eyebrow">Aus der Redaktion</p>
+    <h1>Eigene SpielSignal-Artikel</h1>
+    <p>Eigenständig recherchiert, mit dokumentierten Quellen und klarer Trennung zwischen Fakten und Einordnung.</p>
+  </header>
+
+  <section class="section section--compact container">
+    {articles.length ? (
+      <div class="grid grid-3">{articles.map((entry) => <ArticleCard entry={entry} />)}</div>
+    ) : (
+      <div class="empty-editorial-state">
+        <strong>Die ersten eigenen SpielSignal-Artikel sind in Vorbereitung.</strong>
+        <p>Entwürfe werden erst nach Quellen-, Bild- und Faktenprüfung veröffentlicht.</p>
+      </div>
+    )}
+  </section>
+  <div class="container"><AdSlot format="wide" /></div>
+</BaseLayout>

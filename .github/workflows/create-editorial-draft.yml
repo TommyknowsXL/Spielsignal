@@ -1,0 +1,123 @@
+name: Create Editorial Draft
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_id:
+        description: "Candidate ID aus der Daily Editorial Queue"
+        required: true
+        type: string
+      article_type:
+        description: "news-overview, release-check, first-impression oder free-promotion"
+        required: true
+        type: choice
+        options:
+          - news-overview
+          - release-check
+          - first-impression
+          - free-promotion
+      primary_source_urls:
+        description: "Offizielle Quellen-URLs, durch Komma getrennt"
+        required: false
+        type: string
+      editorial_note:
+        description: "Eigene Notiz oder gewünschter Schwerpunkt"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-draft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Artikelentwurf erzeugen
+        id: draft
+        run: npm run editorial:create-draft -- "$CANDIDATE_ID" "$ARTICLE_TYPE" "$PRIMARY_SOURCE_URLS" "$EDITORIAL_NOTE"
+        env:
+          CANDIDATE_ID: ${{ inputs.candidate_id }}
+          ARTICLE_TYPE: ${{ inputs.article_type }}
+          PRIMARY_SOURCE_URLS: ${{ inputs.primary_source_urls }}
+          EDITORIAL_NOTE: ${{ inputs.editorial_note }}
+          AI_EDITORIAL_ENABLED: ${{ vars.AI_EDITORIAL_ENABLED || 'false' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Entwurf prüfen
+        run: |
+          npm test
+          npm run build
+
+      - name: Branch und Commit erstellen
+        env:
+          BRANCH_NAME: ${{ steps.draft.outputs.branchName }}
+          DRAFT_PATH: ${{ steps.draft.outputs.filePath }}
+          DRAFT_SLUG: ${{ steps.draft.outputs.slug }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH_NAME"
+          git add "$DRAFT_PATH"
+          git commit -m "content: add editorial draft $DRAFT_SLUG"
+          git push --set-upstream origin "$BRANCH_NAME"
+
+      - name: Pull Request erstellen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH_NAME: ${{ steps.draft.outputs.branchName }}
+          PR_TITLE: ${{ steps.draft.outputs.title }}
+          CANDIDATE_ID: ${{ steps.draft.outputs.candidateId }}
+          ARTICLE_TYPE: ${{ steps.draft.outputs.articleType }}
+          GAME_TITLE: ${{ steps.draft.outputs.gameTitle }}
+          STEAM_APP_ID: ${{ steps.draft.outputs.steamAppId }}
+          EXTERNAL_TIP_SOURCE: ${{ steps.draft.outputs.externalTipSource }}
+          PRIMARY_SOURCES: ${{ steps.draft.outputs.primarySources }}
+          IMAGE_SOURCE: ${{ steps.draft.outputs.imageSource }}
+          IMAGE_RIGHTS_STATUS: ${{ steps.draft.outputs.imageRightsStatus }}
+          OPEN_CHECKS: ${{ steps.draft.outputs.openChecks }}
+        run: |
+          cat > pr-body.md <<EOF
+          SpielSignal Artikelentwurf
+
+          - Candidate ID: $CANDIDATE_ID
+          - Artikeltyp: $ARTICLE_TYPE
+          - Spiel: $GAME_TITLE
+          - Steam-App-ID: $STEAM_APP_ID
+          - externe Tippquelle: $EXTERNAL_TIP_SOURCE
+          - Primärquellen: $PRIMARY_SOURCES
+          - Bildquelle: $IMAGE_SOURCE
+          - Bildfreigabestatus: $IMAGE_RIGHTS_STATUS
+          - offene Prüfungen: $OPEN_CHECKS
+
+          Vor Merge prüfen:
+          - [ ] Fakten korrekt?
+          - [ ] eigene Struktur?
+          - [ ] keine kopierten Formulierungen?
+          - [ ] Bildquelle dokumentiert?
+          - [ ] Primärquelle vorhanden?
+          - [ ] SEO-Titel sinnvoll?
+          - [ ] Artikeltyp korrekt?
+          - [ ] keine erfundene Spielzeit?
+          - [ ] kein erfundener Test?
+          EOF
+          gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "Editorial Draft: $PR_TITLE" \
+            --body-file pr-body.md
