@@ -58,6 +58,7 @@ assert.match(article, /SteamTrendsSidebar/);
 assert.match(article, /AdSlot/);
 assert.match(article, /placement="article-bottom"/);
 assert.ok(article.indexOf('placement="article-bottom"') < article.indexOf("data-article-more-news"));
+assert.ok(article.indexOf("</aside>") < article.indexOf("data-article-more-news"));
 assert.match(article, /placement="article-sidebar"/);
 assert.match(contentBlocks, /article-content-image/);
 assert.match(contentBlocks, /Bildquelle:/);
