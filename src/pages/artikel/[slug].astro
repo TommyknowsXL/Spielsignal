@@ -37,7 +37,8 @@ const imageCredit = data.steamAppId === "1297900"
   : `Bildquelle: ${data.heroImageSourceType === "steam-store" ? "Steam" : "offizielle Quelle"}`;
 const sourceLabel = (source: string) => {
   const host = new URL(source).hostname.replace(/^www\./, "");
-  if (host.includes("steampowered.com")) return "Offizielle Steam-Store-Seite";
+  if (host.includes("steampowered.com")) return "Steam";
+  if (host.includes("thqnordic.com")) return "THQ Nordic";
   return `Offizielle Quelle: ${host}`;
 };
 const jsonLd = {

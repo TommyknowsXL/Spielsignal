@@ -27,7 +27,8 @@
   "devDependencies": {
     "@astrojs/check": "latest",
     "tsx": "latest",
-    "typescript": "latest"
+    "typescript": "latest",
+    "yaml": "^2.9.0"
   },
   "overrides": {
     "@vercel/routing-utils": {
