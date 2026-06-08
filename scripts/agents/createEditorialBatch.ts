@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, relative } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { isSuitablePrimarySource } from "./createEditorialDraft";
 import {
@@ -18,11 +18,14 @@ import type { EditorialCandidate, EditorialQueueReport } from "./types";
 
 const MAX_BATCH_ARTICLES = 5;
 const MAX_AVAILABLE_CANDIDATE_IDS = 20;
+export const DEFAULT_EDITORIAL_QUEUE_PATH = "src/data/editorial/latest-queue.json";
 const ARTICLE_TYPES = ["news-overview", "release-check", "free-promotion", "guide"] as const;
 type BatchArticleType = (typeof ARTICLE_TYPES)[number];
+export type BatchSelectionMode = "manual" | "auto-top";
 
 export type CreateEditorialBatchOptions = {
-  candidateIds: string[];
+  candidateIds?: string[];
+  selectionMode?: BatchSelectionMode;
   articleTypeDefault: BatchArticleType;
   primarySourceGroups?: string[][];
   editorialNote?: string;
@@ -31,6 +34,7 @@ export type CreateEditorialBatchOptions = {
   generatedAt?: string;
   environment?: Record<string, string | undefined>;
   fetchImpl?: typeof fetch;
+  queuePath?: string;
 };
 
 export type BatchCandidateResult = {
@@ -96,8 +100,12 @@ function primarySourcesFor(candidate: EditorialCandidate, supplied: string[]): s
   ]);
 }
 
-function missingCandidateError(id: string, queue: EditorialQueueReport): Error {
-  const safeId = id.replace(/[\r\n]/g, " ").slice(0, 120);
+function displayQueuePath(queuePath: string, rootDirectory: string): string {
+  const displayed = relative(rootDirectory, queuePath).replace(/\\/g, "/");
+  return displayed && !displayed.startsWith("../") ? displayed : queuePath.replace(/\\/g, "/");
+}
+
+function availableCandidateIds(queue: EditorialQueueReport): string {
   const availableIds = queue.candidates
     .slice(0, MAX_AVAILABLE_CANDIDATE_IDS)
     .map((candidate) => `- ${candidate.id}`);
@@ -105,15 +113,98 @@ function missingCandidateError(id: string, queue: EditorialQueueReport): Error {
   const availableText = availableIds.length
     ? availableIds.join("\n")
     : "- Keine Candidate IDs verfügbar";
-  const remainingText = remaining > 0
-    ? `\n- ... und ${remaining} weitere IDs in latest-queue.json`
-    : "";
+  return remaining > 0
+    ? `${availableText}\n- ... und ${remaining} weitere IDs`
+    : availableText;
+}
+
+function missingCandidateError(
+  id: string,
+  queue: EditorialQueueReport,
+  queuePath: string,
+  rootDirectory: string
+): Error {
+  const safeId = id.replace(/[\r\n]/g, " ").slice(0, 120);
 
   return new Error(
-    `Candidate ID nicht gefunden: ${safeId}\n\n` +
-    "Verfügbare Candidate IDs in der frisch erzeugten Queue:\n" +
-    `${availableText}${remainingText}`
+    "Candidate ID nicht in der aktuell verwendeten Queue gefunden:\n" +
+    `${safeId}\n\n` +
+    `Verwendete Queue:\n${displayQueuePath(queuePath, rootDirectory)}\n\n` +
+    `Queue erzeugt:\n${queue.generatedAt}\n\n` +
+    "Verfügbare Candidate IDs:\n" +
+    availableCandidateIds(queue)
   );
+}
+
+export async function loadEditorialQueue(
+  queuePathInput = DEFAULT_EDITORIAL_QUEUE_PATH,
+  rootDirectory = process.cwd()
+): Promise<{ queue: EditorialQueueReport; queuePath: string }> {
+  const queuePath = isAbsolute(queuePathInput)
+    ? queuePathInput
+    : resolve(rootDirectory, queuePathInput);
+  let rawQueue: string;
+  try {
+    rawQueue = await readFile(queuePath, "utf8");
+  } catch {
+    throw new Error(`Queue-Datei nicht gefunden: ${displayQueuePath(queuePath, rootDirectory)}`);
+  }
+
+  let queue: EditorialQueueReport;
+  try {
+    queue = JSON.parse(rawQueue) as EditorialQueueReport;
+  } catch {
+    throw new Error(`Queue-Datei enthält kein valides JSON: ${displayQueuePath(queuePath, rootDirectory)}`);
+  }
+  if (!Array.isArray(queue.candidates) || queue.candidates.length === 0) {
+    throw new Error(`Queue-Datei enthält keine Kandidaten: ${displayQueuePath(queuePath, rootDirectory)}`);
+  }
+  if (typeof queue.generatedAt !== "string" || !queue.generatedAt.trim()) {
+    throw new Error(`Queue-Erzeugungszeitpunkt fehlt: ${displayQueuePath(queuePath, rootDirectory)}`);
+  }
+  return { queue, queuePath };
+}
+
+export function selectBatchCandidates(input: {
+  queue: EditorialQueueReport;
+  queuePath: string;
+  rootDirectory: string;
+  selectionMode: BatchSelectionMode;
+  candidateIds?: string[];
+  maxArticles: number;
+}): EditorialCandidate[] {
+  if (input.selectionMode === "auto-top") {
+    const selected = input.queue.candidates
+      .map((candidate) => ({
+        candidate,
+        interestScore: runReaderInterestCheck(candidate).score
+      }))
+      .filter((entry) => entry.interestScore >= 60)
+      .sort((left, right) =>
+        right.interestScore - left.interestScore ||
+        right.candidate.score - left.candidate.score ||
+        left.candidate.id.localeCompare(right.candidate.id)
+      )
+      .slice(0, input.maxArticles)
+      .map((entry) => entry.candidate);
+    if (!selected.length) {
+      throw new Error(
+        `Keine geeigneten Kandidaten für auto-top in ${displayQueuePath(input.queuePath, input.rootDirectory)} gefunden.`
+      );
+    }
+    return selected;
+  }
+
+  const candidateIds = [...new Set((input.candidateIds ?? []).map((id) => id.trim()).filter(Boolean))];
+  if (!candidateIds.length) throw new Error("Im Auswahlmodus manual ist mindestens eine Candidate ID erforderlich.");
+  if (candidateIds.length > MAX_BATCH_ARTICLES) throw new Error("Maximal 5 Candidate IDs sind zulässig.");
+  return candidateIds.slice(0, input.maxArticles).map((id) => {
+    const candidate = input.queue.candidates.find((entry) => entry.id === id);
+    if (!candidate) {
+      throw missingCandidateError(id, input.queue, input.queuePath, input.rootDirectory);
+    }
+    return candidate;
+  });
 }
 
 function sourceLabel(source: string): string {
@@ -404,19 +495,25 @@ export async function createEditorialBatch(
 ): Promise<EditorialBatchResult> {
   const rootDirectory = options.rootDirectory ?? process.cwd();
   const maxArticles = Math.max(1, Math.min(MAX_BATCH_ARTICLES, options.maxArticles ?? MAX_BATCH_ARTICLES));
-  const candidateIds = [...new Set(options.candidateIds.map((id) => id.trim()).filter(Boolean))];
-  if (!candidateIds.length) throw new Error("Mindestens eine Candidate ID ist erforderlich.");
-  if (candidateIds.length > MAX_BATCH_ARTICLES) throw new Error("Maximal 5 Candidate IDs sind zulässig.");
+  const selectionMode = options.selectionMode ?? "manual";
+  if (!["manual", "auto-top"].includes(selectionMode)) {
+    throw new Error(`Nicht unterstützter Auswahlmodus: ${selectionMode}`);
+  }
   if (!ARTICLE_TYPES.includes(options.articleTypeDefault)) {
     throw new Error(`Nicht unterstützter Standard-Artikeltyp: ${options.articleTypeDefault}`);
   }
 
-  const queuePath = join(rootDirectory, "src", "data", "editorial", "latest-queue.json");
-  const queue = JSON.parse(await readFile(queuePath, "utf8")) as EditorialQueueReport;
-  const candidates = candidateIds.slice(0, maxArticles).map((id) => {
-    const candidate = queue.candidates.find((entry) => entry.id === id);
-    if (!candidate) throw missingCandidateError(id, queue);
-    return candidate;
+  const { queue, queuePath } = await loadEditorialQueue(
+    options.queuePath ?? DEFAULT_EDITORIAL_QUEUE_PATH,
+    rootDirectory
+  );
+  const candidates = selectBatchCandidates({
+    queue,
+    queuePath,
+    rootDirectory,
+    selectionMode,
+    candidateIds: options.candidateIds,
+    maxArticles
   });
   const timestamp = options.generatedAt ?? new Date().toISOString();
   const reportDate = timestamp.slice(0, 10);
@@ -540,13 +637,23 @@ function parseSourceGroups(value: string): string[][] {
 
 const executedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (executedDirectly) {
-  const [candidateInput = "", articleType = "news-overview", sourceInput = "", editorialNote = "", maxInput = "5"] = process.argv.slice(2);
+  const [
+    candidateInput = "",
+    articleType = "news-overview",
+    sourceInput = "",
+    editorialNote = "",
+    maxInput = "5",
+    queuePath = DEFAULT_EDITORIAL_QUEUE_PATH,
+    selectionMode = "manual"
+  ] = process.argv.slice(2);
   const result = await createEditorialBatch({
     candidateIds: candidateInput.split(","),
+    selectionMode: selectionMode as BatchSelectionMode,
     articleTypeDefault: articleType as BatchArticleType,
     primarySourceGroups: parseSourceGroups(sourceInput),
     editorialNote,
-    maxArticles: Number.parseInt(maxInput, 10)
+    maxArticles: Number.parseInt(maxInput, 10),
+    queuePath
   });
   console.log(JSON.stringify(result, null, 2));
 

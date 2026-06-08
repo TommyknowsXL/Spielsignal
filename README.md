@@ -216,7 +216,8 @@ GitHub
 
 Eingaben:
 
-- `candidate_ids`: IDs aus der Daily Editorial Queue, durch Komma getrennt
+- `selection_mode`: `manual` für eingetragene IDs oder `auto-top` für eine automatische Auswahl
+- `candidate_ids`: nur bei `manual`; IDs durch Komma getrennt
 - `article_type_default`: `news-overview`, `release-check`, `free-promotion` oder `guide`
 - `primary_source_urls`: offizielle Quellen; Kandidatengruppen mit Semikolon trennen
 - `editorial_note`: optionale gemeinsame Redaktionsnotiz
@@ -225,6 +226,14 @@ Eingaben:
 Der Workflow erzeugt vor der Batch-Auswahl selbst eine frische Tagesqueue mit
 `npm run editorial:daily`. Die Candidate IDs in der Actions Summary und die anschließende
 Draft-Erzeugung stammen dadurch aus derselben `src/data/editorial/latest-queue.json`.
+Der Queue-Pfad wird bei Validierung, Summary und Batch-Erzeugung ausdrücklich übergeben.
+
+Im Modus `manual` werden nur die eingetragenen IDs gegen diese frisch erzeugte Queue geprüft.
+Da sich eine Queue zwischen Läufen ändern kann, zeigt ein Fehler den verwendeten Pfad,
+Erzeugungszeitpunkt und bis zu 20 verfügbare IDs. Im Modus `auto-top` sind keine IDs nötig:
+Der Lauf wählt nach dem Leserinteresse-Check automatisch bis zu `max_articles` geeignete
+Kandidaten aus derselben Queue aus. Entwürfe bleiben unveröffentlicht und benötigen weiterhin
+die bestehenden Prüfungen und einen manuellen Merge.
 
 Der Workflow verwendet den eindeutigen Branch `editorial-batch/${{ github.run_id }}`, prüft
 vorher, ob dieser Remote-Branch bereits existiert, verwendet keinen Force-Push und führt keinen
