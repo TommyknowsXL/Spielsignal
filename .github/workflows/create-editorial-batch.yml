@@ -113,15 +113,30 @@ jobs:
         if: always()
         env:
           COMPLETE_DRAFTS: ${{ steps.batch.outputs.completeDrafts }}
+          REJECTED_CANDIDATES: ${{ steps.batch.outputs.rejectedCandidates }}
+          ARTICLE_PATHS: ${{ steps.batch.outputs.articlePaths }}
+          HERO_IMAGE_STATUSES: ${{ steps.batch.outputs.heroImageStatuses }}
+          MANUAL_REVIEW_POINTS: ${{ steps.batch.outputs.manualReviewPoints }}
         run: |
-          if [ "${COMPLETE_DRAFTS:-0}" = "0" ]; then
-            {
+          {
+            echo "## Editorial Batch"
+            echo
+            echo "- Vollständige Entwürfe: ${COMPLETE_DRAFTS:-0}"
+            echo "- Abgelehnte Kandidaten: ${REJECTED_CANDIDATES:-0}"
+            echo "- Artikelpfade: ${ARTICLE_PATHS:-keine}"
+            echo "- Hero-Bildstatus: ${HERO_IMAGE_STATUSES:-keine vollständigen Entwürfe}"
+            echo "- Manuelle Prüfpunkte: ${MANUAL_REVIEW_POINTS:-keine}"
+            echo "- Artifact: nur für technische Diagnose erforderlich"
+            echo
+            if [ "${COMPLETE_DRAFTS:-0}" = "0" ]; then
               echo "## Batch nicht veröffentlichungsfähig"
               echo
               echo "Keine vollständigen Artikel erzeugt. KI-Verarbeitung fehlgeschlagen."
               echo "Die Gerüste dienen ausschließlich der Diagnose und dürfen nicht veröffentlicht werden."
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
+            else
+              echo "Im Normalbetrieb genügt der Pull Request."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Branch und Commit erstellen
         if: steps.batch.outputs.completeDrafts != '0'
@@ -149,13 +164,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPORT_PATH: ${{ steps.batch.outputs.reportPath }}
           REPORT_DATE: ${{ steps.batch.outputs.reportDate }}
-          GENERATED_DRAFTS: ${{ steps.batch.outputs.generatedDrafts }}
+          COMPLETE_DRAFTS: ${{ steps.batch.outputs.completeDrafts }}
+          ARTICLE_PATHS: ${{ steps.batch.outputs.articlePaths }}
+          PREVIEW_PATHS: ${{ steps.batch.outputs.previewPaths }}
         run: |
-          gh pr create \
+          PR_URL=$(gh pr create \
             --base main \
             --head "$BRANCH_NAME" \
-            --title "Editorial Batch: $REPORT_DATE · $GENERATED_DRAFTS Entwürfe" \
-            --body-file "$REPORT_PATH"
+            --title "Editorial Batch: $REPORT_DATE · $COMPLETE_DRAFTS vollständige Entwürfe" \
+            --body-file "$REPORT_PATH")
+          {
+            echo
+            echo "## Pull Request und Vorschau"
+            echo
+            echo "- PR: $PR_URL"
+            echo "- Artikelpfade: ${ARTICLE_PATHS:-keine}"
+            echo "- Preview-Pfade: ${PREVIEW_PATHS:-keine}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Batch-Diagnose als Artefakt bereitstellen
         if: always()

@@ -16,6 +16,24 @@ Verbindliche Regeln:
 - Empfehle immer ein Hero-Bild; zusätzliche Bilder bleiben optional.
 - Antworte ausschließlich im vorgegebenen JSON-Schema.`;
 
+export const EDITORIAL_READER_EDIT_PROMPT = `Du bist die Leserredaktion von SpielSignal.
+
+Überarbeite den Writer-Draft zu einer modernen, leserfreundlichen deutschsprachigen Gaming-News.
+
+Verbindliche Regeln:
+- Nutze ausschließlich die mitgelieferten verifizierten Fakten und offiziellen Primärquellen.
+- Erfinde keine Details und spekuliere nicht.
+- Schreibe einen interessanten Einstieg, einen klaren Teaser, kurze Absätze und sinnvolle Zwischenüberschriften.
+- Verwende keine interne Prüfprotokoll-Sprache oder Arbeitsanweisungen.
+- Nenne keine Steam-App-ID im sichtbaren Fließtext, sofern sie nicht redaktionell zwingend relevant ist.
+- Verwende nicht die Formulierungen "in den verifizierten Fakten", "bereitgestellte Quellen",
+  "Redaktioneller Hinweis", "dieser Text basiert ausschließlich" oder
+  "Für Berichterstattung oder weitere Analyse sollten Redaktion und Leser".
+- Erzeuge im markdownBody keine H1-Überschrift und keinen Quellenabschnitt; die Quellenbox wird separat ergänzt.
+- Vermeide redundante Fakten, künstliche Länge und doppelte Überschriften.
+- Trenne bestätigte Änderungen klar von offenen Punkten.
+- Antworte ausschließlich im vorgegebenen JSON-Schema.`;
+
 export type EditorialAiCandidateInput = {
   candidate: EditorialCandidate;
   articleType: string;
@@ -342,4 +360,108 @@ export async function prepareEditorialAiDrafts(
     errorCode: "unknown_api_error",
     attempts: totalAttempts
   };
+}
+
+export async function prepareReaderEditedDrafts(
+  writerDrafts: EditorialAiDraft[],
+  inputs: EditorialAiCandidateInput[],
+  environment: Record<string, string | undefined> = process.env,
+  fetchImpl: typeof fetch = fetch
+): Promise<EditorialAiResult> {
+  const enabled = environment.AI_EDITORIAL_ENABLED === "true";
+  const model = environment.AI_EDITORIAL_MODEL?.trim() || "gpt-5-mini";
+  const maxArticles = Math.max(1, Math.min(5,
+    Number.parseInt(environment.AI_EDITORIAL_MAX_ARTICLES ?? "3", 10) || 3
+  ));
+  const apiKey = environment.OPENAI_API_KEY?.trim();
+  if (!enabled || !apiKey || !writerDrafts.length) {
+    return {
+      enabled,
+      drafts: [],
+      reason: "Reader-Edit nicht ausgeführt: KI deaktiviert, nicht konfiguriert oder kein Writer-Draft vorhanden.",
+      model,
+      maxArticles
+    };
+  }
+
+  const inputMap = new Map(inputs.map((input) => [input.candidate.id, input]));
+  const readerInputs = writerDrafts.slice(0, maxArticles).flatMap((draft) => {
+    const input = inputMap.get(draft.candidateId);
+    return input ? [{
+      candidateId: draft.candidateId,
+      articleType: input.articleType,
+      gameTitle: input.candidate.gameTitle,
+      primarySources: input.primarySources,
+      verifiedFacts: input.verifiedFacts,
+      writerDraft: draft
+    }] : [];
+  });
+  if (!readerInputs.length) {
+    return {
+      enabled: true,
+      drafts: [],
+      reason: "Reader-Edit nicht ausgeführt: keine passende verifizierte Faktenbasis vorhanden.",
+      model,
+      maxArticles
+    };
+  }
+
+  try {
+    const response = await fetchImpl("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        input: [
+          { role: "system", content: EDITORIAL_READER_EDIT_PROMPT },
+          { role: "user", content: JSON.stringify(readerInputs) }
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "spielsignal_reader_edit_batch",
+            strict: true,
+            schema: responseSchema
+          }
+        }
+      }),
+      signal: AbortSignal.timeout(120_000)
+    });
+    if (!response.ok) {
+      const payload = await safeErrorPayload(response);
+      const errorCode = classifyEditorialAiError(response.status, payload);
+      return {
+        enabled: true,
+        drafts: [],
+        reason: `Reader-Edit fehlgeschlagen (${errorCode}).`,
+        model,
+        maxArticles,
+        errorCode,
+        attempts: 1
+      };
+    }
+    const payload = await response.json() as OpenAiResponse;
+    const parsed = JSON.parse(responseText(payload)) as { drafts?: EditorialAiDraft[] };
+    return {
+      enabled: true,
+      drafts: (parsed.drafts ?? []).slice(0, maxArticles),
+      reason: "Reader-Edit wurde nach der Fakten- und Writer-Stufe ausgeführt.",
+      model,
+      maxArticles,
+      attempts: 1
+    };
+  } catch {
+    return {
+      enabled: true,
+      drafts: [],
+      reason: "Reader-Edit fehlgeschlagen (network_error).",
+      model,
+      maxArticles,
+      errorCode: "network_error",
+      attempts: 1
+    };
+  }
 }

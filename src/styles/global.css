@@ -2033,6 +2033,15 @@ a.card-link {
   padding-block: clamp(2rem, 5vw, 4.5rem) 1.5rem;
 }
 
+.draft-preview-banner {
+  padding: 0.8rem 1rem;
+  background: var(--color-accent-amber);
+  color: var(--color-midnight);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
 .article-header h1 {
   max-width: 1000px;
   margin-top: 1rem;

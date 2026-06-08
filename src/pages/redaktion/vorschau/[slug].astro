@@ -1,0 +1,83 @@
+---
+import { getCollection, render, type CollectionEntry } from "astro:content";
+import ArticleContentBlocks from "../../../components/ArticleContentBlocks.astro";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+
+export async function getStaticPaths() {
+  if (process.env.VERCEL_ENV !== "preview") return [];
+  const drafts = await getCollection("drafts", ({ data }) => data.status === "draft");
+  return drafts.map((entry) => ({
+    params: { slug: entry.data.slug },
+    props: { entry }
+  }));
+}
+
+const { entry } = Astro.props as { entry: CollectionEntry<"drafts"> };
+const { Content } = await render(entry);
+const data = entry.data;
+const sourceLabel = (source: string) => {
+  const host = new URL(source).hostname.replace(/^www\./, "");
+  if (host.includes("steampowered.com")) {
+    return source.includes("/news/") ? "Offizielle Steam-News" : "Offizielle Steam-Store-Seite";
+  }
+  return `Offizielle Quelle: ${host}`;
+};
+---
+
+<BaseLayout
+  title={`ENTWURF: ${data.seoTitle}`}
+  description={data.seoDescription}
+  image={data.heroImage}
+  type="article"
+  robots="noindex, nofollow"
+>
+  <div class="draft-preview-banner" role="status">ENTWURF · NICHT VERÖFFENTLICHT</div>
+  <header class="article-header container">
+    <span class="badge">Redaktionelle Vorschau</span>
+    <h1>{data.title}</h1>
+    <p class="article-deck">{data.summary}</p>
+  </header>
+
+  <figure class="container article-hero-image">
+    <img
+      src={data.heroImage}
+      data-fallback-src="/images/categories/news-default.svg"
+      alt={data.heroImageAlt}
+      width="1200"
+      height="675"
+    />
+    <figcaption>
+      Bildquelle: {data.heroImageSourceName}
+      {data.heroImageCandidateStatus === "pending-review"
+        ? " · offizieller Bildkandidat wartet auf manuelle Freigabe"
+        : ""}
+    </figcaption>
+  </figure>
+
+  <div class="container article-layout">
+    <article class="article-main">
+      <div class="article-body">
+        {data.contentBlocks?.length ? <ArticleContentBlocks blocks={data.contentBlocks} /> : <Content />}
+      </div>
+      <section class="sources-box">
+        <p class="eyebrow">Quellen</p>
+        <ul>
+          {data.primarySources.map((source) => (
+            <li>
+              <a class="text-link" href={source} target="_blank" rel="noopener noreferrer">
+                {sourceLabel(source)}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </article>
+  </div>
+</BaseLayout>
+
+<script>
+  const hero = document.querySelector<HTMLImageElement>(".article-hero-image img[data-fallback-src]");
+  hero?.addEventListener("error", () => {
+    hero.src = hero.dataset.fallbackSrc ?? "/images/categories/news-default.svg";
+  }, { once: true });
+</script>
