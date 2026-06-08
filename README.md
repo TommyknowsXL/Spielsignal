@@ -202,6 +202,51 @@ permissions:
   pull-requests: write
 ```
 
+## Editorial Batch erstellen
+
+Der Workflow `Create Editorial Batch` erzeugt aus drei bis fünf ausgewählten Candidate IDs
+mehrere geprüfte Entwürfe in einem Lauf:
+
+```text
+GitHub
+→ Actions
+→ Create Editorial Batch
+→ Run workflow
+```
+
+Eingaben:
+
+- `candidate_ids`: IDs aus der Daily Editorial Queue, durch Komma getrennt
+- `article_type_default`: `news-overview`, `release-check`, `free-promotion` oder `guide`
+- `primary_source_urls`: offizielle Quellen; Kandidatengruppen mit Semikolon trennen
+- `editorial_note`: optionale gemeinsame Redaktionsnotiz
+- `max_articles`: maximal fünf
+
+Der Workflow verwendet den eindeutigen Branch `editorial-batch/${{ github.run_id }}`, prüft
+vorher, ob dieser Remote-Branch bereits existiert, verwendet keinen Force-Push und führt keinen
+Merge aus. Reports landen in `docs/editorial/batch-reports/`, Entwürfe in
+`src/content/drafts/`. Beide Verzeichnisse werden auch bei Fehlern als Artifact
+`spielsignal-editorial-batch-report` bereitgestellt.
+
+Jeder Kandidat durchläuft Fakten-, Leserinteresse-, Qualitäts-, Originalitäts-, SEO-, Bild-
+und Technikprüfung. Unter 60 Leserinteresse-Punkten entsteht nur ein Ablehnungsbericht. Ohne
+offizielle Primärquelle oder bei einem KI-Fehler wird höchstens ein
+`needs-source-review`-Gerüst erzeugt, kein fertiger Artikel.
+
+Die optionale KI nutzt die OpenAI Responses API mit strukturierter JSON-Schema-Ausgabe. Sie
+ist standardmäßig deaktiviert und erhält nur vorab geprüfte Fakten:
+
+```env
+OPENAI_API_KEY=
+AI_EDITORIAL_ENABLED=false
+AI_EDITORIAL_MODEL=gpt-5-mini
+AI_EDITORIAL_MAX_ARTICLES=5
+```
+
+API-Aufrufe werden separat nach dem gewählten OpenAI-Modell abgerechnet. Das Artikelmaximum
+begrenzt die Zahl der Anfragen beziehungsweise Entwürfe, ist aber kein festes Kostenlimit.
+Schlüssel werden weder geloggt noch in Reports oder Drafts geschrieben.
+
 ## Optionale KI aktivieren
 
 ```text

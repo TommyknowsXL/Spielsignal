@@ -7,18 +7,22 @@ Priorität: eigenes freigegebenes Bild oder eigener Screenshot, dokumentiertes
 Publisher-Presskit beziehungsweise offizielle Spielwebseite, dokumentiertes offizielles
 Steam-Asset, lokales Kategoriebild, allgemeines lokales SpielSignal-Fallback.
 
-| Dateipfad oder externe URL | Verwendet für | Spiel oder Artikel | Quelle | Quellentyp | Nutzungsgrundlage | Freigabestatus | Steam-App-ID | Datum geprüft |
-|---|---|---|---|---|---|---|---|---|
-| `/images/categories/news-default.svg` | allgemeines Fallback | unbekannte Meldungen | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | - | 2026-06-08 |
-| `/images/categories/updates.svg` | Kategorie Updates | externe Meldungen | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | - | 2026-06-08 |
-| `/images/categories/fantasy.svg` | Kategorie Fantasy | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | - | 2026-06-08 |
-| `/images/categories/rollenspiele.svg` | Kategorie Rollenspiele | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | - | 2026-06-08 |
-| `/images/categories/survival.svg` | Kategorie Survival | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | - | 2026-06-08 |
-| `/images/categories/strategie.svg` | Strategie und Simulation | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | - | 2026-06-08 |
-| `/images/categories/shooter.svg` | Kategorie Shooter | redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | - | 2026-06-08 |
-| `/images/categories/hardware.svg` | Kategorie Hardware | externe Meldungen | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | - | 2026-06-08 |
-| `/images/categories/deals.svg` | Deals und Gratis-Aktionen | externe und redaktionelle Inhalte | SpielSignal | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | - | 2026-06-08 |
-| `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1297900/header.jpg` | Gothic 1 Remake Artikelentwurf | Gothic 1 Remake | [offizielle Steam-Store-Seite](https://store.steampowered.com/app/1297900/Gothic_1_Remake/) | Offizielle Steam-Store-Seite | eindeutige Zuordnung über die dokumentierte Steam-App-ID und offizielle Store-Seite | approved | 1297900 | 2026-06-08 |
+| Artikel | Bildposition | Bild-URL oder Dateipfad | Quelle | Quellseite | Quellentyp | Nutzungsgrundlage | Freigabestatus | Datum geprüft | Steam-App-ID |
+|---|---|---|---|---|---|---|---|---|---|
+| Allgemeine Inhalte | Fallback | `/images/categories/news-default.svg` | SpielSignal | - | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 | - |
+| Kategorie Updates | Kartenbild | `/images/categories/updates.svg` | SpielSignal | - | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 | - |
+| Kategorie Fantasy | Kartenbild | `/images/categories/fantasy.svg` | SpielSignal | - | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 | - |
+| Kategorie Rollenspiele | Kartenbild | `/images/categories/rollenspiele.svg` | SpielSignal | - | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 | - |
+| Kategorie Survival | Kartenbild | `/images/categories/survival.svg` | SpielSignal | - | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 | - |
+| Kategorie Strategie | Kartenbild | `/images/categories/strategie.svg` | SpielSignal | - | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 | - |
+| Kategorie Shooter | Kartenbild | `/images/categories/shooter.svg` | SpielSignal | - | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 | - |
+| Kategorie Hardware | Kartenbild | `/images/categories/hardware.svg` | SpielSignal | - | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 | - |
+| Deals und Gratis-Aktionen | Kartenbild | `/images/categories/deals.svg` | SpielSignal | - | SpielSignal-Fallback | selbst erstellte lokale Grafik | fallback | 2026-06-08 | - |
+| Gothic 1 Remake | Hero | `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1297900/header.jpg` | Steam / THQ Nordic | [offizielle Steam-Store-Seite](https://store.steampowered.com/app/1297900/Gothic_1_Remake/) | Steam-Store | eindeutige Zuordnung über Steam-App-ID und offiziellen Store-Eintrag; redaktionell geprüft | approved | 2026-06-08 | 1297900 |
+
+Für den Gothic-Musterartikel sind derzeit keine zusätzlichen externen Bilder freigegeben.
+Weitere Steam- oder Publisher-Assets werden erst nach einer einzelnen Quellen- und
+Nutzungsprüfung ergänzt. Bis dahin bleibt der Artikel bewusst beim Hero-Bild.
 
 ## Zulässige externe Quellen
 

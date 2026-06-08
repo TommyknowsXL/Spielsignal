@@ -1,14 +1,35 @@
 ---
+import { canLoadAds, privacyConfig } from "../config/privacy";
+
 interface Props {
   format?: "wide" | "feed" | "sidebar" | "article" | "mobile";
+  placement?: "article-inline-1" | "article-inline-2" | "article-sidebar" | "article-bottom";
 }
-const { format = "wide" } = Astro.props;
+const { format = "wide", placement } = Astro.props;
+const resolvedFormat = placement === "article-sidebar" ? "sidebar" : format;
 ---
 
-<div class="ad-slot" data-format={format} aria-label="Werbeplatzhalter">
+<aside
+  class="ad-slot"
+  data-format={resolvedFormat}
+  data-placement={placement}
+  data-ads-enabled={privacyConfig.adsEnabled}
+  aria-label={canLoadAds ? "Werbung" : "Werbeplatzhalter"}
+>
   <div>
     <span class="ad-label">WERBUNG</span>
-    <strong>Werbeplatz vorbereitet</strong>
-    <p>Keine Anzeige aktiv.</p>
+    {
+      canLoadAds ? (
+        <>
+          <strong>Werbefläche freigegeben</strong>
+          <p>Die technische Anzeigenintegration erfolgt separat.</p>
+        </>
+      ) : (
+        <>
+          <strong>Werbeplatz vorbereitet</strong>
+          <p>Keine Anzeige aktiv.</p>
+        </>
+      )
+    }
   </div>
-</div>
+</aside>

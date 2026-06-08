@@ -1,0 +1,61 @@
+---
+import type { ArticleContentBlock } from "../content/config";
+import AdSlot from "./AdSlot.astro";
+
+interface Props {
+  blocks: ArticleContentBlock[];
+}
+
+const { blocks } = Astro.props;
+const publicBlocks = blocks.filter(
+  (block) => block.type !== "image" || ["approved", "fallback"].includes(block.rightsStatus)
+);
+---
+
+<div class="article-content-blocks">
+  {
+    publicBlocks.map((block) => {
+      if (block.type === "paragraph") return <p>{block.text}</p>;
+      if (block.type === "heading") {
+        return block.level === 2 ? <h2>{block.text}</h2> : <h3>{block.text}</h3>;
+      }
+      if (block.type === "list") {
+        return <ul>{block.items.map((item) => <li>{item}</li>)}</ul>;
+      }
+      if (block.type === "ad") {
+        return (
+          <div class="article-inline-ad" data-article-ad={block.slot}>
+            <AdSlot placement={block.slot} />
+          </div>
+        );
+      }
+      return (
+        <figure class="article-content-image">
+          <img
+            src={block.imageUrl}
+            data-article-content-image
+            data-fallback-src="/images/categories/news-default.svg"
+            alt={block.alt}
+            width="960"
+            height="540"
+            loading="lazy"
+          />
+          <figcaption>
+            {block.caption ? <span>{block.caption}</span> : null}
+            <a href={block.sourceUrl} target="_blank" rel="noopener noreferrer">
+              Bildquelle: {block.sourceName}
+            </a>
+          </figcaption>
+        </figure>
+      );
+    })
+  }
+</div>
+
+<script>
+  document.querySelectorAll<HTMLImageElement>("[data-article-content-image]").forEach((image) => {
+    image.addEventListener("error", () => {
+      image.src = image.dataset.fallbackSrc ?? "/images/categories/news-default.svg";
+    }, { once: true });
+  });
+</script>

@@ -1,0 +1,118 @@
+name: Create Editorial Batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_ids:
+        description: "Mehrere Candidate IDs, durch Komma getrennt"
+        required: true
+        type: string
+      article_type_default:
+        description: "Standardtyp: news-overview, release-check, free-promotion oder guide"
+        required: true
+        default: "news-overview"
+        type: choice
+        options:
+          - news-overview
+          - release-check
+          - free-promotion
+          - guide
+      primary_source_urls:
+        description: "Optionale offizielle Primärquellen, kandidatenweise mit Semikolon trennen"
+        required: false
+        type: string
+      editorial_note:
+        description: "Allgemeine redaktionelle Notiz für den Lauf"
+        required: false
+        type: string
+      max_articles:
+        description: "Maximal erzeugte Artikel"
+        required: true
+        default: "5"
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-editorial-batch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      BRANCH_NAME: editorial-batch/${{ github.run_id }}
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Branch remote prüfen
+        run: |
+          if git ls-remote --exit-code --heads origin "$BRANCH_NAME"; then
+            echo "Branch existiert bereits: $BRANCH_NAME" >&2
+            exit 1
+          fi
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Batch-Entwürfe erzeugen
+        id: batch
+        run: npm run editorial:create-batch -- "$CANDIDATE_IDS" "$ARTICLE_TYPE_DEFAULT" "$PRIMARY_SOURCE_URLS" "$EDITORIAL_NOTE" "$MAX_ARTICLES"
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          CANDIDATE_IDS: ${{ inputs.candidate_ids }}
+          ARTICLE_TYPE_DEFAULT: ${{ inputs.article_type_default }}
+          PRIMARY_SOURCE_URLS: ${{ inputs.primary_source_urls }}
+          EDITORIAL_NOTE: ${{ inputs.editorial_note }}
+          MAX_ARTICLES: ${{ inputs.max_articles }}
+          AI_EDITORIAL_ENABLED: ${{ vars.AI_EDITORIAL_ENABLED || 'false' }}
+          AI_EDITORIAL_MODEL: ${{ vars.AI_EDITORIAL_MODEL || 'gpt-5-mini' }}
+          AI_EDITORIAL_MAX_ARTICLES: ${{ vars.AI_EDITORIAL_MAX_ARTICLES || '5' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Tests ausführen
+        run: npm test
+
+      - name: Produktions-Build prüfen
+        run: npm run build
+
+      - name: Branch und Commit erstellen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH_NAME"
+          git add docs/editorial/batch-reports src/content/drafts
+          git commit -m "content: add editorial batch ${{ github.run_id }}"
+          git push --set-upstream origin "$BRANCH_NAME"
+
+      - name: Pull Request erstellen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT_PATH: ${{ steps.batch.outputs.reportPath }}
+          REPORT_DATE: ${{ steps.batch.outputs.reportDate }}
+          GENERATED_DRAFTS: ${{ steps.batch.outputs.generatedDrafts }}
+        run: |
+          gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "Editorial Batch: $REPORT_DATE · $GENERATED_DRAFTS Entwürfe" \
+            --body-file "$REPORT_PATH"
+
+      - name: Batch-Berichte als Artefakt bereitstellen
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: spielsignal-editorial-batch-report
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            docs/editorial/batch-reports/
+            src/content/drafts/

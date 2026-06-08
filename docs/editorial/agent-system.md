@@ -82,12 +82,29 @@ als `primarySources` dokumentiert. Ohne Primärquelle entsteht nur ein
 Der GitHub-Workflow erstellt `editorial-draft/[slug]` und einen Pull Request. Er enthält weder
 automatischen Merge noch Deployment.
 
+## Editorial-Batch-Workflow
+
+`scripts/agents/createEditorialBatch.ts` verarbeitet maximal fünf ausgewählte Candidate IDs.
+Der Workflow `Create Editorial Batch` nutzt den eindeutigen Branch
+`editorial-batch/${{ github.run_id }}` und prüft vor dem Push, ob der Branch remote bereits
+existiert.
+
+Pro Kandidat werden Leserinteresse, Fakten, Originalität, Textqualität, SEO, Bildstatus und
+Technik strukturiert bewertet. Unter 60 Leserinteresse-Punkten entsteht nur ein
+Ablehnungsbericht. RSS bleibt ausschließlich Tippquelle. Ein vollständiger Entwurf benötigt
+offizielle Primärquellen und ein vollständig bestandenes Qualitätsgate.
+
+Batch-Reports werden nach `docs/editorial/batch-reports/`, Entwürfe nach
+`src/content/drafts/` geschrieben. Beide Verzeichnisse werden mit `if: always()` als Artifact
+hochgeladen. Der Workflow verwendet weder Force-Push noch automatischen Merge.
+
 ## Optionale KI-Schnittstelle
 
 `scripts/agents/providers/editorialAiProvider.ts` ist über `AI_EDITORIAL_ENABLED=false`
-standardmäßig deaktiviert und sendet
-keine API-Anfrage. Eine spätere API-Nutzung verursacht separate Kosten. Schlüssel dürfen nur
-als GitHub Actions Secret oder serverseitige Umgebungsvariable hinterlegt werden.
+standardmäßig deaktiviert. Bei Aktivierung verwendet er die OpenAI Responses API mit
+strukturierter JSON-Schema-Ausgabe, standardmäßig `gpt-5-mini` und maximal fünf Artikeln.
+Eine API-Nutzung verursacht separate Kosten. Schlüssel dürfen nur als GitHub Actions Secret
+oder serverseitige Umgebungsvariable hinterlegt werden.
 
 Vor jeder Aktivierung sind Kosten, Datenschutz, Prompt-Grenzen und redaktionelle Kontrolle
 manuell zu prüfen. Die Schnittstelle darf nur strukturierte Entwurfsvorschläge liefern und
