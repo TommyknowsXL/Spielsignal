@@ -177,6 +177,8 @@ summary: "Teaser nach Quellenprüfung ergänzen."
 seoTitle: ${JSON.stringify(`${input.title} | SpielSignal`)}
 seoDescription: "SEO-Beschreibung nach Faktenprüfung ergänzen."
 heroImage: ${JSON.stringify(heroImage)}
+heroImageAlt: ${JSON.stringify(`Titelbild zu ${input.title}`)}
+heroImageSourceName: ${JSON.stringify(imageSourceType === "steam-store" ? "Steam" : "SpielSignal")}
 heroImageSourceType: ${JSON.stringify(imageSourceType)}
 ${imageSourceType === "steam-store" && candidate.imageSourcePageUrl ? `heroImageSourceUrl: ${JSON.stringify(candidate.imageSourcePageUrl)}\n` : ""}imageRightsStatus: ${JSON.stringify(candidate.imageStatus === "approved" ? "approved" : "fallback")}
 externalTipSources: ${JSON.stringify(candidate.sourceType === "rss-news" ? [candidate.sourceUrl] : [])}

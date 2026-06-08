@@ -241,6 +241,8 @@ summary: ${JSON.stringify(summary)}
 seoTitle: ${JSON.stringify(seoTitle)}
 seoDescription: ${JSON.stringify(seoDescription)}
 heroImage: ${JSON.stringify(heroImage)}
+heroImageAlt: ${JSON.stringify(`Titelbild zu ${title}`)}
+heroImageSourceName: ${JSON.stringify(imageSourceType === "steam-store" ? "Steam" : "SpielSignal")}
 heroImageSourceType: ${JSON.stringify(imageSourceType)}
 ${candidate.imageSourcePageUrl ? `heroImageSourceUrl: ${JSON.stringify(candidate.imageSourcePageUrl)}\n` : ""}imageRightsStatus: ${JSON.stringify(approvedOfficialImage ? "approved" : "fallback")}
 externalTipSources: ${JSON.stringify(externalTips)}

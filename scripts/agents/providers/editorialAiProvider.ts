@@ -11,6 +11,8 @@ Verbindliche Regeln:
 - Zeige keine internen Repository-Pfade, Snapshot-Dateien oder UTC-Rohdaten.
 - Trenne Fakten, offene Punkte und sachliche Einordnung.
 - Erzeuge eine eigenständige Überschrift, Zusammenfassung, SEO-Daten und Markdown-Abschnitte.
+- Empfehle Bildpositionen nur als redaktionelle Suchaufträge. Erteile niemals eine Bildfreigabe.
+- Empfehle immer ein Hero-Bild; zusätzliche Bilder bleiben optional.
 - Antworte ausschließlich im vorgegebenen JSON-Schema.`;
 
 export type EditorialAiCandidateInput = {
@@ -28,6 +30,12 @@ export type EditorialAiDraft = {
   seoTitle: string;
   seoDescription: string;
   markdownBody: string;
+  recommendedImages: Array<{
+    position: "hero" | "after-intro" | "mid-article";
+    searchTarget: string;
+    preferredSourceType: "steam-store" | "publisher-presskit" | "official-game-site";
+    required: boolean;
+  }>;
   warnings: string[];
 };
 
@@ -62,6 +70,23 @@ const responseSchema = {
           seoTitle: { type: "string" },
           seoDescription: { type: "string" },
           markdownBody: { type: "string" },
+          recommendedImages: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                position: { type: "string", enum: ["hero", "after-intro", "mid-article"] },
+                searchTarget: { type: "string" },
+                preferredSourceType: {
+                  type: "string",
+                  enum: ["steam-store", "publisher-presskit", "official-game-site"]
+                },
+                required: { type: "boolean" }
+              },
+              required: ["position", "searchTarget", "preferredSourceType", "required"]
+            }
+          },
           warnings: { type: "array", items: { type: "string" } }
         },
         required: [
@@ -71,6 +96,7 @@ const responseSchema = {
           "seoTitle",
           "seoDescription",
           "markdownBody",
+          "recommendedImages",
           "warnings"
         ]
       }

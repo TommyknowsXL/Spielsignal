@@ -14,6 +14,16 @@ const article = read("src/pages/artikel/[slug].astro");
 const gothic = read("src/content/articles/gothic-1-remake-news-overview.md");
 const releases = read("src/pages/releases/index.astro");
 const gamePass = read("src/pages/pc-game-pass.astro");
+const contentBlocks = read("src/components/ArticleContentBlocks.astro");
+const adSlot = read("src/components/AdSlot.astro");
+const contentConfig = read("src/content/config.ts");
+const imageRights = read("docs/content-image-rights.md");
+const aiProvider = read("scripts/agents/providers/editorialAiProvider.ts");
+const globalCss = read("src/styles/global.css");
+const gothicFrontmatterEnd = gothic.indexOf("\n---", 4);
+const gothicData = parseYaml(gothic.slice(4, gothicFrontmatterEnd)) as {
+  contentBlocks: Array<{ type: string; text?: string; slot?: string; rightsStatus?: string }>;
+};
 
 assert.match(header, /News/);
 assert.match(header, /Steam-Releases/);
@@ -34,17 +44,59 @@ assert.match(news, /ExternalNewsList/);
 assert.doesNotMatch(news, /ExternalNewsCard/);
 
 assert.match(article, /article-hero-image/);
-assert.match(article, /Bildquelle: Steam \/ THQ Nordic/);
+assert.match(article, /heroImageAlt/);
+assert.match(article, /heroImageSourceName/);
+assert.match(article, /data-fallback-src="\/images\/categories\/news-default\.svg"/);
 assert.match(article, /return "Steam"/);
 assert.match(article, /return "THQ Nordic"/);
 assert.match(article, /Weitere News/);
 assert.match(article, /SteamTrendsSidebar/);
 assert.match(article, /AdSlot/);
+assert.match(article, /placement="article-bottom"/);
+assert.match(article, /placement="article-sidebar"/);
+assert.match(contentBlocks, /article-content-image/);
+assert.match(contentBlocks, /Bildquelle:/);
+assert.match(contentBlocks, /data-article-content-image/);
+assert.match(contentBlocks, /rightsStatus/);
+assert.match(contentBlocks, /placement=\{block\.slot\}/);
+assert.match(adSlot, />WERBUNG</);
+assert.match(adSlot, /privacyConfig\.adsEnabled/);
+assert.doesNotMatch(adSlot, /adsbygoogle|googlesyndication|<script[^>]+src=/i);
+assert.match(contentConfig, /article-inline-1/);
+assert.match(contentConfig, /article-inline-2/);
+assert.match(contentConfig, /words < 500 \? 1 : 2/);
+assert.match(contentConfig, /blockedImageHost/);
+assert.match(globalCss, /@media \(max-width: 720px\)/);
+assert.match(globalCss, /\.article-layout > \.article-sidebar/);
+assert.match(globalCss, /\.article-content-image img[\s\S]*object-fit: cover/);
 assert.match(gothic, /^status: "published"$/m);
 assert.match(gothic, /^heroImage: "https:\/\/shared\.fastly\.steamstatic\.com\/store_item_assets\/steam\/apps\/1297900\/header\.jpg"$/m);
+assert.match(gothic, /^heroImageAlt: ".+"$/m);
+assert.match(gothic, /^heroImageSourceName: "Steam \/ THQ Nordic"$/m);
+assert.match(gothic, /type: "ad"\n    slot: "article-inline-1"/);
+assert.match(gothic, /contentBlocks:/);
+const gothicHeadings = gothicData.contentBlocks
+  .filter((block) => block.type === "heading")
+  .map((block) => block.text);
+assert.equal(new Set(gothicHeadings).size, gothicHeadings.length);
+assert.equal(gothicData.contentBlocks.filter((block) => block.type === "ad").length, 1);
+assert.equal(
+  gothicData.contentBlocks.every(
+    (block) => block.type !== "image" || ["approved", "fallback"].includes(block.rightsStatus ?? "")
+  ),
+  true
+);
+assert.equal(gothicData.contentBlocks.filter((block) => block.type === "heading").length >= 5, true);
 assert.equal((gothic.match(/^# /gm) ?? []).length, 0);
 assert.equal((gothic.match(/^## Quellen$/gm) ?? []).length, 0);
 assert.doesNotMatch(gothic.split("---").slice(2).join("---"), /src\/data\/editorial|22:54:09|UTC|SpielSignal-Erhebung/);
+assert.doesNotMatch(gothic, /steamdb\.info|gamestar\.de|pcgames\.de|gamepro\.de/i);
+assert.match(imageRights, /Gothic 1 Remake \| Hero/);
+assert.match(imageRights, /Steam-App-ID/);
+assert.match(imageRights, /keine zusätzlichen externen Bilder freigegeben/);
+assert.match(aiProvider, /recommendedImages/);
+assert.match(aiProvider, /"hero", "after-intro", "mid-article"/);
+assert.match(aiProvider, /Erteile niemals eine Bildfreigabe/);
 
 assert.match(releases, /SteamReleaseGrid/);
 assert.match(read("src/components/SteamReleaseGrid.astro"), /automatische Steam-Release-Übersicht wird derzeit vorbereitet/);

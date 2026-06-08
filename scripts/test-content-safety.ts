@@ -81,6 +81,8 @@ const articleBase = {
   seoTitle: "Geprüfter Artikel | SpielSignal",
   seoDescription: "Geprüfter Artikel mit offizieller Quelle.",
   heroImage: "/images/categories/news-default.svg",
+  heroImageAlt: "SpielSignal-Fallback für den geprüften Artikel",
+  heroImageSourceName: "SpielSignal",
   heroImageSourceType: "spielsignal-fallback",
   imageRightsStatus: "fallback",
   externalTipSources: [],
@@ -102,6 +104,59 @@ assert.equal(
     primarySources: []
   }).success,
   true
+);
+assert.equal(
+  articleSchema.safeParse({
+    ...articleBase,
+    contentBlocks: [
+      { type: "paragraph", text: "Kurzer Artikel mit visueller Struktur." },
+      { type: "ad", slot: "article-inline-1" },
+      { type: "ad", slot: "article-inline-2" }
+    ]
+  }).success,
+  false
+);
+assert.equal(
+  articleSchema.safeParse({
+    ...articleBase,
+    contentBlocks: [{
+      type: "image",
+      imageUrl: "/images/categories/news-default.svg",
+      alt: "Lokales SpielSignal-Fallback",
+      sourceName: "SpielSignal",
+      sourceUrl: "https://spielsignal.de/",
+      sourceType: "spielsignal-fallback",
+      rightsStatus: "fallback"
+    }]
+  }).success,
+  true
+);
+const normalArticleText = Array.from({ length: 520 }, () => "Inhalt").join(" ");
+assert.equal(
+  articleSchema.safeParse({
+    ...articleBase,
+    contentBlocks: [
+      { type: "paragraph", text: normalArticleText },
+      { type: "ad", slot: "article-inline-1" },
+      { type: "ad", slot: "article-inline-2" }
+    ]
+  }).success,
+  true
+);
+assert.equal(
+  articleSchema.safeParse({
+    ...articleBase,
+    contentBlocks: [{
+      type: "image",
+      imageUrl: "https://steamdb.info/unsafe.jpg",
+      alt: "Nicht zulässiges Bild",
+      sourceName: "SteamDB",
+      sourceUrl: "https://steamdb.info/",
+      sourceType: "steam-store",
+      rightsStatus: "approved"
+    }]
+  }).success,
+  false
 );
 
 const files = [

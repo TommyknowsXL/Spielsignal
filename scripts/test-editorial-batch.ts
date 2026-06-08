@@ -127,6 +127,12 @@ const aiFetch: typeof fetch = async (_input, init) => {
         seoTitle: "Strategy Test: Neues Steam-Update für PC | SpielSignal",
         seoDescription: "Strategy Test erhält ein neues Steam-Update. SpielSignal fasst bestätigte PC-Angaben zusammen und markiert offene Patch-Details transparent.",
         markdownBody: longBody,
+        recommendedImages: [{
+          position: "hero",
+          searchTarget: "Strategy Test offizielles Key Art",
+          preferredSourceType: "steam-store",
+          required: true
+        }],
         warnings: ["Patch-Inhalte vor Veröffentlichung ergänzen."]
       }]
     })
