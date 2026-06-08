@@ -17,6 +17,7 @@ import type { DraftReviewInput, EditorialReviewResult } from "./review/types";
 import type { EditorialCandidate, EditorialQueueReport } from "./types";
 
 const MAX_BATCH_ARTICLES = 5;
+const MAX_AVAILABLE_CANDIDATE_IDS = 20;
 const ARTICLE_TYPES = ["news-overview", "release-check", "free-promotion", "guide"] as const;
 type BatchArticleType = (typeof ARTICLE_TYPES)[number];
 
@@ -93,6 +94,26 @@ function primarySourcesFor(candidate: EditorialCandidate, supplied: string[]): s
     ...(candidate.steamStoreUrl ? [candidate.steamStoreUrl] : []),
     ...(candidate.sourceType !== "rss-news" ? [candidate.sourceUrl] : [])
   ]);
+}
+
+function missingCandidateError(id: string, queue: EditorialQueueReport): Error {
+  const safeId = id.replace(/[\r\n]/g, " ").slice(0, 120);
+  const availableIds = queue.candidates
+    .slice(0, MAX_AVAILABLE_CANDIDATE_IDS)
+    .map((candidate) => `- ${candidate.id}`);
+  const remaining = queue.candidates.length - availableIds.length;
+  const availableText = availableIds.length
+    ? availableIds.join("\n")
+    : "- Keine Candidate IDs verfügbar";
+  const remainingText = remaining > 0
+    ? `\n- ... und ${remaining} weitere IDs in latest-queue.json`
+    : "";
+
+  return new Error(
+    `Candidate ID nicht gefunden: ${safeId}\n\n` +
+    "Verfügbare Candidate IDs in der frisch erzeugten Queue:\n" +
+    `${availableText}${remainingText}`
+  );
 }
 
 function sourceLabel(source: string): string {
@@ -394,7 +415,7 @@ export async function createEditorialBatch(
   const queue = JSON.parse(await readFile(queuePath, "utf8")) as EditorialQueueReport;
   const candidates = candidateIds.slice(0, maxArticles).map((id) => {
     const candidate = queue.candidates.find((entry) => entry.id === id);
-    if (!candidate) throw new Error(`Candidate ID nicht gefunden: ${id}`);
+    if (!candidate) throw missingCandidateError(id, queue);
     return candidate;
   });
   const timestamp = options.generatedAt ?? new Date().toISOString();

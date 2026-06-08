@@ -222,11 +222,19 @@ Eingaben:
 - `editorial_note`: optionale gemeinsame Redaktionsnotiz
 - `max_articles`: maximal fünf
 
+Der Workflow erzeugt vor der Batch-Auswahl selbst eine frische Tagesqueue mit
+`npm run editorial:daily`. Die Candidate IDs in der Actions Summary und die anschließende
+Draft-Erzeugung stammen dadurch aus derselben `src/data/editorial/latest-queue.json`.
+
 Der Workflow verwendet den eindeutigen Branch `editorial-batch/${{ github.run_id }}`, prüft
 vorher, ob dieser Remote-Branch bereits existiert, verwendet keinen Force-Push und führt keinen
-Merge aus. Reports landen in `docs/editorial/batch-reports/`, Entwürfe in
-`src/content/drafts/`. Beide Verzeichnisse werden auch bei Fehlern als Artifact
-`spielsignal-editorial-batch-report` bereitgestellt.
+Merge aus. Queue, Tagesberichte, Batch-Reports und Entwürfe werden auch bei Fehlern als Artifact
+`spielsignal-editorial-batch-diagnostics` bereitgestellt.
+
+Als spätere Ausbaustufe könnte der Batch-Workflow alternativ das
+`Artifact eines ausgewählten Daily-Queue-Laufs laden`. Bevorzugt bleibt vorerst:
+`Batch-Workflow erzeugt selbst eine frische Queue`, weil diese Lösung einfacher, robuster und
+konsistent ist.
 
 Jeder Kandidat durchläuft Fakten-, Leserinteresse-, Qualitäts-, Originalitäts-, SEO-, Bild-
 und Technikprüfung. Unter 60 Leserinteresse-Punkten entsteht nur ein Ablehnungsbericht. Ohne

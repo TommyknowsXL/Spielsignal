@@ -9,6 +9,7 @@ import { runReaderInterestCheck } from "./agents/review/readerInterestCheck";
 import { runTechnicalCheck } from "./agents/review/technicalCheck";
 import type { DraftReviewInput } from "./agents/review/types";
 import type { EditorialCandidate, EditorialQueueReport } from "./agents/types";
+import { renderBatchQueueSummary } from "./agents/writeBatchQueueSummary";
 
 const interestingCandidate: EditorialCandidate = {
   id: "rss-interesting",
@@ -184,6 +185,51 @@ await assert.rejects(
   /Maximal 5 Candidate IDs/
 );
 
+const manyCandidates = Array.from({ length: 25 }, (_, index) => ({
+  ...interestingCandidate,
+  id: `candidate-${String(index + 1).padStart(2, "0")}`,
+  title: `Kandidat ${index + 1} mit einem bewusst langen Titel für die sichere gekürzte Queue-Ausgabe`
+}));
+const invalidIdRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-invalid-id-"));
+await mkdir(join(invalidIdRoot, "src", "data", "editorial"), { recursive: true });
+await writeFile(
+  join(invalidIdRoot, "src", "data", "editorial", "latest-queue.json"),
+  `${JSON.stringify({ ...report, candidates: manyCandidates }, null, 2)}\n`,
+  "utf8"
+);
+await assert.rejects(
+  () => createEditorialBatch({
+    rootDirectory: invalidIdRoot,
+    candidateIds: ["rss-missing"],
+    articleTypeDefault: "news-overview"
+  }),
+  (error: Error) => {
+    assert.match(error.message, /Candidate ID nicht gefunden: rss-missing/);
+    assert.match(error.message, /Verfügbare Candidate IDs in der frisch erzeugten Queue:/);
+    assert.match(error.message, /candidate-01/);
+    assert.match(error.message, /candidate-20/);
+    assert.doesNotMatch(error.message, /candidate-21/);
+    assert.match(error.message, /5 weitere IDs/);
+    assert.doesNotMatch(error.message, /OPENAI_API_KEY|STEAM_WEB_API_KEY|test-only-key/);
+    return true;
+  }
+);
+
+const queueSummary = renderBatchQueueSummary({
+  ...report,
+  candidates: manyCandidates.map((candidate, index) => index === 0
+    ? { ...candidate, title: `${candidate.title} <script>secret-value-must-not-appear</script>` }
+    : candidate),
+  sourceErrors: ["secret-value-must-not-appear"]
+});
+assert.match(queueSummary, /# SpielSignal Batch-Auswahl/);
+assert.match(queueSummary, /Anzahl Kandidaten:\*\* 25/);
+assert.match(queueSummary, /candidate-01/);
+assert.match(queueSummary, /candidate-20/);
+assert.doesNotMatch(queueSummary, /candidate-21/);
+assert.match(queueSummary, /5 Kandidaten sind/);
+assert.doesNotMatch(queueSummary, /<script>|secret-value-must-not-appear|sourceUrl|OPENAI_API_KEY|STEAM_WEB_API_KEY/);
+
 const noAiRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-no-ai-"));
 await mkdir(join(noAiRoot, "src", "data", "editorial"), { recursive: true });
 await writeFile(
@@ -237,8 +283,19 @@ assert.match(workflow, /candidate_ids:/);
 assert.match(workflow, /editorial-batch\/\$\{\{ github\.run_id \}\}/);
 assert.match(workflow, /git ls-remote --exit-code --heads origin/);
 assert.doesNotMatch(workflow, /--force|\bgh\s+pr\s+merge\b|\bgit\s+merge\b/);
+assert.ok(workflow.indexOf("Frische Tagesqueue erzeugen") < workflow.indexOf("Batch-Entwürfe erzeugen"));
+assert.match(workflow, /Frische Tagesqueue erzeugen[\s\S]*npm run editorial:daily/);
+assert.match(workflow, /STEAM_WEB_API_KEY: \$\{\{ secrets\.STEAM_WEB_API_KEY \}\}/);
+assert.match(workflow, /STEAM_SCOUT_ENABLED: "true"/);
+assert.match(workflow, /STEAM_RELEASES_ENABLED: "true"/);
+assert.match(workflow, /STEAM_TOP_SELLERS_ENABLED: "true"/);
+assert.match(workflow, /PUBLIC_STEAM_MOST_PLAYED_ENABLED: "false"/);
+assert.ok(workflow.indexOf("Batch-Auswahl zusammenfassen") < workflow.indexOf("Batch-Entwürfe erzeugen"));
+assert.match(workflow, /npm run editorial:batch-summary/);
 assert.match(workflow, /if: always\(\)/);
-assert.match(workflow, /name: spielsignal-editorial-batch-report/);
+assert.match(workflow, /name: spielsignal-editorial-batch-diagnostics/);
+assert.match(workflow, /src\/data\/editorial\/latest-queue\.json/);
+assert.match(workflow, /docs\/editorial\/daily-reports\//);
 assert.match(workflow, /docs\/editorial\/batch-reports\//);
 assert.match(workflow, /src\/content\/drafts\//);
 

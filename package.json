@@ -14,6 +14,7 @@
     "test:editorial-layout": "tsx scripts/test-editorial-layout.ts",
     "test": "npm run test:feeds && npm run test:content && npm run test:agents && npm run test:editorial-batch && npm run test:editorial-layout",
     "editorial:daily": "tsx scripts/agents/runDailyEditorialQueue.ts",
+    "editorial:batch-summary": "tsx scripts/agents/writeBatchQueueSummary.ts",
     "editorial:create-draft": "tsx scripts/agents/createEditorialDraft.ts",
     "editorial:create-batch": "tsx scripts/agents/createEditorialBatch.ts",
     "steam:prepare": "tsx scripts/prepare-steam-suggestions.ts",
