@@ -204,8 +204,9 @@ permissions:
 
 ## Editorial Batch erstellen
 
-Der Workflow `Create Editorial Batch` erzeugt aus drei bis fünf ausgewählten Candidate IDs
-mehrere geprüfte Entwürfe in einem Lauf:
+Der Workflow `Create Editorial Batch` erzeugt aus bis zu fünf ausgewählten Candidate IDs
+mehrere geprüfte Entwürfe in einem Lauf. Die KI-Verarbeitung ist regulär auf drei Artikel
+begrenzt. Für einen kontrollierten Testlauf kann `max_articles` auf `1` gesetzt werden:
 
 ```text
 GitHub
@@ -221,7 +222,7 @@ Eingaben:
 - `article_type_default`: `news-overview`, `release-check`, `free-promotion` oder `guide`
 - `primary_source_urls`: offizielle Quellen; Kandidatengruppen mit Semikolon trennen
 - `editorial_note`: optionale gemeinsame Redaktionsnotiz
-- `max_articles`: maximal fünf
+- `max_articles`: maximal fünf; für reguläre KI-Läufe standardmäßig drei
 
 Der Workflow erzeugt vor der Batch-Auswahl selbst eine frische Tagesqueue mit
 `npm run editorial:daily`. Die Candidate IDs in der Actions Summary und die anschließende
@@ -235,10 +236,21 @@ Der Lauf wählt nach dem Leserinteresse-Check automatisch bis zu `max_articles` 
 Kandidaten aus derselben Queue aus. Entwürfe bleiben unveröffentlicht und benötigen weiterhin
 die bestehenden Prüfungen und einen manuellen Merge.
 
+`auto-top` schließt bereits veröffentlichte Artikel-Slugs aus. Allgemeine
+Steam-Topseller-Einträge werden nur berücksichtigt, wenn ein konkretes aktuelles Ereignis wie
+ein Update, Release, Patch oder eine Aktion erkennbar ist. Aktuelle RSS-Hinweise mit erkennbarem
+Nachrichtenanlass werden höher priorisiert, bleiben aber Tippquellen. Als Primärquellen versucht
+der Batch bei bekannten Steam-App-IDs automatisch Store- und Steam-News-Seiten einzubeziehen.
+
 Der Workflow verwendet den eindeutigen Branch `editorial-batch/${{ github.run_id }}`, prüft
 vorher, ob dieser Remote-Branch bereits existiert, verwendet keinen Force-Push und führt keinen
 Merge aus. Queue, Tagesberichte, Batch-Reports und Entwürfe werden auch bei Fehlern als Artifact
 `spielsignal-editorial-batch-diagnostics` bereitgestellt.
+
+Nur vollständig geprüfte Entwürfe mit `status: "draft"` werden auf den Editorial-Branch
+übernommen. `needs-source-review`-Gerüste bleiben ausschließlich im Diagnose-Artifact. Wenn
+kein vollständiger Entwurf entsteht, wird kein Pull Request erstellt und die Actions Summary
+zeigt einen deutlichen Warnhinweis.
 
 Als spätere Ausbaustufe könnte der Batch-Workflow alternativ das
 `Artifact eines ausgewählten Daily-Queue-Laufs laden`. Bevorzugt bleibt vorerst:
@@ -257,12 +269,23 @@ ist standardmäßig deaktiviert und erhält nur vorab geprüfte Fakten:
 OPENAI_API_KEY=
 AI_EDITORIAL_ENABLED=false
 AI_EDITORIAL_MODEL=gpt-5-mini
-AI_EDITORIAL_MAX_ARTICLES=5
+AI_EDITORIAL_MAX_ARTICLES=3
+AI_EDITORIAL_MAX_RETRIES=3
+AI_EDITORIAL_FAIL_WITHOUT_QUOTA=true
 ```
 
 API-Aufrufe werden separat nach dem gewählten OpenAI-Modell abgerechnet. Das Artikelmaximum
 begrenzt die Zahl der Anfragen beziehungsweise Entwürfe, ist aber kein festes Kostenlimit.
-Schlüssel werden weder geloggt noch in Reports oder Drafts geschrieben.
+Der Provider unterscheidet `rate_limit_exceeded`, `insufficient_quota`, `invalid_api_key`,
+`model_not_available`, `network_error` und `unknown_api_error`. Nur echte Rate-Limits werden
+mit exponentiellem Backoff und höchstens drei Wiederholungen erneut versucht; ein
+`Retry-After`-Header wird berücksichtigt. Quota-, Schlüssel- und Modellfehler werden nicht
+wiederholt. Logs enthalten nur HTTP-Status, Fehlercode, Versuch, Retry-After und Modell.
+Schlüssel, Prompts und vollständige API-Antworten werden weder geloggt noch in Reports oder
+Drafts geschrieben.
+
+Der Batch-Report weist außerdem aus, ob ein Hero-Bild einsatzbereit ist, manuell geprüft werden
+muss oder nur der lokale Fallback verwendet wird.
 
 ## Optionale KI aktivieren
 

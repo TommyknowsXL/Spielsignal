@@ -8,6 +8,10 @@ import {
   DEFAULT_EDITORIAL_QUEUE_PATH,
   loadEditorialQueue
 } from "./agents/createEditorialBatch";
+import {
+  classifyEditorialAiError,
+  prepareEditorialAiDrafts
+} from "./agents/providers/editorialAiProvider";
 import { runFactCheck } from "./agents/review/factCheck";
 import { runReaderInterestCheck } from "./agents/review/readerInterestCheck";
 import { runTechnicalCheck } from "./agents/review/technicalCheck";
@@ -147,6 +151,84 @@ const aiFetch: typeof fetch = async (_input, init) => {
     })
   }), { status: 200, headers: { "content-type": "application/json" } });
 };
+
+assert.equal(
+  classifyEditorialAiError(429, { error: { code: "insufficient_quota" } }),
+  "insufficient_quota"
+);
+assert.equal(
+  classifyEditorialAiError(429, { error: { code: "rate_limit_exceeded" } }),
+  "rate_limit_exceeded"
+);
+
+const aiInput = [{
+  candidate: interestingCandidate,
+  articleType: "news-overview",
+  primarySources: ["https://store.steampowered.com/app/123456/Strategy_Test/"],
+  verifiedFacts: ["Steam-App-ID: 123456"]
+}];
+let rateLimitAttempts = 0;
+const backoffDelays: number[] = [];
+const safeLogs: string[] = [];
+const rateLimitThenSuccess: typeof fetch = async () => {
+  rateLimitAttempts += 1;
+  if (rateLimitAttempts < 3) {
+    return new Response(JSON.stringify({
+      error: { code: "rate_limit_exceeded", message: "Temporary request rate limit" }
+    }), {
+      status: 429,
+      headers: { "content-type": "application/json", "retry-after": "0.01" }
+    });
+  }
+  return aiFetch("", { body: JSON.stringify({
+    model: "gpt-5-mini",
+    text: { format: { type: "json_schema", strict: true } }
+  }) });
+};
+const rateLimitResult = await prepareEditorialAiDrafts(
+  aiInput,
+  {
+    AI_EDITORIAL_ENABLED: "true",
+    AI_EDITORIAL_MODEL: "gpt-5-mini",
+    AI_EDITORIAL_MAX_ARTICLES: "1",
+    AI_EDITORIAL_MAX_RETRIES: "3",
+    OPENAI_API_KEY: "secret-test-key"
+  },
+  rateLimitThenSuccess,
+  {
+    sleep: async (milliseconds) => { backoffDelays.push(milliseconds); },
+    log: (message) => { safeLogs.push(message); }
+  }
+);
+assert.equal(rateLimitAttempts, 3);
+assert.deepEqual(backoffDelays, [10, 10]);
+assert.equal(rateLimitResult.attempts, 3);
+assert.equal(rateLimitResult.drafts.length, 1);
+assert.match(safeLogs.join("\n"), /HTTP 429.*code=rate_limit_exceeded.*attempt=1/);
+assert.doesNotMatch(safeLogs.join("\n"), /secret-test-key|authorization|Verbindliche Regeln/);
+
+let quotaAttempts = 0;
+const quotaLogs: string[] = [];
+const quotaResult = await prepareEditorialAiDrafts(
+  aiInput,
+  {
+    AI_EDITORIAL_ENABLED: "true",
+    AI_EDITORIAL_MAX_RETRIES: "3",
+    AI_EDITORIAL_FAIL_WITHOUT_QUOTA: "true",
+    OPENAI_API_KEY: "secret-quota-key"
+  },
+  async () => {
+    quotaAttempts += 1;
+    return new Response(JSON.stringify({
+      error: { code: "insufficient_quota", message: "No credits remain" }
+    }), { status: 429, headers: { "content-type": "application/json" } });
+  },
+  { sleep: async () => { throw new Error("Quota darf kein Backoff auslösen."); }, log: (message) => quotaLogs.push(message) }
+);
+assert.equal(quotaAttempts, 1);
+assert.equal(quotaResult.errorCode, "insufficient_quota");
+assert.match(quotaResult.reason, /kein API-Guthaben/);
+assert.doesNotMatch(quotaLogs.join("\n"), /secret-quota-key|No credits remain/);
 
 const batch = await createEditorialBatch({
   rootDirectory: root,
@@ -305,6 +387,62 @@ const autoTopBatch = await createEditorialBatch({
 assert.equal(autoTopBatch.checkedCandidates, 3);
 assert.deepEqual(autoTopBatch.results.map((entry) => entry.candidateId), ["auto-1", "auto-2", "auto-3"]);
 
+const hardenedSelectionRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-hardened-selection-"));
+await mkdir(join(hardenedSelectionRoot, "src", "data", "editorial"), { recursive: true });
+await mkdir(join(hardenedSelectionRoot, "src", "content", "articles"), { recursive: true });
+await writeFile(
+  join(hardenedSelectionRoot, "src", "content", "articles", "gothic.md"),
+  '---\nslug: "gothic-1-remake-news-overview"\nstatus: "published"\n---\n',
+  "utf8"
+);
+const publishedGothic = {
+  ...interestingCandidate,
+  id: "steam-gothic",
+  sourceType: "steam-top-seller" as const,
+  title: "Gothic 1 Remake",
+  gameTitle: "Gothic 1 Remake",
+  scoreReasons: ["Steam-Topseller aus offizieller Quelle"]
+};
+const genericCounterStrike = {
+  ...interestingCandidate,
+  id: "steam-counter-strike",
+  sourceType: "steam-top-seller" as const,
+  title: "Counter-Strike 2",
+  gameTitle: "Counter-Strike 2",
+  scoreReasons: ["Steam-Topseller aus offizieller Quelle"]
+};
+const usefulRssUpdate = {
+  ...interestingCandidate,
+  id: "rss-subnautica-update",
+  title: "Subnautica 2 Update 1.1 bringt neue PC-Verbesserungen",
+  gameTitle: "Subnautica 2",
+  steamAppId: "1962700",
+  steamStoreUrl: "https://store.steampowered.com/app/1962700/Subnautica_2/",
+  scoreReasons: ["Aktuelle Meldung", "Großes Update", "Klarer PC-Gaming-Bezug"]
+};
+await writeFile(
+  join(hardenedSelectionRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  `${JSON.stringify({
+    ...report,
+    candidates: [publishedGothic, genericCounterStrike, usefulRssUpdate]
+  }, null, 2)}\n`,
+  "utf8"
+);
+const hardenedSelection = await createEditorialBatch({
+  rootDirectory: hardenedSelectionRoot,
+  selectionMode: "auto-top",
+  articleTypeDefault: "news-overview",
+  maxArticles: 3,
+  generatedAt: "2026-06-08T10:00:00.000Z",
+  environment: { GITHUB_RUN_ID: "hardened-selection", AI_EDITORIAL_ENABLED: "false" }
+});
+assert.deepEqual(hardenedSelection.results.map((entry) => entry.candidateId), ["rss-subnautica-update"]);
+assert.match(
+  hardenedSelection.results[0].primarySources.join(" "),
+  /store\.steampowered\.com\/news\/app\/1962700/
+);
+assert.equal(hardenedSelection.results[0].status, "needs-source-review");
+
 const summaryPath = join(autoTopRoot, "summary.md");
 const outputPath = join(autoTopRoot, "output.txt");
 const preparedAutoTop = await prepareBatchQueue({
@@ -363,6 +501,10 @@ const noAiBatch = await createEditorialBatch({
 });
 assert.equal(noAiBatch.results[0].status, "needs-source-review");
 assert.match(await readFile(noAiBatch.results[0].filePath!, "utf8"), /Kein fertiger Artikel/);
+assert.match(
+  await readFile(noAiBatch.reportPath, "utf8"),
+  /Keine vollständigen Artikel erzeugt[\s\S]*ausschließlich der Diagnose/
+);
 
 const interestAccepted = runReaderInterestCheck(interestingCandidate);
 const interestRejected = runReaderInterestCheck(boringCandidate);
@@ -425,6 +567,13 @@ assert.match(workflow, /src\/data\/editorial\/latest-queue\.json/);
 assert.match(workflow, /docs\/editorial\/daily-reports\//);
 assert.match(workflow, /docs\/editorial\/batch-reports\//);
 assert.match(workflow, /src\/content\/drafts\//);
+assert.match(workflow, /AI_EDITORIAL_MAX_ARTICLES: \$\{\{ vars\.AI_EDITORIAL_MAX_ARTICLES \|\| '3' \}\}/);
+assert.match(workflow, /AI_EDITORIAL_MAX_RETRIES: \$\{\{ vars\.AI_EDITORIAL_MAX_RETRIES \|\| '3' \}\}/);
+assert.match(workflow, /AI_EDITORIAL_FAIL_WITHOUT_QUOTA: \$\{\{ vars\.AI_EDITORIAL_FAIL_WITHOUT_QUOTA \|\| 'true' \}\}/);
+assert.match(workflow, /Branch und Commit erstellen[\s\S]*if: steps\.batch\.outputs\.completeDrafts != '0'/);
+assert.match(workflow, /Pull Request erstellen[\s\S]*if: steps\.batch\.outputs\.completeDrafts != '0'/);
+assert.match(workflow, /grep -q '\^status: "draft"\$'/);
+assert.match(workflow, /Keine vollständigen Artikel erzeugt\. KI-Verarbeitung fehlgeschlagen\./);
 
 console.log(
   "Editorial-Batch-Tests erfolgreich: Mehrfachauswahl, Maximalgrenze, Reviews, Qualitätsgate, KI-Fallback und sicherer Workflow."
