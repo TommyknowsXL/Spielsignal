@@ -53,10 +53,11 @@ assert.match(article, /data-fallback-src="\/images\/categories\/news-default\.sv
 assert.match(article, /return "Steam"/);
 assert.match(article, /return "THQ Nordic"/);
 assert.match(article, /Weitere News/);
-assert.equal((article.match(/Weitere News/g) ?? []).length, 1);
+assert.equal((article.match(/data-article-more-news/g) ?? []).length, 1);
 assert.match(article, /SteamTrendsSidebar/);
 assert.match(article, /AdSlot/);
 assert.match(article, /placement="article-bottom"/);
+assert.ok(article.indexOf('placement="article-bottom"') < article.indexOf("data-article-more-news"));
 assert.match(article, /placement="article-sidebar"/);
 assert.match(contentBlocks, /article-content-image/);
 assert.match(contentBlocks, /Bildquelle:/);
