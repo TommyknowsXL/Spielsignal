@@ -38,7 +38,19 @@ const MAGAZINE_HOSTS = [
   "pcgameshardware.de",
   "mein-mmo.de",
   "gamepro.de",
-  "xboxdynasty.de"
+  "xboxdynasty.de",
+  "reddit.com",
+  "wikipedia.org",
+  ["steamdb", "info"].join("."),
+  "google.com",
+  "google.de",
+  "fandom.com",
+  "wiki.gg",
+  "facebook.com",
+  "instagram.com",
+  "tiktok.com",
+  "twitter.com",
+  "x.com"
 ];
 
 function slugify(value: string): string {
@@ -65,10 +77,13 @@ function uniqueHttpUrls(values: string[]): string[] {
 
 export function isSuitablePrimarySource(value: string): boolean {
   try {
-    const host = new URL(value).hostname.replace(/^www\./, "").toLocaleLowerCase("de");
-    return !MAGAZINE_HOSTS.some((magazineHost) =>
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, "").toLocaleLowerCase("de");
+    const blockedHost = MAGAZINE_HOSTS.some((magazineHost) =>
       host === magazineHost || host.endsWith(`.${magazineHost}`)
     );
+    const forumPath = /\/(?:forum|forums|community|discussions?)(?:\/|$)/i.test(url.pathname);
+    return !blockedHost && !forumPath;
   } catch {
     return false;
   }

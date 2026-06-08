@@ -242,6 +242,20 @@ ein Update, Release, Patch oder eine Aktion erkennbar ist. Aktuelle RSS-Hinweise
 Nachrichtenanlass werden höher priorisiert, bleiben aber Tippquellen. Als Primärquellen versucht
 der Batch bei bekannten Steam-App-IDs automatisch Store- und Steam-News-Seiten einzubeziehen.
 
+Vor dem KI-Aufruf reichert der Quellenfinder RSS-Kandidaten ausschließlich über offizielle
+Endpunkte an. Er erkennt den Spieltitel, sucht bei Bedarf über die offizielle Steam-Store-Suche
+eine eindeutige App-ID und prüft Steam-Store, Steam-News-Hub sowie die in den Steam-App-Details
+verlinkte Entwickler- oder Publisher-Seite. Von einer so belegten offiziellen Seite dürfen
+zusätzlich Patchnotes, offizielle YouTube-Links und Xbox-Spielseiten übernommen werden.
+Magazine, Reddit, Wikipedia, SteamDB, Suchergebnisse, Fan-Wikis, Foren und Social-Reposts sind
+als Primärquellen gesperrt.
+
+Die KI erhält nur strukturierte Fakten mit Aussage, Quellen-URL, Quellentyp und Konfidenz.
+RSS-URLs bleiben in `externalTipSources`; vollständige RSS- oder Magazintexte werden weder
+gespeichert noch an die KI übertragen. Das Source-Gate verlangt mindestens eine verifizierte
+Primärquelle, eine Faktenbasis, Leserinteresse ab 60, ein Bild oder einen lokalen Fallback und
+einen noch nicht veröffentlichten Artikel-Slug.
+
 Der Workflow verwendet den eindeutigen Branch `editorial-batch/${{ github.run_id }}`, prüft
 vorher, ob dieser Remote-Branch bereits existiert, verwendet keinen Force-Push und führt keinen
 Merge aus. Queue, Tagesberichte, Batch-Reports und Entwürfe werden auch bei Fehlern als Artifact

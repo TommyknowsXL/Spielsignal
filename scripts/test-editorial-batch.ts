@@ -12,6 +12,9 @@ import {
   classifyEditorialAiError,
   prepareEditorialAiDrafts
 } from "./agents/providers/editorialAiProvider";
+import {
+  findOfficialPrimarySources
+} from "./agents/sources/findOfficialPrimarySources";
 import { runFactCheck } from "./agents/review/factCheck";
 import { runReaderInterestCheck } from "./agents/review/readerInterestCheck";
 import { runTechnicalCheck } from "./agents/review/technicalCheck";
@@ -165,7 +168,12 @@ const aiInput = [{
   candidate: interestingCandidate,
   articleType: "news-overview",
   primarySources: ["https://store.steampowered.com/app/123456/Strategy_Test/"],
-  verifiedFacts: ["Steam-App-ID: 123456"]
+  verifiedFacts: [{
+    statement: "Die offizielle Steam-App-ID lautet 123456.",
+    sourceUrl: "https://store.steampowered.com/app/123456/Strategy_Test/",
+    sourceType: "steam-store",
+    confidence: 0.96
+  }]
 }];
 let rateLimitAttempts = 0;
 const backoffDelays: number[] = [];
@@ -229,6 +237,102 @@ assert.equal(quotaAttempts, 1);
 assert.equal(quotaResult.errorCode, "insufficient_quota");
 assert.match(quotaResult.reason, /kein API-Guthaben/);
 assert.doesNotMatch(quotaLogs.join("\n"), /secret-quota-key|No credits remain/);
+
+const sourceRequests: string[] = [];
+const officialSourceFetch: typeof fetch = async (input) => {
+  const url = String(input);
+  sourceRequests.push(url);
+  if (url.includes("/api/storesearch/")) {
+    return Response.json({
+      items: [{ id: 1962700, name: "Subnautica 2" }]
+    });
+  }
+  if (url.includes("/api/appdetails")) {
+    return Response.json({
+      "1962700": {
+        success: true,
+        data: {
+          name: "Subnautica 2",
+          website: "https://unknownworlds.com/subnautica-2/",
+          developers: ["Unknown Worlds Entertainment"],
+          publishers: ["Krafton"]
+        }
+      }
+    });
+  }
+  if (url.includes("ISteamNews/GetNewsForApp")) {
+    return Response.json({
+      appnews: {
+        newsitems: [{
+          title: "Subnautica 2 Update 1.1",
+          url: "https://store.steampowered.com/news/app/1962700/view/123456",
+          contents: "Dieser vollständige Fremdtext darf nicht an die KI gelangen."
+        }]
+      }
+    });
+  }
+  if (url === "https://unknownworlds.com/subnautica-2/") {
+    return new Response(`
+      <a href="/news/update-1-1">Patchnotes</a>
+      <a href="https://www.youtube.com/watch?v=official-trailer">Trailer</a>
+      <a href="https://www.xbox.com/en-US/games/store/subnautica-2/example">Xbox</a>
+      <a href="/forums/community">Forum</a>
+    `, { status: 200, headers: { "content-type": "text/html" } });
+  }
+  return new Response("", { status: 404 });
+};
+
+const subnauticaSources = await findOfficialPrimarySources({
+  candidateId: "rss-0384d324f7939a2b",
+  title: "Subnautica 2 Update 1.1",
+  sourceUrl: "https://www.gamestar.de/artikel/subnautica-2-update,123.html"
+}, { fetchImpl: officialSourceFetch });
+assert.equal(subnauticaSources.steamAppId, "1962700");
+assert.ok(subnauticaSources.sources.some((source) =>
+  source.sourceType === "steam-store" && source.verified
+));
+assert.ok(subnauticaSources.sources.some((source) =>
+  source.sourceType === "steam-news-hub" && source.verified
+));
+assert.ok(subnauticaSources.sources.some((source) =>
+  source.sourceType === "official-developer-site" &&
+  source.url === "https://unknownworlds.com/subnautica-2/"
+));
+assert.ok(subnauticaSources.sources.some((source) => source.sourceType === "official-patchnotes"));
+assert.ok(subnauticaSources.sources.some((source) => source.sourceType === "official-trailer"));
+assert.ok(subnauticaSources.sources.some((source) => source.sourceType === "official-xbox-page"));
+assert.doesNotMatch(subnauticaSources.sources.map((source) => source.url).join(" "), /\/forums\//);
+assert.ok(subnauticaSources.verifiedFacts.some((fact) =>
+  fact.statement.includes("Subnautica 2 Update 1.1")
+));
+assert.equal(
+  subnauticaSources.imageCandidateUrl,
+  "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1962700/header.jpg"
+);
+assert.doesNotMatch(subnauticaSources.sources.map((source) => source.url).join(" "), /gamestar|steamdb|google/i);
+assert.doesNotMatch(sourceRequests.join(" "), /steamdb|google/i);
+
+const blockedOfficialSite = await findOfficialPrimarySources({
+  candidateId: "blocked-magazine",
+  title: "Blocked Game Update",
+  gameTitle: "Blocked Game",
+  steamAppId: "999999"
+}, {
+  fetchImpl: async (input) => {
+    const url = String(input);
+    if (url.includes("/api/appdetails")) {
+      return Response.json({
+        "999999": {
+          success: true,
+          data: { name: "Blocked Game", website: "https://www.pcgames.de/blocked-game/" }
+        }
+      });
+    }
+    if (url.includes("ISteamNews/GetNewsForApp")) return Response.json({ appnews: { newsitems: [] } });
+    return new Response("", { status: 404 });
+  }
+});
+assert.doesNotMatch(blockedOfficialSite.sources.map((source) => source.url).join(" "), /pcgames\.de/);
 
 const batch = await createEditorialBatch({
   rootDirectory: root,
@@ -443,6 +547,131 @@ assert.match(
 );
 assert.equal(hardenedSelection.results[0].status, "needs-source-review");
 
+const subnauticaRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-subnautica-"));
+await mkdir(join(subnauticaRoot, "src", "data", "editorial"), { recursive: true });
+const subnauticaCandidate: EditorialCandidate = {
+  ...interestingCandidate,
+  id: "rss-0384d324f7939a2b",
+  title: "Subnautica 2 Update 1.1",
+  gameTitle: undefined,
+  steamAppId: undefined,
+  steamStoreUrl: undefined,
+  sourceName: "GameStar RSS",
+  sourceUrl: "https://www.gamestar.de/artikel/subnautica-2-update,123.html",
+  score: 89,
+  scoreReasons: ["Aktuelles Update", "Klarer PC-Gaming-Bezug", "Konkreter Update-Nutzen"],
+  imageStatus: "fallback",
+  imageCandidateUrl: undefined,
+  imageSourcePageUrl: undefined
+};
+await writeFile(
+  join(subnauticaRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  `${JSON.stringify({ ...report, candidates: [subnauticaCandidate] }, null, 2)}\n`,
+  "utf8"
+);
+let subnauticaAiCalls = 0;
+const subnauticaAiFetch: typeof fetch = async (_input, init) => {
+  subnauticaAiCalls += 1;
+  const request = JSON.parse(String(init?.body)) as {
+    input: Array<{ role: string; content: string }>;
+  };
+  const userPayload = request.input.find((entry) => entry.role === "user")?.content ?? "";
+  assert.match(userPayload, /rss-0384d324f7939a2b/);
+  assert.match(userPayload, /official-steam|steam-news-hub|Steam-App-ID/i);
+  assert.doesNotMatch(userPayload, /Dieser vollständige Fremdtext|gamestar\.de\/artikel/);
+  return Response.json({
+    output_text: JSON.stringify({
+      drafts: [{
+        candidateId: "rss-0384d324f7939a2b",
+        title: "Subnautica 2: Update 1.1 im offiziellen Steam-News-Hub",
+        summary: "Die offizielle Steam-Meldung zu Update 1.1 bildet die Faktenbasis für den SpielSignal-Entwurf.",
+        seoTitle: "Subnautica 2 Update 1.1: Offizielle Steam-Infos | SpielSignal",
+        seoDescription: "Subnautica 2 Update 1.1 ist im offiziellen Steam-News-Hub dokumentiert. SpielSignal ordnet die bestätigte PC-Meldung ein.",
+        markdownBody: longBody.replaceAll("Strategy Test", "Subnautica 2"),
+        recommendedImages: [{
+          position: "hero",
+          searchTarget: "Subnautica 2 offizielles Steam-Key-Art",
+          preferredSourceType: "steam-store",
+          required: true
+        }],
+        warnings: []
+      }]
+    })
+  });
+};
+const subnauticaBatch = await createEditorialBatch({
+  rootDirectory: subnauticaRoot,
+  candidateIds: ["rss-0384d324f7939a2b"],
+  selectionMode: "manual",
+  articleTypeDefault: "news-overview",
+  generatedAt: "2026-06-08T11:00:00.000Z",
+  sourceFetchImpl: officialSourceFetch,
+  fetchImpl: subnauticaAiFetch,
+  environment: {
+    GITHUB_RUN_ID: "subnautica-source-enrichment",
+    AI_EDITORIAL_ENABLED: "true",
+    AI_EDITORIAL_MODEL: "gpt-5-mini",
+    AI_EDITORIAL_MAX_ARTICLES: "1",
+    OPENAI_API_KEY: "test-only-key"
+  }
+});
+assert.equal(subnauticaAiCalls, 1);
+assert.equal(subnauticaBatch.completeDrafts, 1);
+assert.equal(subnauticaBatch.results[0].status, "draft");
+assert.equal(subnauticaBatch.results[0].steamAppId, "1962700");
+assert.equal(subnauticaBatch.results[0].sourceGatePassed, true);
+assert.equal(subnauticaBatch.results[0].aiInvoked, true);
+assert.ok(subnauticaBatch.results[0].readerInterest.score >= 75);
+assert.ok(subnauticaBatch.results[0].verifiedPrimarySources >= 2);
+assert.match(subnauticaBatch.results[0].heroImageStatus, /Steam-Bildkandidat/);
+const subnauticaReport = await readFile(subnauticaBatch.reportPath, "utf8");
+assert.match(subnauticaReport, /Source-Gate bestanden:\*\* ja/);
+assert.match(subnauticaReport, /KI-Aufruf durchgeführt:\*\* ja/);
+assert.match(subnauticaReport, /Steam-App-ID:\*\* 1962700/);
+const subnauticaDraft = await readFile(subnauticaBatch.results[0].filePath!, "utf8");
+assert.match(subnauticaDraft, /externalTipSources: \["https:\/\/www\.gamestar\.de\/artikel\//);
+assert.doesNotMatch(
+  subnauticaDraft.match(/primarySources: \[[^\n]+\]/)?.[0] ?? "",
+  /gamestar\.de/
+);
+
+const sourceGateRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-source-gate-"));
+await mkdir(join(sourceGateRoot, "src", "data", "editorial"), { recursive: true });
+const sourceLessCandidate: EditorialCandidate = {
+  ...interestingCandidate,
+  id: "rss-source-less",
+  gameTitle: undefined,
+  steamAppId: undefined,
+  steamStoreUrl: undefined,
+  title: "Neues PC-Game-Pass-Update startet heute",
+  sourceUrl: "https://www.gamestar.de/artikel/ohne-offizielle-quelle,456.html"
+};
+await writeFile(
+  join(sourceGateRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  `${JSON.stringify({ ...report, candidates: [sourceLessCandidate] }, null, 2)}\n`,
+  "utf8"
+);
+let forbiddenAiCalls = 0;
+const sourceGateBatch = await createEditorialBatch({
+  rootDirectory: sourceGateRoot,
+  candidateIds: [sourceLessCandidate.id],
+  articleTypeDefault: "news-overview",
+  sourceFetchImpl: async () => Response.json({ items: [] }),
+  fetchImpl: async () => {
+    forbiddenAiCalls += 1;
+    throw new Error("KI darf ohne bestandenes Source-Gate nicht aufgerufen werden.");
+  },
+  environment: {
+    GITHUB_RUN_ID: "source-gate",
+    AI_EDITORIAL_ENABLED: "true",
+    OPENAI_API_KEY: "test-only-key"
+  }
+});
+assert.equal(forbiddenAiCalls, 0);
+assert.equal(sourceGateBatch.results[0].sourceGatePassed, false);
+assert.equal(sourceGateBatch.results[0].aiInvoked, false);
+assert.equal(sourceGateBatch.results[0].status, "needs-source-review");
+
 const summaryPath = join(autoTopRoot, "summary.md");
 const outputPath = join(autoTopRoot, "output.txt");
 const preparedAutoTop = await prepareBatchQueue({
@@ -508,8 +737,28 @@ assert.match(
 
 const interestAccepted = runReaderInterestCheck(interestingCandidate);
 const interestRejected = runReaderInterestCheck(boringCandidate);
+const everrailInterest = runReaderInterestCheck({
+  ...interestingCandidate,
+  id: "everrail",
+  title: "Everrail für PC",
+  gameTitle: "Everrail",
+  steamAppId: undefined,
+  steamStoreUrl: undefined,
+  scoreReasons: []
+});
+const solarpunkInterest = runReaderInterestCheck({
+  ...interestingCandidate,
+  id: "solarpunk",
+  title: "Solarpunk",
+  gameTitle: "Solarpunk",
+  steamAppId: undefined,
+  steamStoreUrl: undefined,
+  scoreReasons: []
+});
 assert.ok(interestAccepted.score >= 60);
 assert.ok(interestRejected.score < 60);
+assert.equal(everrailInterest.score, 59);
+assert.ok(solarpunkInterest.score < 60);
 assert.doesNotMatch(JSON.stringify(interestAccepted), /Reichweite:\s*\d/i);
 
 const reviewFixture: DraftReviewInput = {

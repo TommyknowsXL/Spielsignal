@@ -1,4 +1,5 @@
 import type { EditorialCandidate } from "../types";
+import type { VerifiedFact } from "../sources/findOfficialPrimarySources";
 
 export const EDITORIAL_AI_PROMPT = `Du schreibst eigenständige deutschsprachige SpielSignal-Artikel.
 
@@ -19,7 +20,7 @@ export type EditorialAiCandidateInput = {
   candidate: EditorialCandidate;
   articleType: string;
   primarySources: string[];
-  verifiedFacts: string[];
+  verifiedFacts: VerifiedFact[];
   editorialNote?: string;
 };
 
