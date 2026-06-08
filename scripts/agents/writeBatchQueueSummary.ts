@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import {
   DEFAULT_EDITORIAL_QUEUE_PATH,
   loadEditorialQueue,
+  loadPublishedArticleSlugs,
   selectBatchCandidates,
   type BatchSelectionMode
 } from "./createEditorialBatch";
@@ -84,6 +85,7 @@ export async function prepareBatchQueue(input: {
   selectionMode?: BatchSelectionMode;
   candidateIds?: string[];
   maxArticles?: number;
+  articleType?: "news-overview" | "release-check" | "free-promotion" | "guide";
 } = {}): Promise<{ selectedCandidateIds: string[]; queuePath: string; generatedAt: string; candidateCount: number }> {
   const rootDirectory = input.rootDirectory ?? process.cwd();
   const summaryPath = input.summaryPath ?? process.env.GITHUB_STEP_SUMMARY;
@@ -91,13 +93,16 @@ export async function prepareBatchQueue(input: {
   const selectionMode = input.selectionMode ?? "manual";
   const maxArticles = Math.max(1, Math.min(5, input.maxArticles ?? 5));
   const loaded = await loadEditorialQueue(input.queuePath ?? DEFAULT_EDITORIAL_QUEUE_PATH, rootDirectory);
+  const publishedSlugs = await loadPublishedArticleSlugs(rootDirectory);
   const selected = selectBatchCandidates({
     queue: loaded.queue,
     queuePath: loaded.queuePath,
     rootDirectory,
     selectionMode,
     candidateIds: input.candidateIds,
-    maxArticles
+    maxArticles,
+    articleType: input.articleType,
+    publishedSlugs
   });
   const selectedCandidateIds = selected.map((candidate) => candidate.id);
   await writeFile(summaryPath, renderBatchQueueSummary(loaded.queue, selectedCandidateIds, selectionMode), {
@@ -131,13 +136,15 @@ if (executedDirectly) {
     selectionMode = "manual",
     candidateInput = "",
     maxInput = "5",
-    queuePath = DEFAULT_EDITORIAL_QUEUE_PATH
+    queuePath = DEFAULT_EDITORIAL_QUEUE_PATH,
+    articleType = "news-overview"
   ] = process.argv.slice(2);
   await prepareBatchQueue({
     selectionMode: selectionMode as BatchSelectionMode,
     candidateIds: candidateInput.split(","),
     maxArticles: Number.parseInt(maxInput, 10),
     queuePath,
+    articleType: articleType as "news-overview" | "release-check" | "free-promotion" | "guide",
     outputPath: process.env.GITHUB_OUTPUT
   });
 }

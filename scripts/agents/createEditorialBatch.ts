@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { isSuitablePrimarySource } from "./createEditorialDraft";
@@ -65,6 +65,8 @@ export type EditorialBatchResult = {
     enabled: boolean;
     model: string;
     reason: string;
+    errorCode?: string;
+    attempts?: number;
   };
 };
 
@@ -92,12 +94,60 @@ function uniqueUrls(values: string[]): string[] {
   }))];
 }
 
+function automaticOfficialSources(candidate: EditorialCandidate): string[] {
+  if (!candidate.steamAppId) return [];
+  return [
+    candidate.steamStoreUrl,
+    `https://store.steampowered.com/news/app/${candidate.steamAppId}/`
+  ].filter((source): source is string => Boolean(source));
+}
+
 function primarySourcesFor(candidate: EditorialCandidate, supplied: string[]): string[] {
   return uniqueUrls([
     ...supplied,
-    ...(candidate.steamStoreUrl ? [candidate.steamStoreUrl] : []),
+    ...automaticOfficialSources(candidate),
     ...(candidate.sourceType !== "rss-news" ? [candidate.sourceUrl] : [])
   ]);
+}
+
+export function candidateDraftSlug(
+  candidate: EditorialCandidate,
+  articleType: BatchArticleType
+): string {
+  return slugify(`${candidate.gameTitle ?? candidate.title}-${articleType}`);
+}
+
+export async function loadPublishedArticleSlugs(rootDirectory = process.cwd()): Promise<Set<string>> {
+  const articleDirectory = join(rootDirectory, "src", "content", "articles");
+  let files: string[];
+  try {
+    files = await readdir(articleDirectory);
+  } catch {
+    return new Set();
+  }
+  const slugs = await Promise.all(files
+    .filter((file) => file.endsWith(".md") || file.endsWith(".mdx"))
+    .map(async (file) => {
+      const content = await readFile(join(articleDirectory, file), "utf8");
+      return content.match(/^slug:\s*["']?([^"'\r\n]+)["']?\s*$/m)?.[1]?.trim();
+    }));
+  return new Set(slugs.filter((slug): slug is string => Boolean(slug)));
+}
+
+function hasConcreteNewsEvent(candidate: EditorialCandidate): boolean {
+  const haystack = [
+    candidate.title,
+    candidate.category,
+    candidate.scoreReasons.join(" ")
+  ].filter(Boolean).join(" ");
+  return /\b(release|erscheint|veröffentlicht|verkaufsstart|launch|update|patch|trailer|demo|gratis|kostenlos|game pass|publisher|ankündigung|angekündigt|dlc|erweiterung)\b/i.test(haystack);
+}
+
+function autoTopPriority(candidate: EditorialCandidate): number {
+  const readerInterest = runReaderInterestCheck(candidate).score;
+  const rssPriority = candidate.sourceType === "rss-news" ? 30 : 0;
+  const eventPriority = hasConcreteNewsEvent(candidate) ? 15 : 0;
+  return readerInterest + rssPriority + eventPriority + Math.min(10, Math.max(0, candidate.score));
 }
 
 function displayQueuePath(queuePath: string, rootDirectory: string): string {
@@ -172,15 +222,26 @@ export function selectBatchCandidates(input: {
   selectionMode: BatchSelectionMode;
   candidateIds?: string[];
   maxArticles: number;
+  articleType?: BatchArticleType;
+  publishedSlugs?: Set<string>;
 }): EditorialCandidate[] {
+  const articleType = input.articleType ?? "news-overview";
+  const unpublishedCandidates = input.queue.candidates.filter(
+    (candidate) => !input.publishedSlugs?.has(candidateDraftSlug(candidate, articleType))
+  );
   if (input.selectionMode === "auto-top") {
-    const selected = input.queue.candidates
+    const selected = unpublishedCandidates
+      .filter((candidate) =>
+        candidate.sourceType !== "steam-top-seller" || hasConcreteNewsEvent(candidate)
+      )
       .map((candidate) => ({
         candidate,
-        interestScore: runReaderInterestCheck(candidate).score
+        interestScore: runReaderInterestCheck(candidate).score,
+        priority: autoTopPriority(candidate)
       }))
       .filter((entry) => entry.interestScore >= 60)
       .sort((left, right) =>
+        right.priority - left.priority ||
         right.interestScore - left.interestScore ||
         right.candidate.score - left.candidate.score ||
         left.candidate.id.localeCompare(right.candidate.id)
@@ -199,8 +260,15 @@ export function selectBatchCandidates(input: {
   if (!candidateIds.length) throw new Error("Im Auswahlmodus manual ist mindestens eine Candidate ID erforderlich.");
   if (candidateIds.length > MAX_BATCH_ARTICLES) throw new Error("Maximal 5 Candidate IDs sind zulässig.");
   return candidateIds.slice(0, input.maxArticles).map((id) => {
-    const candidate = input.queue.candidates.find((entry) => entry.id === id);
+    const candidate = unpublishedCandidates.find((entry) => entry.id === id);
     if (!candidate) {
+      const publishedCandidate = input.queue.candidates.find((entry) => entry.id === id);
+      if (publishedCandidate && input.publishedSlugs?.has(candidateDraftSlug(publishedCandidate, articleType))) {
+        throw new Error(
+          `Candidate ID ist bereits als veröffentlichter Artikel vorhanden: ${id} ` +
+          `(${candidateDraftSlug(publishedCandidate, articleType)})`
+        );
+      }
       throw missingCandidateError(id, input.queue, input.queuePath, input.rootDirectory);
     }
     return candidate;
@@ -321,7 +389,7 @@ function buildDraft(input: {
   const summary = input.aiDraft?.summary || "Teaser nach Prüfung der offiziellen Primärquellen ergänzen.";
   const seoTitle = input.aiDraft?.seoTitle || `${title} | SpielSignal`;
   const seoDescription = input.aiDraft?.seoDescription || "SEO-Beschreibung nach Faktenprüfung ergänzen.";
-  const slug = slugify(`${candidate.gameTitle ?? candidate.title}-${input.articleType}`);
+  const slug = candidateDraftSlug(candidate, input.articleType);
   const fallbackImage = candidate.imagePath || "/images/categories/news-default.svg";
   const approvedOfficialImage = candidate.imageStatus === "approved" && candidate.imageCandidateUrl;
   const heroImage = approvedOfficialImage ? candidate.imageCandidateUrl! : fallbackImage;
@@ -422,6 +490,11 @@ function reportMarkdown(result: EditorialBatchResult): string {
         ...review.requiredFixes
       ])
     ];
+    const imageStatus = entry.imageSource.startsWith("/images/")
+      ? "Hero-Bild nur Fallback"
+      : entry.reviews.imageCheck?.warnings.length
+        ? "manuelle Bildprüfung erforderlich"
+        : "Hero-Bild bereit";
     return `### ${entry.title}
 
 - **Candidate ID:** ${entry.candidateId}
@@ -429,6 +502,7 @@ function reportMarkdown(result: EditorialBatchResult): string {
 - **Leserinteresse-Score:** ${entry.readerInterest.score}
 - **Faktenprüfung:** ${entry.reviews.factCheck?.passed ? "bestanden" : "nicht bestanden"}
 - **Bildquelle:** ${entry.imageSource}
+- **Bildstatus:** ${imageStatus}
 - **SEO-Status:** ${entry.reviews.seoCheck?.passed ? "bestanden" : "nicht bestanden"}
 - **Technische Prüfung:** ${entry.reviews.technicalCheck?.passed ? "bestanden" : "nicht bestanden"}
 - **Offene Punkte:** ${openPoints.join("; ") || "Keine zusätzlichen Punkte"}
@@ -444,6 +518,8 @@ function reportMarkdown(result: EditorialBatchResult): string {
 - **Anzahl abgelehnter Kandidaten:** ${result.rejectedCandidates}
 - **KI-Modell:** ${result.ai.model}
 - **KI-Status:** ${result.ai.reason}
+- **KI-Fehlercode:** ${result.ai.errorCode ?? "keiner"}
+- **KI-Versuche:** ${result.ai.attempts ?? 0}
 
 | Candidate ID | Titel | Leserinteresse | Status | Fehlgeschlagene Checks |
 | --- | --- | ---: | --- | --- |
@@ -452,6 +528,10 @@ ${rows || "| - | Keine Kandidaten | 0 | rejected | - |"}
 ## Artikelprüfungen
 
 ${details || "Keine Artikel geprüft."}
+
+${result.completeDrafts === 0 ? `> **Keine vollständigen Artikel erzeugt. KI-Verarbeitung fehlgeschlagen.**
+> Die Gerüste dienen ausschließlich der Diagnose und dürfen nicht veröffentlicht werden.
+` : ""}
 
 ## Vor Merge prüfen
 
@@ -507,13 +587,16 @@ export async function createEditorialBatch(
     options.queuePath ?? DEFAULT_EDITORIAL_QUEUE_PATH,
     rootDirectory
   );
+  const publishedSlugs = await loadPublishedArticleSlugs(rootDirectory);
   const candidates = selectBatchCandidates({
     queue,
     queuePath,
     rootDirectory,
     selectionMode,
     candidateIds: options.candidateIds,
-    maxArticles
+    maxArticles,
+    articleType: options.articleTypeDefault,
+    publishedSlugs
   });
   const timestamp = options.generatedAt ?? new Date().toISOString();
   const reportDate = timestamp.slice(0, 10);
@@ -622,7 +705,13 @@ export async function createEditorialBatch(
     results,
     reportPath,
     rejectedReportPath,
-    ai: { enabled: aiResult.enabled, model: aiResult.model, reason: aiResult.reason }
+    ai: {
+      enabled: aiResult.enabled,
+      model: aiResult.model,
+      reason: aiResult.reason,
+      errorCode: aiResult.errorCode,
+      attempts: aiResult.attempts
+    }
   };
   await writeFile(reportPath, reportMarkdown(result), "utf8");
   if (rejectedReportPath) await writeFile(rejectedReportPath, rejectedMarkdown(result), "utf8");
@@ -665,7 +754,8 @@ if (executedDirectly) {
       generatedDrafts: result.generatedDrafts,
       completeDrafts: result.completeDrafts,
       rejectedCandidates: result.rejectedCandidates,
-      reportDate: result.reportDate
+      reportDate: result.reportDate,
+      publicationReady: result.completeDrafts > 0
     };
     await writeFile(
       process.env.GITHUB_OUTPUT,

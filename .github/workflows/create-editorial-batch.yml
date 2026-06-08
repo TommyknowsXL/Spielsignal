@@ -79,11 +79,12 @@ jobs:
 
       - name: Queue validieren und Batch-Auswahl vorbereiten
         id: queue
-        run: npm run editorial:batch-summary -- "$SELECTION_MODE" "$CANDIDATE_IDS" "$MAX_ARTICLES" "$QUEUE_PATH"
+        run: npm run editorial:batch-summary -- "$SELECTION_MODE" "$CANDIDATE_IDS" "$MAX_ARTICLES" "$QUEUE_PATH" "$ARTICLE_TYPE_DEFAULT"
         env:
           SELECTION_MODE: ${{ inputs.selection_mode }}
           CANDIDATE_IDS: ${{ inputs.candidate_ids }}
           MAX_ARTICLES: ${{ inputs.max_articles }}
+          ARTICLE_TYPE_DEFAULT: ${{ inputs.article_type_default }}
 
       - name: Batch-Entwürfe erzeugen
         id: batch
@@ -97,7 +98,9 @@ jobs:
           MAX_ARTICLES: ${{ inputs.max_articles }}
           AI_EDITORIAL_ENABLED: ${{ vars.AI_EDITORIAL_ENABLED || 'false' }}
           AI_EDITORIAL_MODEL: ${{ vars.AI_EDITORIAL_MODEL || 'gpt-5-mini' }}
-          AI_EDITORIAL_MAX_ARTICLES: ${{ vars.AI_EDITORIAL_MAX_ARTICLES || '5' }}
+          AI_EDITORIAL_MAX_ARTICLES: ${{ vars.AI_EDITORIAL_MAX_ARTICLES || '3' }}
+          AI_EDITORIAL_MAX_RETRIES: ${{ vars.AI_EDITORIAL_MAX_RETRIES || '3' }}
+          AI_EDITORIAL_FAIL_WITHOUT_QUOTA: ${{ vars.AI_EDITORIAL_FAIL_WITHOUT_QUOTA || 'true' }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Tests ausführen
@@ -106,7 +109,22 @@ jobs:
       - name: Produktions-Build prüfen
         run: npm run build
 
+      - name: Veröffentlichungsfähigkeit zusammenfassen
+        if: always()
+        env:
+          COMPLETE_DRAFTS: ${{ steps.batch.outputs.completeDrafts }}
+        run: |
+          if [ "${COMPLETE_DRAFTS:-0}" = "0" ]; then
+            {
+              echo "## Batch nicht veröffentlichungsfähig"
+              echo
+              echo "Keine vollständigen Artikel erzeugt. KI-Verarbeitung fehlgeschlagen."
+              echo "Die Gerüste dienen ausschließlich der Diagnose und dürfen nicht veröffentlicht werden."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Branch und Commit erstellen
+        if: steps.batch.outputs.completeDrafts != '0'
         run: |
           if git ls-remote --exit-code --heads origin "$BRANCH_NAME"; then
             echo "Branch existiert bereits: $BRANCH_NAME" >&2
@@ -115,11 +133,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH_NAME"
-          git add docs/editorial/batch-reports src/content/drafts
+          git add docs/editorial/batch-reports
+          for draft in src/content/drafts/*.md; do
+            [ -e "$draft" ] || continue
+            if grep -q '^status: "draft"$' "$draft"; then
+              git add "$draft"
+            fi
+          done
           git commit -m "content: add editorial batch ${{ github.run_id }}"
           git push --set-upstream origin "$BRANCH_NAME"
 
       - name: Pull Request erstellen
+        if: steps.batch.outputs.completeDrafts != '0'
         env:
           GH_TOKEN: ${{ github.token }}
           REPORT_PATH: ${{ steps.batch.outputs.reportPath }}
