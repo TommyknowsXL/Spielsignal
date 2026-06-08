@@ -1,0 +1,66 @@
+---
+import type { CollectionEntry } from "astro:content";
+
+interface Props {
+  articles: CollectionEntry<"articles">[];
+}
+
+const { articles } = Astro.props;
+const [lead, ...secondary] = articles;
+const articleUrl = (entry: CollectionEntry<"articles">) => `/artikel/${entry.data.slug}/`;
+---
+
+<section class="editorial-hero" aria-labelledby="hero-news-title">
+  <div class="container">
+    <div class="section-intro">
+      <div>
+        <p class="eyebrow">Aus der SpielSignal-Redaktion</p>
+        <h1 id="hero-news-title">PC-Gaming, klar eingeordnet.</h1>
+      </div>
+      <a class="text-link" href="/news/">Alle News →</a>
+    </div>
+
+    {lead ? (
+      <div class:list={["hero-news-grid", secondary.length === 0 && "hero-news-grid--single"]}>
+        <a class="hero-news-main" href={articleUrl(lead)}>
+          <img src={lead.data.heroImage} data-fallback-src="/images/categories/news-default.svg" alt="" width="1200" height="675" />
+          <span class="hero-news-shade"></span>
+          <span class="hero-news-copy">
+            <span class="badge">SpielSignal-News</span>
+            <strong>{lead.data.title}</strong>
+            <span>{lead.data.summary}</span>
+            <b>Weiterlesen →</b>
+          </span>
+        </a>
+        {secondary.length ? (
+          <div class="hero-news-secondary">
+            {secondary.slice(0, 4).map((entry) => (
+              <a class="hero-news-small" href={articleUrl(entry)}>
+                <img src={entry.data.heroImage} data-fallback-src="/images/categories/news-default.svg" alt="" width="600" height="338" loading="lazy" />
+                <span class="hero-news-shade"></span>
+                <span class="hero-news-copy">
+                  <span class="badge">SpielSignal-News</span>
+                  <strong>{entry.data.title}</strong>
+                  <b>Weiterlesen →</b>
+                </span>
+              </a>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    ) : (
+      <div class="empty-editorial-state">
+        <strong>Weitere eigene SpielSignal-News sind in Vorbereitung.</strong>
+        <p>Veröffentlicht wird erst nach Quellen-, Fakten- und Bildprüfung.</p>
+      </div>
+    )}
+  </div>
+</section>
+
+<script>
+  document.querySelectorAll<HTMLImageElement>(".editorial-hero img[data-fallback-src]").forEach((image) => {
+    image.addEventListener("error", () => {
+      image.src = image.dataset.fallbackSrc ?? "/images/categories/news-default.svg";
+    }, { once: true });
+  });
+</script>

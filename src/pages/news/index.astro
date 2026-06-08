@@ -1,13 +1,13 @@
 ---
-import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getCollection } from "astro:content";
 import AdSlot from "../../components/AdSlot.astro";
-import ExternalNewsCard from "../../components/ExternalNewsCard.astro";
+import ExternalNewsList from "../../components/ExternalNewsList.astro";
+import NewsListItem from "../../components/NewsListItem.astro";
 import SteamTrendsSidebar from "../../components/SteamTrendsSidebar.astro";
-import TrendingSidebar from "../../components/TrendingSidebar.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getAggregatedNews } from "../../lib/newsFeed";
 import { prepareNewsItems } from "../../lib/newsPresentation";
 import { getSteamTrends } from "../../lib/steamData";
-import { getTrendingItems } from "../../lib/trending";
 
 export const prerender = false;
 
@@ -16,82 +16,51 @@ Astro.response.headers.set(
   "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400"
 );
 
-const result = await getAggregatedNews();
-const news = await prepareNewsItems(result.items, { limit: 24 });
-const trendingResult = await getTrendingItems(news);
+const articles = (await getCollection("articles", ({ data }) => data.status === "published"))
+  .sort((left, right) => right.data.createdAt.valueOf() - left.data.createdAt.valueOf());
+const feedResult = await getAggregatedNews();
+const externalNews = await prepareNewsItems(feedResult.items, { limit: 5 });
 const steamTrends = await getSteamTrends();
-const filters = ["Alle", ...new Set(news.map((item) => item.category))];
 ---
 
 <BaseLayout
-  title="Aktuelle PC-Gaming-News | SpielSignal"
-  description="Aktuelle PC-Gaming-Meldungen aus freigegebenen Quellen mit direktem Link zur Originalmeldung."
+  title="News | SpielSignal"
+  description="Eigene SpielSignal-News zu PC-Spielen, ergänzt durch kompakte externe Kurzmeldungen."
 >
   <header class="page-hero page-hero--compact container">
     <nav class="breadcrumbs" aria-label="Brotkrumen">
       <a href="/">Startseite</a><span>/</span><span>News</span>
     </nav>
-    <p class="eyebrow">PC-Gaming im Überblick</p>
-    <h1>Aktuelle Gaming-News</h1>
-    <p>Ausgewählte Meldungen mit klarem Gaming-Bezug. Die vollständigen Beiträge liegen bei der Quelle.</p>
+    <p class="eyebrow">SpielSignal-Redaktion</p>
+    <h1>News</h1>
+    <p>Eigenständige Beiträge auf Basis offizieller Quellen. Externe Meldungen bleiben ein klar gekennzeichneter Themenradar.</p>
   </header>
 
-  <section class="section section--compact container">
-    <div class="feed-status success">
-      <strong>Automatische Aktualisierung aktiv</strong>
-      <span>{result.activeSourceCount} freigegebene Gaming-Quelle · Aktualisierung etwa stündlich</span>
-    </div>
-
-    {
-      result.statuses.some((status) => !status.ok) && (
-        <details class="feed-diagnostics">
-          <summary>Quellenhinweis</summary>
-          <ul>{result.statuses.filter((status) => !status.ok).map((status) => (
-            <li><strong>{status.name}:</strong> {status.error}</li>
-          ))}</ul>
-        </details>
-      )
-    }
-
-    {filters.length > 1 ? (
-      <div class="filters" aria-label="News filtern">
-        {filters.map((filter, index) => (
-          <button class="filter" type="button" data-filter={filter} aria-pressed={index === 0 ? "true" : "false"}>
-            {filter}
-          </button>
-        ))}
+  <section class="section section--compact">
+    <div class="container magazine-layout">
+      <div class="magazine-main">
+        <h2 class="content-heading">Aktuelle SpielSignal-News</h2>
+        {articles.length ? (
+          <div class="news-list">
+            {articles.map((entry, index) => (
+              <>
+                <NewsListItem entry={entry} />
+                {index === 3 ? <AdSlot format="feed" /> : null}
+              </>
+            ))}
+          </div>
+        ) : (
+          <div class="empty-editorial-state">
+            <strong>Weitere eigene SpielSignal-News sind in Vorbereitung.</strong>
+            <p>Beiträge erscheinen erst nach redaktioneller Prüfung.</p>
+          </div>
+        )}
       </div>
-    ) : null}
-
-    <div class="news-layout">
-      <div class="grid news-grid">
-        {news.map((item, index) => (
-          <>
-            <ExternalNewsCard item={item} />
-            {index === 7 && <AdSlot format="feed" />}
-          </>
-        ))}
-      </div>
-      <aside class="news-sidebar">
-        {trendingResult.items.length ? <TrendingSidebar result={trendingResult} /> : null}
+      <aside class="magazine-sidebar">
+        <ExternalNewsList items={externalNews} />
         <SteamTrendsSidebar items={steamTrends} />
         <AdSlot format="sidebar" />
       </aside>
     </div>
   </section>
 </BaseLayout>
-
-<script>
-  const filterButtons = document.querySelectorAll<HTMLButtonElement>("[data-filter]");
-  const newsCards = document.querySelectorAll<HTMLElement>(".news-card");
-  filterButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      filterButtons.forEach((item) => item.setAttribute("aria-pressed", "false"));
-      button.setAttribute("aria-pressed", "true");
-      const selected = button.dataset.filter;
-      newsCards.forEach((card) => {
-        card.hidden = selected !== "Alle" && card.dataset.category !== selected;
-      });
-    });
-  });
-</script>

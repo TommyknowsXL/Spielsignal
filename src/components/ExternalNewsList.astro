@@ -1,0 +1,33 @@
+---
+import type { PresentedNewsItem } from "../lib/newsPresentation";
+
+interface Props {
+  items: PresentedNewsItem[];
+  title?: string;
+}
+
+const { items, title = "Kurzmeldungen aus dem Netz" } = Astro.props;
+const formatDate = (value: string) => new Intl.DateTimeFormat("de-DE", {
+  dateStyle: "short",
+  timeStyle: "short",
+  timeZone: "Europe/Berlin"
+}).format(new Date(value));
+---
+
+<section class="sidebar-panel external-news-list">
+  <h2 class="sidebar-title"><span></span>{title}</h2>
+  {items.length ? (
+    <ol>
+      {items.slice(0, 5).map((item) => (
+        <li>
+          <span class="badge badge--external">Externe Kurzmeldung</span>
+          <a href={item.url} target="_blank" rel="noopener noreferrer">{item.title}</a>
+          <small>{item.sourceName} · <time datetime={item.date}>{formatDate(item.date)}</time></small>
+          <a class="external-open" href={item.url} target="_blank" rel="noopener noreferrer">Extern öffnen ↗</a>
+        </li>
+      ))}
+    </ol>
+  ) : (
+    <p class="muted">Derzeit sind keine externen Kurzmeldungen verfügbar.</p>
+  )}
+</section>

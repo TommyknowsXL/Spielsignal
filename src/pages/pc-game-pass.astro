@@ -1,0 +1,37 @@
+---
+import PcGamePassGrid from "../components/PcGamePassGrid.astro";
+import SectionHeader from "../components/SectionHeader.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { approvedPcGamePassEntries } from "../data/pcGamePassEntries";
+
+const newEntries = approvedPcGamePassEntries.filter((entry) => entry.type === "new");
+const comingSoon = approvedPcGamePassEntries.filter((entry) => entry.type === "coming-soon");
+const leavingSoon = approvedPcGamePassEntries.filter((entry) => entry.type === "leaving-soon");
+---
+
+<BaseLayout
+  title="PC Game Pass | SpielSignal"
+  description="Neue, kommende und bald nicht mehr verfügbare PC-Game-Pass-Spiele aus offiziellen Xbox-Quellen."
+>
+  <header class="page-hero page-hero--compact container">
+    <nav class="breadcrumbs" aria-label="Brotkrumen">
+      <a href="/">Startseite</a><span>/</span><span>PC Game Pass</span>
+    </nav>
+    <p class="eyebrow">Nur für PC</p>
+    <h1>PC Game Pass</h1>
+    <p>Manuell kuratierte Zu- und Abgänge aus offiziellen Xbox-Quellen. Ungeprüfte oder reine Konsolenspiele bleiben außen vor.</p>
+  </header>
+
+  <section class="section section--compact container">
+    <SectionHeader eyebrow="Jetzt verfügbar" title="Neu im PC Game Pass" />
+    <PcGamePassGrid entries={newEntries} />
+  </section>
+  <section class="section section--compact container">
+    <SectionHeader eyebrow="Vorschau" title="Demnächst im PC Game Pass" />
+    <PcGamePassGrid entries={comingSoon} />
+  </section>
+  <section class="section section--compact container">
+    <SectionHeader eyebrow="Nicht verpassen" title="Bald nicht mehr verfügbar" />
+    <PcGamePassGrid entries={leavingSoon} />
+  </section>
+</BaseLayout>

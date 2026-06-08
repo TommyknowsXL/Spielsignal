@@ -1,0 +1,39 @@
+---
+import type { CollectionEntry } from "astro:content";
+
+interface Props {
+  entry: CollectionEntry<"articles">;
+}
+
+const { entry } = Astro.props;
+const data = entry.data;
+const formattedDate = data.createdAt.toLocaleDateString("de-DE", {
+  day: "2-digit",
+  month: "long",
+  year: "numeric"
+});
+---
+
+<article class="news-list-item">
+  <a class="news-list-image" href={`/artikel/${data.slug}/`} tabindex="-1" aria-hidden="true">
+    <img src={data.heroImage} data-fallback-src="/images/categories/news-default.svg" alt="" width="640" height="360" loading="lazy" />
+  </a>
+  <div class="news-list-copy">
+    <span class="badge">SpielSignal-News</span>
+    <h3><a href={`/artikel/${data.slug}/`}>{data.title}</a></h3>
+    <p>{data.summary}</p>
+    <div class="meta">
+      <time datetime={data.createdAt.toISOString()}>{formattedDate}</time>
+      {data.gameTitle ? <span>{data.gameTitle}</span> : null}
+    </div>
+    <a class="text-link" href={`/artikel/${data.slug}/`}>Weiterlesen →</a>
+  </div>
+</article>
+
+<script>
+  document.querySelectorAll<HTMLImageElement>(".news-list-item img[data-fallback-src]").forEach((image) => {
+    image.addEventListener("error", () => {
+      image.src = image.dataset.fallbackSrc ?? "/images/categories/news-default.svg";
+    }, { once: true });
+  });
+</script>
