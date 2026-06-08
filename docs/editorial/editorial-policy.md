@@ -114,3 +114,25 @@ Für spätere Verbesserungen sind eindeutige Branch-Namen mit `github.run_id`, e
 geschriebene Summary, Artefakte mit `if: always()`, UTF-8 ohne BOM, Unicode- und
 YAML-Prüfungen, Schutz vor doppelten Frontmatter-Schlüsseln, vollständiges Ersetzen statt
 Anhängen, genau eine Quellenbox sowie der Verzicht auf automatischen Merge dokumentiert.
+
+## Editorial Batch
+
+Der Batch-Workflow darf maximal fünf Kandidaten gleichzeitig verarbeiten. RSS bleibt dabei
+ausschließlich Themenradar und wird nur unter `externalTipSources` dokumentiert. Ein
+vollständiger Entwurf benötigt offizielle Primärquellen und muss alle folgenden Gates bestehen:
+
+1. Faktenprüfung
+2. Leserinteresse mindestens 60 Punkte
+3. Qualitätsprüfung
+4. Originalitätsprüfung
+5. SEO-Prüfung
+6. Bildprüfung oder lokales SpielSignal-Fallback
+7. technische Prüfung
+
+Unter 60 Punkten wird der Kandidat abgelehnt. Zwischen 60 und 74 Punkten ist eine besonders
+deutliche redaktionelle Prüfung erforderlich. Ab 75 Punkten kann ein vollständiger Entwurf
+entstehen, sofern alle übrigen Gates bestanden sind.
+
+Die optionale KI darf nur bereitgestellte, bereits geprüfte Fakten aus offiziellen Quellen
+verwenden. Bei fehlender Quelle, API-Fehlern oder ungültiger strukturierter Ausgabe entsteht
+kein erfundener Artikel, sondern höchstens ein `needs-source-review`-Gerüst.
