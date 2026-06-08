@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { isSuitablePrimarySource } from "./createEditorialDraft";
 import {
   prepareEditorialAiDrafts,
+  prepareReaderEditedDrafts,
   type EditorialAiDraft
 } from "./providers/editorialAiProvider";
 import {
@@ -59,9 +60,12 @@ export type BatchCandidateResult = {
   sourceGatePassed: boolean;
   aiInvoked: boolean;
   aiResult: string;
+  readerEditResult: string;
   imageSource: string;
   status: "draft" | "needs-source-review" | "rejected";
   filePath?: string;
+  articlePath?: string;
+  previewPath?: string;
   recommendation: string;
 };
 
@@ -446,13 +450,68 @@ _Sachliche Einordnung ergänzen._`;
 }
 
 function sanitizedBody(body: string): string {
-  return body
+  const normalized = body
     .replace(/^\uFEFF/, "")
     .replace(/[\u00A0\u202A-\u202E\u2066-\u2069\uFEFF]/g, "")
     .replace(/\r\n?/g, "\n")
     .replace(/^# .+$/gm, "")
+    .replace(/^## Quellen[\s\S]*$/im, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+  const forbidden = [
+    /Für Berichterstattung oder weitere Analyse sollten Redaktion und Leser/i,
+    /in den verifizierten Fakten/i,
+    /bereitgestellte Quellen/i,
+    /Redaktioneller Hinweis/i,
+    /dieser Text basiert ausschließlich/i,
+    /\bSteam-App-ID\b/i
+  ];
+  return normalized
+    .split(/\n{2,}/)
+    .filter((block) => !forbidden.some((pattern) => pattern.test(block)))
+    .join("\n\n")
+    .trim();
+}
+
+function contentBlocksFor(body: string): Array<Record<string, unknown>> {
+  const blocks: Array<Record<string, unknown>> = [];
+  const lines = body.split("\n");
+  let paragraph: string[] = [];
+  let list: string[] = [];
+  const flushParagraph = () => {
+    const text = paragraph.join(" ").trim();
+    if (text) blocks.push({ type: "paragraph", text });
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (list.length) blocks.push({ type: "list", items: list });
+    list = [];
+  };
+  for (const line of lines) {
+    const heading = line.match(/^(##|###)\s+(.+)$/);
+    const item = line.match(/^-\s+(.+)$/);
+    if (heading) {
+      flushParagraph();
+      flushList();
+      blocks.push({ type: "heading", level: heading[1] === "##" ? 2 : 3, text: heading[2].trim() });
+    } else if (item) {
+      flushParagraph();
+      list.push(item[1].trim());
+    } else if (!line.trim()) {
+      flushParagraph();
+      flushList();
+    } else {
+      flushList();
+      paragraph.push(line.trim());
+    }
+  }
+  flushParagraph();
+  flushList();
+  const firstParagraph = blocks.findIndex((block) => block.type === "paragraph");
+  if (firstParagraph >= 0) {
+    blocks.splice(firstParagraph + 1, 0, { type: "ad", slot: "article-inline-1" });
+  }
+  return blocks;
 }
 
 function buildDraft(input: {
@@ -483,6 +542,7 @@ function buildDraft(input: {
     ? "steam-store"
     : "spielsignal-fallback";
   const body = sanitizedBody(input.aiDraft?.markdownBody || draftSections(input.articleType));
+  const contentBlocks = contentBlocksFor(body);
   const sourceLines = input.primarySources.length
     ? input.primarySources.map((source) => `- [${sourceLabel(source)}](${source})`).join("\n")
     : "- Offizielle Primärquelle fehlt.";
@@ -511,6 +571,9 @@ heroImageAlt: ${JSON.stringify(`Titelbild zu ${title}`)}
 heroImageSourceName: ${JSON.stringify(imageSourceType === "steam-store" ? "Steam" : "SpielSignal")}
 heroImageSourceType: ${JSON.stringify(imageSourceType)}
 ${candidate.imageSourcePageUrl ? `heroImageSourceUrl: ${JSON.stringify(candidate.imageSourcePageUrl)}\n` : ""}imageRightsStatus: ${JSON.stringify(approvedOfficialImage ? "approved" : "fallback")}
+${candidate.imageCandidateUrl && candidate.imageStatus !== "approved"
+  ? `heroImageCandidate: ${JSON.stringify(candidate.imageCandidateUrl)}\nheroImageCandidateSourceUrl: ${JSON.stringify(candidate.imageSourcePageUrl)}\nheroImageCandidateStatus: "pending-review"\n`
+  : ""}contentBlocks: ${JSON.stringify(contentBlocks)}
 externalTipSources: ${JSON.stringify(externalTips)}
 primarySources: ${JSON.stringify(input.primarySources)}
 editorialNotes: ${JSON.stringify(notes)}
@@ -560,14 +623,9 @@ function fullGatePassed(reviews: Record<string, EditorialReviewResult>): boolean
 }
 
 function reportMarkdown(result: EditorialBatchResult): string {
-  const rows = result.results.map((entry) => {
-    const failedChecks = Object.entries(entry.reviews)
-      .filter(([, review]) => !review.passed)
-      .map(([name]) => name)
-      .join(", ") || "keine";
-    return `| ${entry.candidateId} | ${entry.title.replace(/\|/g, "\\|")} | ${entry.readerInterest.score} | ${entry.status} | ${failedChecks} |`;
-  }).join("\n");
-  const details = result.results.map((entry) => {
+  const complete = result.results.filter((entry) => entry.status === "draft");
+  const rejected = result.results.filter((entry) => entry.status === "rejected");
+  const completeDetails = complete.map((entry) => {
     const openPoints = [
       ...entry.readerInterest.warnings,
       ...entry.readerInterest.requiredFixes,
@@ -576,64 +634,63 @@ function reportMarkdown(result: EditorialBatchResult): string {
         ...review.requiredFixes
       ])
     ];
-    const imageStatus = entry.imageSource.startsWith("/images/")
-      ? "Hero-Bild nur Fallback"
-      : entry.reviews.imageCheck?.warnings.length
-        ? "manuelle Bildprüfung erforderlich"
-        : "Hero-Bild bereit";
     return `### ${entry.title}
 
 - **Candidate ID:** ${entry.candidateId}
-- **Artikeltyp:** ${entry.articleType}
 - **Leserinteresse-Score:** ${entry.readerInterest.score}
-- **Gefundene Primärquellen (${entry.foundPrimarySources}):** ${entry.foundPrimarySourceUrls.join(", ") || "keine"}
-- **Verifizierte Primärquellen (${entry.verifiedPrimarySources}):** ${entry.verifiedPrimarySourceUrls.join(", ") || "keine"}
-- **Steam-App-ID:** ${entry.steamAppId ?? "nicht gefunden"}
-- **Faktenprüfung:** ${entry.reviews.factCheck?.passed ? "bestanden" : "nicht bestanden"}
-- **Bildquelle:** ${entry.imageSource}
-- **Hero-Bildstatus:** ${entry.heroImageStatus || imageStatus}
-- **Source-Gate bestanden:** ${entry.sourceGatePassed ? "ja" : "nein"}
-- **KI-Aufruf durchgeführt:** ${entry.aiInvoked ? "ja" : "nein"}
-- **KI-Ergebnis:** ${entry.aiResult}
+- **Artikeltyp:** ${entry.articleType}
+- **Verifizierte Primärquellen:** ${entry.verifiedPrimarySourceUrls.join(", ") || "keine"}
+- **Hero-Bildstatus:** ${entry.heroImageStatus}
+- **Reader-Edit:** ${entry.readerEditResult}
 - **SEO-Status:** ${entry.reviews.seoCheck?.passed ? "bestanden" : "nicht bestanden"}
 - **Technische Prüfung:** ${entry.reviews.technicalCheck?.passed ? "bestanden" : "nicht bestanden"}
-- **Offene Punkte:** ${openPoints.join("; ") || "Keine zusätzlichen Punkte"}
+- **Offene manuelle Punkte:** ${openPoints.join("; ") || "Keine zusätzlichen Punkte"}
+- **Dateipfad:** ${entry.filePath ? relative(process.cwd(), entry.filePath).replace(/\\/g, "/") : "nicht erzeugt"}
+- **Erwarteter Artikelpfad:** ${entry.articlePath ?? "nicht verfügbar"}
+- **Preview-Pfad:** ${entry.previewPath ?? "nicht verfügbar"}
+`;
+  }).join("\n");
+  const rejectedDetails = rejected.map((entry) => {
+    const reasons = [
+      ...entry.readerInterest.requiredFixes,
+      ...entry.readerInterest.warnings,
+      ...Object.values(entry.reviews).flatMap((review) => review.requiredFixes)
+    ];
+    return `### ${entry.title}
+
+- **Score:** ${entry.readerInterest.score}
+- **Ablehnungsgrund:** ${reasons.join("; ") || entry.recommendation}
 `;
   }).join("\n");
   return `# SpielSignal Editorial Batch
 
 - **Workflow Run ID:** ${result.branchName.split("/").at(-1)}
 - **Branch:** ${result.branchName}
-- **Anzahl geprüfter Kandidaten:** ${result.checkedCandidates}
-- **Anzahl erzeugter Drafts:** ${result.generatedDrafts}
-- **Davon vollständige Drafts:** ${result.completeDrafts}
-- **Anzahl abgelehnter Kandidaten:** ${result.rejectedCandidates}
-- **KI-Modell:** ${result.ai.model}
-- **KI-Status:** ${result.ai.reason}
-- **KI-Fehlercode:** ${result.ai.errorCode ?? "keiner"}
-- **KI-Versuche:** ${result.ai.attempts ?? 0}
+- **Geprüfte Kandidaten:** ${result.checkedCandidates}
+- **Vollständige Drafts:** ${result.completeDrafts}
+- **Abgelehnte Kandidaten:** ${result.rejectedCandidates}
 
-| Candidate ID | Titel | Leserinteresse | Status | Fehlgeschlagene Checks |
-| --- | --- | ---: | --- | --- |
-${rows || "| - | Keine Kandidaten | 0 | rejected | - |"}
+## Fertige Entwürfe
 
-## Artikelprüfungen
+${completeDetails || "Keine vollständigen Entwürfe."}
 
-${details || "Keine Artikel geprüft."}
+${result.completeDrafts === 0
+  ? "> **Keine vollständigen Artikel erzeugt. Gerüste dienen ausschließlich der Diagnose und erzeugen keinen Pull Request.**\n"
+  : ""}
 
-${result.completeDrafts === 0 ? `> **Keine vollständigen Artikel erzeugt. KI-Verarbeitung fehlgeschlagen.**
-> Die Gerüste dienen ausschließlich der Diagnose und dürfen nicht veröffentlicht werden.
-` : ""}
+## Abgelehnte Themen
+
+${rejectedDetails || "Keine abgelehnten Themen."}
 
 ## Vor Merge prüfen
 
-- [ ] Text interessant?
-- [ ] Fakten korrekt?
-- [ ] Bild passend und freigegeben?
-- [ ] Quellen sauber?
-- [ ] Keine kopierten Formulierungen?
-- [ ] Keine internen Daten sichtbar?
-- [ ] Veröffentlichen, überarbeiten oder ablehnen?
+- [ ] Ist die Überschrift interessant?
+- [ ] Ist der Text leserfreundlich?
+- [ ] Stimmen die Fakten?
+- [ ] Ist das Bild passend?
+- [ ] Sind die Quellen sauber?
+- [ ] Keine internen Angaben sichtbar?
+- [ ] Veröffentlichen oder überarbeiten?
 `;
 }
 
@@ -734,7 +791,13 @@ export async function createEditorialBatch(
     options.environment ?? process.env,
     options.fetchImpl ?? fetch
   );
-  const aiDraftMap = new Map(aiResult.drafts.map((draft) => [draft.candidateId, draft]));
+  const readerEditResult = await prepareReaderEditedDrafts(
+    aiResult.drafts,
+    aiInputs,
+    options.environment ?? process.env,
+    options.fetchImpl ?? fetch
+  );
+  const aiDraftMap = new Map(readerEditResult.drafts.map((draft) => [draft.candidateId, draft]));
   const aiRequestedIds = new Set(aiInputs.map((input) => input.candidate.id));
   const aiWasInvoked = Boolean(aiResult.attempts);
   const results: BatchCandidateResult[] = [];
@@ -769,6 +832,7 @@ export async function createEditorialBatch(
         sourceGatePassed,
         aiInvoked: false,
         aiResult: "Nicht aufgerufen: Leserinteresse unter 60.",
+        readerEditResult: "Nicht aufgerufen.",
         imageSource: candidate.imageSourcePageUrl ?? candidate.imagePath ?? "Kein Bild",
         status: "rejected",
         recommendation: "Thema nicht als vollständigen Artikel verfolgen."
@@ -813,15 +877,20 @@ export async function createEditorialBatch(
       sourceGatePassed,
       aiInvoked,
       aiResult: aiDraftMap.has(candidate.id)
-        ? "Strukturierter KI-Entwurf erzeugt."
+        ? "Writer-Draft und Reader-Edit erzeugt."
         : aiInvoked
           ? aiResult.reason
           : sourceGatePassed
             ? "Nicht aufgerufen: KI deaktiviert oder nicht konfiguriert."
             : "Nicht aufgerufen: Source-Gate nicht bestanden.",
+      readerEditResult: aiDraftMap.has(candidate.id)
+        ? readerEditResult.reason
+        : "Kein veröffentlichungsfähiger Reader-Edit vorhanden.",
       imageSource: candidate.imageSourcePageUrl ?? built.reviewInput.heroImage,
       status,
       filePath,
+      articlePath: complete ? `/artikel/${built.reviewInput.slug}/` : undefined,
+      previewPath: complete ? `/redaktion/vorschau/${built.reviewInput.slug}/` : undefined,
       recommendation: complete
         ? readerInterest.score < 75
           ? "Vollständigen Entwurf besonders sorgfältig redaktionell prüfen."
@@ -900,7 +969,25 @@ if (executedDirectly) {
       completeDrafts: result.completeDrafts,
       rejectedCandidates: result.rejectedCandidates,
       reportDate: result.reportDate,
-      publicationReady: result.completeDrafts > 0
+      publicationReady: result.completeDrafts > 0,
+      articlePaths: result.results
+        .flatMap((entry) => entry.articlePath ? [entry.articlePath] : [])
+        .join(","),
+      previewPaths: result.results
+        .flatMap((entry) => entry.previewPath ? [entry.previewPath] : [])
+        .join(","),
+      heroImageStatuses: result.results
+        .filter((entry) => entry.status === "draft")
+        .map((entry) => `${entry.candidateId}: ${entry.heroImageStatus}`)
+        .join(" | "),
+      manualReviewPoints: result.results
+        .filter((entry) => entry.status === "draft")
+        .flatMap((entry) => Object.values(entry.reviews).flatMap((review) => [
+          ...review.warnings,
+          ...review.requiredFixes
+        ]))
+        .filter((value, index, values) => values.indexOf(value) === index)
+        .join(" | ")
     };
     await writeFile(
       process.env.GITHUB_OUTPUT,

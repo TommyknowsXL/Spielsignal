@@ -615,7 +615,7 @@ const subnauticaBatch = await createEditorialBatch({
     OPENAI_API_KEY: "test-only-key"
   }
 });
-assert.equal(subnauticaAiCalls, 1);
+assert.equal(subnauticaAiCalls, 2);
 assert.equal(subnauticaBatch.completeDrafts, 1);
 assert.equal(subnauticaBatch.results[0].status, "draft");
 assert.equal(subnauticaBatch.results[0].steamAppId, "1962700");
@@ -625,9 +625,11 @@ assert.ok(subnauticaBatch.results[0].readerInterest.score >= 75);
 assert.ok(subnauticaBatch.results[0].verifiedPrimarySources >= 2);
 assert.match(subnauticaBatch.results[0].heroImageStatus, /Steam-Bildkandidat/);
 const subnauticaReport = await readFile(subnauticaBatch.reportPath, "utf8");
-assert.match(subnauticaReport, /Source-Gate bestanden:\*\* ja/);
-assert.match(subnauticaReport, /KI-Aufruf durchgeführt:\*\* ja/);
-assert.match(subnauticaReport, /Steam-App-ID:\*\* 1962700/);
+assert.match(subnauticaReport, /## Fertige Entwürfe/);
+assert.match(subnauticaReport, /Verifizierte Primärquellen/);
+assert.match(subnauticaReport, /Erwarteter Artikelpfad:\*\* \/artikel\/subnautica-2-news-overview\//);
+assert.match(subnauticaReport, /Preview-Pfad:\*\* \/redaktion\/vorschau\/subnautica-2-news-overview\//);
+assert.match(subnauticaReport, /Reader-Edit wurde nach der Fakten- und Writer-Stufe ausgeführt/);
 const subnauticaDraft = await readFile(subnauticaBatch.results[0].filePath!, "utf8");
 assert.match(subnauticaDraft, /externalTipSources: \["https:\/\/www\.gamestar\.de\/artikel\//);
 assert.doesNotMatch(
@@ -821,8 +823,39 @@ assert.match(workflow, /AI_EDITORIAL_MAX_RETRIES: \$\{\{ vars\.AI_EDITORIAL_MAX_
 assert.match(workflow, /AI_EDITORIAL_FAIL_WITHOUT_QUOTA: \$\{\{ vars\.AI_EDITORIAL_FAIL_WITHOUT_QUOTA \|\| 'true' \}\}/);
 assert.match(workflow, /Branch und Commit erstellen[\s\S]*if: steps\.batch\.outputs\.completeDrafts != '0'/);
 assert.match(workflow, /Pull Request erstellen[\s\S]*if: steps\.batch\.outputs\.completeDrafts != '0'/);
+assert.match(workflow, /Editorial Batch: \$REPORT_DATE · \$COMPLETE_DRAFTS vollständige Entwürfe/);
+assert.match(workflow, /PR_URL=\$\(gh pr create/);
+assert.match(workflow, /PR: \$PR_URL/);
+assert.match(workflow, /Hero-Bildstatus: \$\{HERO_IMAGE_STATUSES/);
+assert.match(workflow, /Manuelle Prüfpunkte: \$\{MANUAL_REVIEW_POINTS/);
 assert.match(workflow, /grep -q '\^status: "draft"\$'/);
 assert.match(workflow, /Keine vollständigen Artikel erzeugt\. KI-Verarbeitung fehlgeschlagen\./);
+assert.match(workflow, /Artifact: nur für technische Diagnose erforderlich/);
+
+const readerProvider = await readFile("scripts/agents/providers/editorialAiProvider.ts", "utf8");
+assert.match(readerProvider, /Verified Facts[\s\S]*Writer Draft[\s\S]*Reader Edit|prepareReaderEditedDrafts/);
+assert.match(readerProvider, /EDITORIAL_READER_EDIT_PROMPT/);
+assert.match(readerProvider, /keinen Quellenabschnitt/);
+
+const previewRoute = await readFile("src/pages/redaktion/vorschau/[slug].astro", "utf8");
+assert.match(previewRoute, /process\.env\.VERCEL_ENV !== "preview"/);
+assert.match(previewRoute, /robots="noindex, nofollow"/);
+assert.match(previewRoute, /ENTWURF · NICHT VERÖFFENTLICHT/);
+assert.doesNotMatch(previewRoute, /getCollection\("articles"/);
+
+const subnauticaEditorialDraft = await readFile(
+  "src/content/drafts/subnautica-2-news-overview.md",
+  "utf8"
+);
+assert.equal((subnauticaEditorialDraft.match(/^## Quellen$/gm) ?? []).length, 0);
+assert.equal((subnauticaEditorialDraft.match(/^title:/gm) ?? []).length, 1);
+assert.doesNotMatch(
+  subnauticaEditorialDraft.split("---").at(-1) ?? "",
+  /Steam-App-ID|in den verifizierten Fakten|bereitgestellte Quellen|Redaktioneller Hinweis|dieser Text basiert ausschließlich/i
+);
+assert.match(subnauticaEditorialDraft, /heroImageCandidateStatus: "pending-review"/);
+assert.match(subnauticaEditorialDraft, /heroImage: "\/images\/categories\/survival\.svg"/);
+assert.match(subnauticaEditorialDraft, /type: "ad"[\s\S]*slot: "article-inline-1"/);
 
 console.log(
   "Editorial-Batch-Tests erfolgreich: Mehrfachauswahl, Maximalgrenze, Reviews, Qualitätsgate, KI-Fallback und sicherer Workflow."

@@ -266,6 +266,14 @@ Nur vollständig geprüfte Entwürfe mit `status: "draft"` werden auf den Editor
 kein vollständiger Entwurf entsteht, wird kein Pull Request erstellt und die Actions Summary
 zeigt einen deutlichen Warnhinweis.
 
+Bei mindestens einem vollständigen Entwurf erstellt der Workflow automatisch einen Pull Request
+mit fertigen und abgelehnten Themen, manuellen Prüfpunkten sowie Artikel- und Preview-Pfaden.
+Vercel-Preview-Deployments erzeugen für vollständige Drafts zusätzlich
+`/redaktion/vorschau/[slug]/`. Diese Seiten tragen den Hinweis
+`ENTWURF · NICHT VERÖFFENTLICHT` und `noindex, nofollow`; Produktions-Builds erzeugen diese
+Routen nicht. Das Diagnose-Artifact bleibt für Fehlerfälle erhalten, ist im Normalbetrieb aber
+nicht erforderlich.
+
 Als spätere Ausbaustufe könnte der Batch-Workflow alternativ das
 `Artifact eines ausgewählten Daily-Queue-Laufs laden`. Bevorzugt bleibt vorerst:
 `Batch-Workflow erzeugt selbst eine frische Queue`, weil diese Lösung einfacher, robuster und
@@ -297,6 +305,12 @@ mit exponentiellem Backoff und höchstens drei Wiederholungen erneut versucht; e
 wiederholt. Logs enthalten nur HTTP-Status, Fehlercode, Versuch, Retry-After und Modell.
 Schlüssel, Prompts und vollständige API-Antworten werden weder geloggt noch in Reports oder
 Drafts geschrieben.
+
+Vollständige KI-Artikel durchlaufen zwei strukturierte Stufen: Zuerst erstellt der Writer einen
+faktentreuen Entwurf, anschließend formt der Reader Edit ihn zu einer leserfreundlichen
+Gaming-News um. Erst danach folgen Qualitäts-, SEO- und Technikprüfung. Der Reader Edit entfernt
+interne Prüfprotokoll-Sprache, doppelte Überschriften und Quellenbereiche; die öffentliche
+Quellenbox wird nur einmal vom Artikellayout dargestellt.
 
 Der Batch-Report weist außerdem aus, ob ein Hero-Bild einsatzbereit ist, manuell geprüft werden
 muss oder nur der lokale Fallback verwendet wird.
