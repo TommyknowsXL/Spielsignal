@@ -2,7 +2,6 @@
 import { getCollection, render, type CollectionEntry } from "astro:content";
 import AdSlot from "../../components/AdSlot.astro";
 import ArticleContentBlocks from "../../components/ArticleContentBlocks.astro";
-import NewsListItem from "../../components/NewsListItem.astro";
 import SteamTrendsSidebar from "../../components/SteamTrendsSidebar.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getSteamTrends } from "../../lib/steamData";
@@ -131,13 +130,6 @@ const jsonLd = {
     </aside>
   </div>
 
-  <section class="section section--compact container">
-    <p class="eyebrow">Aus der Redaktion</p>
-    <h2 class="content-heading">Weitere News</h2>
-    {moreNews.length ? <div class="news-list">{moreNews.map((candidate) => <NewsListItem entry={candidate} />)}</div> : (
-      <div class="empty-editorial-state"><p>Weitere eigene SpielSignal-News sind in Vorbereitung.</p></div>
-    )}
-  </section>
 </BaseLayout>
 
 <script>

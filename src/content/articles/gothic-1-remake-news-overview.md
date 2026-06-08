@@ -102,7 +102,7 @@ contentBlocks:
     level: 2
     text: "Unsere Einordnung"
   - type: "paragraph"
-    text: "Die starke Sichtbarkeit auf Steam ist ein nachvollziehbares Signal für aktuelles Interesse, aber kein abschließendes Urteil über Qualität oder dauerhaften Erfolg."
+    text: "Die starke Platzierung in den Steam-Topsellern ist ein nachvollziehbares Signal für aktuelles Interesse, aber kein abschließendes Urteil über Qualität oder dauerhaften Erfolg."
   - type: "paragraph"
     text: "Inhaltlich ist der Ansatz klar: Das Remake möchte die offene, reaktive Kolonie und die Fraktionsentscheidungen des Klassikers erhalten, während Technik, Kampf und Questdetails modernisiert werden."
   - type: "paragraph"
