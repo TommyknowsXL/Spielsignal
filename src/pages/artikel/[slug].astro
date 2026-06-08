@@ -113,14 +113,6 @@ const jsonLd = {
         <button class="filter copy-link" type="button" data-url={articleUrl}>Link kopieren</button>
       </div>
       <div class="article-ad"><AdSlot placement="article-bottom" /></div>
-
-      <section class="article-related-news" data-article-more-news>
-        <p class="eyebrow">Aus der Redaktion</p>
-        <h2 class="content-heading">Weitere News</h2>
-        {moreNews.length ? <div class="news-list">{moreNews.map((candidate) => <NewsListItem entry={candidate} />)}</div> : (
-          <div class="empty-editorial-state"><p>Weitere eigene SpielSignal-News sind in Vorbereitung.</p></div>
-        )}
-      </section>
     </article>
 
     <aside class="article-sidebar">
@@ -138,6 +130,14 @@ const jsonLd = {
       <AdSlot placement="article-sidebar" />
     </aside>
   </div>
+
+  <section class="section section--compact container article-related-news" data-article-more-news>
+    <p class="eyebrow">Aus der Redaktion</p>
+    <h2 class="content-heading">Weitere News</h2>
+    {moreNews.length ? <div class="news-list">{moreNews.map((candidate) => <NewsListItem entry={candidate} />)}</div> : (
+      <div class="empty-editorial-state"><p>Weitere eigene SpielSignal-News sind in Vorbereitung.</p></div>
+    )}
+  </section>
 </BaseLayout>
 
 <script>
