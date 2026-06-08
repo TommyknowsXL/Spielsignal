@@ -6,6 +6,11 @@ import {
   prepareEditorialAiDrafts,
   type EditorialAiDraft
 } from "./providers/editorialAiProvider";
+import {
+  findOfficialPrimarySources,
+  type OfficialPrimarySource,
+  type VerifiedFact
+} from "./sources/findOfficialPrimarySources";
 import { runFactCheck } from "./review/factCheck";
 import { runImageCheck } from "./review/imageCheck";
 import { runOriginalityCheck } from "./review/originalityCheck";
@@ -34,6 +39,7 @@ export type CreateEditorialBatchOptions = {
   generatedAt?: string;
   environment?: Record<string, string | undefined>;
   fetchImpl?: typeof fetch;
+  sourceFetchImpl?: typeof fetch;
   queuePath?: string;
 };
 
@@ -44,6 +50,15 @@ export type BatchCandidateResult = {
   readerInterest: EditorialReviewResult;
   reviews: Record<string, EditorialReviewResult>;
   primarySources: string[];
+  foundPrimarySourceUrls: string[];
+  verifiedPrimarySourceUrls: string[];
+  foundPrimarySources: number;
+  verifiedPrimarySources: number;
+  steamAppId?: string;
+  heroImageStatus: string;
+  sourceGatePassed: boolean;
+  aiInvoked: boolean;
+  aiResult: string;
   imageSource: string;
   status: "draft" | "needs-source-review" | "rejected";
   filePath?: string;
@@ -94,20 +109,104 @@ function uniqueUrls(values: string[]): string[] {
   }))];
 }
 
-function automaticOfficialSources(candidate: EditorialCandidate): string[] {
-  if (!candidate.steamAppId) return [];
-  return [
-    candidate.steamStoreUrl,
-    `https://store.steampowered.com/news/app/${candidate.steamAppId}/`
-  ].filter((source): source is string => Boolean(source));
+type EnrichedCandidateSources = {
+  candidate: EditorialCandidate;
+  sources: OfficialPrimarySource[];
+  verifiedFacts: VerifiedFact[];
+};
+
+function sourceTypeForUrl(url: string): OfficialPrimarySource["sourceType"] {
+  const parsed = new URL(url);
+  if (parsed.hostname.includes("steampowered.com") && parsed.pathname.startsWith("/app/")) {
+    return "steam-store";
+  }
+  if (parsed.hostname.includes("steampowered.com") && parsed.pathname.startsWith("/news/app/")) {
+    return "steam-news-hub";
+  }
+  if (parsed.hostname.includes("xbox.com")) return "official-xbox-page";
+  if (parsed.hostname.includes("youtube.com") || parsed.hostname.includes("youtu.be")) {
+    return "official-trailer";
+  }
+  if (/patch|update|changelog|release-notes/i.test(parsed.pathname)) return "official-patchnotes";
+  return "official-developer-site";
 }
 
-function primarySourcesFor(candidate: EditorialCandidate, supplied: string[]): string[] {
-  return uniqueUrls([
-    ...supplied,
-    ...automaticOfficialSources(candidate),
-    ...(candidate.sourceType !== "rss-news" ? [candidate.sourceUrl] : [])
-  ]);
+function suppliedOfficialSources(
+  values: string[],
+  verified: boolean
+): OfficialPrimarySource[] {
+  return uniqueUrls(values).map((url) => ({
+    url,
+    sourceType: sourceTypeForUrl(url),
+    sourceName: sourceLabel(url),
+    verified,
+    confidence: verified ? 0.9 : 0.5,
+    discoveredVia: verified ? "trusted-official-provider" : "manual-workflow-input-pending-verification"
+  }));
+}
+
+async function enrichCandidateSources(
+  candidate: EditorialCandidate,
+  supplied: string[],
+  fetchImpl: typeof fetch
+): Promise<EnrichedCandidateSources> {
+  const discovered = await findOfficialPrimarySources({
+    candidateId: candidate.id,
+    title: candidate.title,
+    gameTitle: candidate.gameTitle,
+    steamAppId: candidate.steamAppId,
+    sourceUrl: candidate.sourceUrl
+  }, { fetchImpl });
+  const manualSources = suppliedOfficialSources(supplied, false);
+  const nonRssSource = candidate.sourceType !== "rss-news"
+    ? suppliedOfficialSources([candidate.sourceUrl], true)
+    : [];
+  const sources = [...discovered.sources, ...manualSources, ...nonRssSource]
+    .filter((source, index, all) =>
+      all.findIndex((entry) => entry.url.replace(/\/$/, "") === source.url.replace(/\/$/, "")) === index
+    );
+  const verifiedSource = sources.find((source) => source.verified);
+  const fallbackFacts: VerifiedFact[] = [];
+  if (verifiedSource && candidate.sourceType !== "rss-news" && candidate.genre) {
+    fallbackFacts.push({
+      statement: `Das Spiel ist der Kategorie ${candidate.genre} zugeordnet.`,
+      sourceUrl: verifiedSource.url,
+      sourceType: verifiedSource.sourceType,
+      confidence: 0.75
+    });
+  }
+  if (verifiedSource && candidate.sourceType !== "rss-news" && candidate.releaseDate) {
+    fallbackFacts.push({
+      statement: `Das dokumentierte Release-Datum ist ${candidate.releaseDate}.`,
+      sourceUrl: verifiedSource.url,
+      sourceType: verifiedSource.sourceType,
+      confidence: 0.85
+    });
+  }
+  const enrichedCandidate: EditorialCandidate = {
+    ...candidate,
+    gameTitle: discovered.gameTitle ?? candidate.gameTitle,
+    steamAppId: discovered.steamAppId ?? candidate.steamAppId,
+    steamStoreUrl: discovered.steamAppId
+      ? `https://store.steampowered.com/app/${discovered.steamAppId}/`
+      : candidate.steamStoreUrl,
+    imageStatus: candidate.imageStatus === "approved"
+      ? "approved"
+      : discovered.imageCandidateUrl
+        ? "pending-review"
+        : candidate.imageStatus,
+    imageCandidateUrl: discovered.imageCandidateUrl ?? candidate.imageCandidateUrl,
+    imageSourcePageUrl: discovered.imageSourcePageUrl ?? candidate.imageSourcePageUrl,
+    imageSourceType: discovered.imageCandidateUrl ? "steam-store" : candidate.imageSourceType,
+    rightsNotes: discovered.imageCandidateUrl
+      ? "Offizieller Steam-Store-Bildkandidat; vor Veröffentlichung manuell prüfen."
+      : candidate.rightsNotes
+  };
+  return {
+    candidate: enrichedCandidate,
+    sources,
+    verifiedFacts: [...discovered.verifiedFacts, ...fallbackFacts]
+  };
 }
 
 export function candidateDraftSlug(
@@ -280,19 +379,6 @@ function sourceLabel(source: string): string {
   if (host.includes("steampowered.com")) return "Steam";
   if (host.includes("xbox.com")) return "Xbox";
   return host;
-}
-
-function verifiedFactsFor(candidate: EditorialCandidate): string[] {
-  return [
-    candidate.gameTitle ? `Spiel: ${candidate.gameTitle}` : undefined,
-    candidate.steamAppId ? `Steam-App-ID: ${candidate.steamAppId}` : undefined,
-    candidate.genre ? `Genre: ${candidate.genre}` : undefined,
-    candidate.releaseDate ? `Offiziell dokumentiertes Release-Datum: ${candidate.releaseDate}` : undefined,
-    candidate.steamRank
-      ? `Zum dokumentierten Abrufzeitpunkt war das Spiel Rang ${candidate.steamRank} in den Steam-Topsellern; Rankings sind nur Momentaufnahmen.`
-      : undefined,
-    candidate.freePromotionConfirmed ? `Die Gratis-Aktion ist in der offiziellen Quelle bestätigt.` : undefined
-  ].filter((fact): fact is string => Boolean(fact));
 }
 
 function draftSections(articleType: BatchArticleType): string {
@@ -500,9 +586,15 @@ function reportMarkdown(result: EditorialBatchResult): string {
 - **Candidate ID:** ${entry.candidateId}
 - **Artikeltyp:** ${entry.articleType}
 - **Leserinteresse-Score:** ${entry.readerInterest.score}
+- **Gefundene Primärquellen (${entry.foundPrimarySources}):** ${entry.foundPrimarySourceUrls.join(", ") || "keine"}
+- **Verifizierte Primärquellen (${entry.verifiedPrimarySources}):** ${entry.verifiedPrimarySourceUrls.join(", ") || "keine"}
+- **Steam-App-ID:** ${entry.steamAppId ?? "nicht gefunden"}
 - **Faktenprüfung:** ${entry.reviews.factCheck?.passed ? "bestanden" : "nicht bestanden"}
 - **Bildquelle:** ${entry.imageSource}
-- **Bildstatus:** ${imageStatus}
+- **Hero-Bildstatus:** ${entry.heroImageStatus || imageStatus}
+- **Source-Gate bestanden:** ${entry.sourceGatePassed ? "ja" : "nein"}
+- **KI-Aufruf durchgeführt:** ${entry.aiInvoked ? "ja" : "nein"}
+- **KI-Ergebnis:** ${entry.aiResult}
 - **SEO-Status:** ${entry.reviews.seoCheck?.passed ? "bestanden" : "nicht bestanden"}
 - **Technische Prüfung:** ${entry.reviews.technicalCheck?.passed ? "bestanden" : "nicht bestanden"}
 - **Offene Punkte:** ${openPoints.join("; ") || "Keine zusätzlichen Punkte"}
@@ -588,7 +680,7 @@ export async function createEditorialBatch(
     rootDirectory
   );
   const publishedSlugs = await loadPublishedArticleSlugs(rootDirectory);
-  const candidates = selectBatchCandidates({
+  const selectedCandidates = selectBatchCandidates({
     queue,
     queuePath,
     rootDirectory,
@@ -602,22 +694,39 @@ export async function createEditorialBatch(
   const reportDate = timestamp.slice(0, 10);
   const runId = options.environment?.GITHUB_RUN_ID || process.env.GITHUB_RUN_ID || Date.now().toString();
   const branchName = `editorial-batch/${runId}`;
-  const sourceMap = new Map(candidates.map((candidate, index) => [
-    candidate.id,
-    primarySourcesFor(candidate, options.primarySourceGroups?.[index] ?? [])
-  ]));
+  const enriched = await Promise.all(selectedCandidates.map((candidate, index) =>
+    enrichCandidateSources(
+      candidate,
+      options.primarySourceGroups?.[index] ?? [],
+      options.sourceFetchImpl ?? fetch
+    )
+  ));
+  const candidates = enriched.map((entry) => entry.candidate);
+  const enrichmentMap = new Map(enriched.map((entry) => [entry.candidate.id, entry]));
   const interestMap = new Map(candidates.map((candidate) => [
     candidate.id,
     runReaderInterestCheck(candidate)
   ]));
+  const sourceGateMap = new Map(candidates.map((candidate) => {
+    const entry = enrichmentMap.get(candidate.id)!;
+    const hasVerifiedSource = entry.sources.some((source) => source.verified);
+    const hasFacts = entry.verifiedFacts.length > 0;
+    const hasImage = Boolean(candidate.imageCandidateUrl || candidate.imagePath || "/images/categories/news-default.svg");
+    return [candidate.id, hasVerifiedSource && hasFacts && hasImage] as const;
+  }));
 
   const aiInputs = candidates
-    .filter((candidate) => (interestMap.get(candidate.id)?.score ?? 0) >= 60)
+    .filter((candidate) =>
+      (interestMap.get(candidate.id)?.score ?? 0) >= 60 &&
+      sourceGateMap.get(candidate.id)
+    )
     .map((candidate) => ({
       candidate,
       articleType: options.articleTypeDefault,
-      primarySources: sourceMap.get(candidate.id) ?? [],
-      verifiedFacts: verifiedFactsFor(candidate),
+      primarySources: enrichmentMap.get(candidate.id)!.sources
+        .filter((source) => source.verified)
+        .map((source) => source.url),
+      verifiedFacts: enrichmentMap.get(candidate.id)!.verifiedFacts,
       editorialNote: options.editorialNote
     }));
   const aiResult = await prepareEditorialAiDrafts(
@@ -626,11 +735,23 @@ export async function createEditorialBatch(
     options.fetchImpl ?? fetch
   );
   const aiDraftMap = new Map(aiResult.drafts.map((draft) => [draft.candidateId, draft]));
+  const aiRequestedIds = new Set(aiInputs.map((input) => input.candidate.id));
+  const aiWasInvoked = Boolean(aiResult.attempts);
   const results: BatchCandidateResult[] = [];
 
   for (const candidate of candidates) {
     const readerInterest = interestMap.get(candidate.id)!;
-    const primarySources = sourceMap.get(candidate.id) ?? [];
+    const enrichment = enrichmentMap.get(candidate.id)!;
+    const primarySources = enrichment.sources
+      .filter((source) => source.verified)
+      .map((source) => source.url);
+    const sourceGatePassed = sourceGateMap.get(candidate.id) ?? false;
+    const aiInvoked = sourceGatePassed && aiRequestedIds.has(candidate.id) && aiWasInvoked;
+    const heroImageStatus = candidate.imageStatus === "approved"
+      ? "Hero-Bild bereit"
+      : candidate.imageCandidateUrl
+        ? "Offizieller Steam-Bildkandidat, manuelle Prüfung erforderlich"
+        : "Hero-Bild nur Fallback";
     if (readerInterest.score < 60) {
       results.push({
         candidateId: candidate.id,
@@ -639,6 +760,15 @@ export async function createEditorialBatch(
         readerInterest,
         reviews: {},
         primarySources,
+        foundPrimarySourceUrls: enrichment.sources.map((source) => source.url),
+        verifiedPrimarySourceUrls: primarySources,
+        foundPrimarySources: enrichment.sources.length,
+        verifiedPrimarySources: enrichment.sources.filter((source) => source.verified).length,
+        steamAppId: candidate.steamAppId,
+        heroImageStatus,
+        sourceGatePassed,
+        aiInvoked: false,
+        aiResult: "Nicht aufgerufen: Leserinteresse unter 60.",
         imageSource: candidate.imageSourcePageUrl ?? candidate.imagePath ?? "Kein Bild",
         status: "rejected",
         recommendation: "Thema nicht als vollständigen Artikel verfolgen."
@@ -674,6 +804,21 @@ export async function createEditorialBatch(
       readerInterest,
       reviews,
       primarySources,
+      foundPrimarySourceUrls: enrichment.sources.map((source) => source.url),
+      verifiedPrimarySourceUrls: primarySources,
+      foundPrimarySources: enrichment.sources.length,
+      verifiedPrimarySources: enrichment.sources.filter((source) => source.verified).length,
+      steamAppId: candidate.steamAppId,
+      heroImageStatus,
+      sourceGatePassed,
+      aiInvoked,
+      aiResult: aiDraftMap.has(candidate.id)
+        ? "Strukturierter KI-Entwurf erzeugt."
+        : aiInvoked
+          ? aiResult.reason
+          : sourceGatePassed
+            ? "Nicht aufgerufen: KI deaktiviert oder nicht konfiguriert."
+            : "Nicht aufgerufen: Source-Gate nicht bestanden.",
       imageSource: candidate.imageSourcePageUrl ?? built.reviewInput.heroImage,
       status,
       filePath,
