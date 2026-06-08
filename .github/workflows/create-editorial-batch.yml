@@ -63,6 +63,18 @@ jobs:
       - name: Abhängigkeiten installieren
         run: npm ci
 
+      - name: Frische Tagesqueue erzeugen
+        run: npm run editorial:daily
+        env:
+          STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
+          STEAM_SCOUT_ENABLED: "true"
+          STEAM_RELEASES_ENABLED: "true"
+          STEAM_TOP_SELLERS_ENABLED: "true"
+          PUBLIC_STEAM_MOST_PLAYED_ENABLED: "false"
+
+      - name: Batch-Auswahl zusammenfassen
+        run: npm run editorial:batch-summary
+
       - name: Batch-Entwürfe erzeugen
         id: batch
         run: npm run editorial:create-batch -- "$CANDIDATE_IDS" "$ARTICLE_TYPE_DEFAULT" "$PRIMARY_SOURCE_URLS" "$EDITORIAL_NOTE" "$MAX_ARTICLES"
@@ -106,13 +118,15 @@ jobs:
             --title "Editorial Batch: $REPORT_DATE · $GENERATED_DRAFTS Entwürfe" \
             --body-file "$REPORT_PATH"
 
-      - name: Batch-Berichte als Artefakt bereitstellen
+      - name: Batch-Diagnose als Artefakt bereitstellen
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: spielsignal-editorial-batch-report
+          name: spielsignal-editorial-batch-diagnostics
           if-no-files-found: warn
           retention-days: 30
           path: |
+            src/data/editorial/latest-queue.json
+            docs/editorial/daily-reports/
             docs/editorial/batch-reports/
             src/content/drafts/
