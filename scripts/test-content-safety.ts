@@ -146,18 +146,15 @@ assert.match(steamTrendsComponent, /<img/);
 
 const homePage = readFileSync("src/pages/index.astro", "utf8");
 assert.doesNotMatch(homePage, /demoNews|example\.com|Beispielpreis|DealCard|ReleaseCalendar|Newsletter/i);
-assert.match(homePage, /slice\(0, 6\)/);
-assert.match(homePage, /imageKind === "steam"/);
-assert.match(homePage, /ExternalNewsCard/);
+assert.match(homePage, /slice\(0, 8\)/);
+assert.match(homePage, /HeroNews/);
+assert.match(homePage, /ExternalNewsList/);
+assert.doesNotMatch(homePage, /ExternalNewsCard/);
 assert.match(homePage, /getCollection\("articles"/);
 assert.match(homePage, /data\.status === "published"/);
 const newsPage = readFileSync("src/pages/news/index.astro", "utf8");
-assert.match(newsPage, /limit: 24/);
-assert.doesNotMatch(newsPage, /demoNews|import NewsCard/);
-const hero = readFileSync("src/components/Hero.astro", "utf8");
-assert.match(hero, /spielsignal-gaming-hero\.svg/);
-assert.match(hero, /Alles Wichtige aus der PC-Gaming-Welt/);
-assert.equal(readFileSync("public/images/hero/spielsignal-gaming-hero.svg", "utf8").includes("<svg"), true);
+assert.match(newsPage, /limit: 5/);
+assert.doesNotMatch(newsPage, /demoNews|ExternalNewsCard/);
 
 const articleIndex = readFileSync("src/pages/artikel/index.astro", "utf8");
 const articleDetail = readFileSync("src/pages/artikel/[slug].astro", "utf8");

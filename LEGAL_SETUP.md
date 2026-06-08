@@ -106,6 +106,12 @@ ungeprüfte automatische Veröffentlichung.
 
 Die vollständige Arbeitsrichtlinie steht in `docs/editorial/editorial-policy.md`.
 
+RSS-Feeds sind primär ein Themenradar. Der öffentliche Schwerpunkt liegt auf eigenständigen
+SpielSignal-Beiträgen, die auf offiziellen Primärquellen beruhen. Externe RSS-Meldungen werden
+nur kompakt, mit sichtbarer Quelle und direktem externem Link dargestellt. Der verbindliche
+Ablauf endet immer in einem Pull Request und einer manuellen Freigabe; ein automatischer Merge
+ist ausgeschlossen.
+
 ## Abschnitte der Datenschutzerklärung später anpassen
 
 Bei Änderungen sind mindestens folgende Abschnitte erneut zu prüfen:

@@ -3,7 +3,8 @@
 SpielSignal ist eine deutschsprachige Astro-Seite für PC-Gaming-News, eigene redaktionelle
 Artikel und offizielle Steam-Trends.
 
-**Positionierung:** PC-Gaming-News, Tests und Deals auf einen Blick
+**Positionierung:** Aktuelle PC-Gaming-News, neue Steam-Releases und neue
+PC-Game-Pass-Spiele auf einen Blick.
 
 ## Lokal starten
 
@@ -22,6 +23,10 @@ npm run build
 Unter Windows kann bei einer restriktiven PowerShell-Richtlinie `npm.cmd` verwendet werden.
 
 ## Öffentliche Inhalte
+
+Die sichtbare Seite ist als redaktionelles PC-Gaming-Magazin aufgebaut. Eigene
+SpielSignal-Artikel stehen auf Start- und News-Seite im Mittelpunkt. RSS-Meldungen erscheinen
+nur ergänzend als kompakte, klar gekennzeichnete externe Kurzmeldungen.
 
 Es gibt zwei getrennte Inhaltsarten:
 
@@ -99,6 +104,20 @@ Der Workflow:
 7. schreibt die Tagesauswahl in `$GITHUB_STEP_SUMMARY`
 8. lädt die Berichte als Artefakt hoch
 9. führt Tests und Produktions-Build aus
+
+Redaktioneller Zielablauf:
+
+```text
+RSS-Meldung entdeckt Thema
+→ Agent sucht offizielle Primärquelle
+→ Agent schreibt eigenständigen SpielSignal-Entwurf
+→ internes Quellenprotokoll
+→ offizielles Bild oder Fallback
+→ technischer Check
+→ Pull Request
+→ manuelle Freigabe
+→ Veröffentlichung
+```
 
 Er veröffentlicht keine Artikel, genehmigt keine Bilder und führt keinen Merge aus.
 

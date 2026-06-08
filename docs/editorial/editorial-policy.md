@@ -2,6 +2,10 @@
 
 ## Zwei getrennte Inhaltsarten
 
+Eigene SpielSignal-News bilden den öffentlichen Schwerpunkt. RSS ist in erster Linie ein
+internes Themenradar und darf öffentlich nur in kleinen, klar getrennten Kurzmeldungsmodulen
+erscheinen.
+
 ### Externe Kurzmeldungen
 
 RSS-Feeds dienen als Themenradar. Öffentlich angezeigt werden ausschließlich Titel, Quelle,
@@ -86,3 +90,27 @@ Drafts liegen ausschließlich in `src/content/drafts/` und sind nicht öffentlic
 geprüfte Beiträge in `src/content/articles/` mit `status: published` erscheinen auf der
 Webseite. Ein Test benötigt eine dokumentierte Spielzeit größer als null. Pull Requests werden
 manuell geprüft und gemergt.
+
+## Verbindlicher Redaktionsablauf
+
+```text
+RSS-Meldung entdeckt Thema
+→ Agent sucht offizielle Primärquelle
+→ Agent schreibt eigenständigen SpielSignal-Entwurf
+→ internes Quellenprotokoll
+→ offizielles Bild oder Fallback
+→ technischer Check
+→ Pull Request
+→ manuelle Freigabe
+→ Veröffentlichung
+```
+
+Eine RSS-Meldung allein ist keine ausreichende Quelle für einen eigenen Artikel. Fremde
+Artikel dürfen weder kopiert noch lediglich umformuliert werden.
+
+## Bekannte Workflow-Härtungen
+
+Für spätere Verbesserungen sind eindeutige Branch-Namen mit `github.run_id`, eine immer
+geschriebene Summary, Artefakte mit `if: always()`, UTF-8 ohne BOM, Unicode- und
+YAML-Prüfungen, Schutz vor doppelten Frontmatter-Schlüsseln, vollständiges Ersetzen statt
+Anhängen, genau eine Quellenbox sowie der Verzicht auf automatischen Merge dokumentiert.

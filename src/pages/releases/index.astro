@@ -1,6 +1,7 @@
 ---
+import SteamReleaseGrid from "../../components/SteamReleaseGrid.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { officialSteamFallback, getSteamReleases } from "../../lib/steamData";
+import { getSteamReleases } from "../../lib/steamData";
 
 export const prerender = false;
 
@@ -10,59 +11,21 @@ Astro.response.headers.set(
 );
 
 const releases = (await getSteamReleases()).slice(0, 30);
-const fallback = officialSteamFallback("releases");
 ---
 
 <BaseLayout
   title="Steam-Releases | SpielSignal"
-  description="Geprüfte Steam-Veröffentlichungen mit offiziellen Store-Links. Ohne verlässliche Datenquelle wird nur auf die offizielle Steam-Übersicht verwiesen."
+  description="Neue PC-Spiele auf Steam aus geprüften offiziellen Store-Daten."
 >
   <header class="page-hero page-hero--compact container">
     <nav class="breadcrumbs" aria-label="Brotkrumen">
-      <a href="/">Startseite</a><span>/</span><span>Releases</span>
+      <a href="/">Startseite</a><span>/</span><span>Steam-Releases</span>
     </nav>
-    <p class="eyebrow">PC-Termine</p>
-    <h1>Steam-Release-Kalender</h1>
-    <p>
-      Es werden nur bestätigte Veröffentlichungen aus einer geprüften Quelle angezeigt.
-      Unbestätigte Termine oder erfundene Daten erscheinen nicht.
-    </p>
+    <p class="eyebrow">Neue PC-Spiele</p>
+    <h1>Steam-Releases</h1>
+    <p>Eine kompakte Übersicht neuer PC-Veröffentlichungen. Angezeigt werden nur verlässlich geprüfte Steam-Daten.</p>
   </header>
-
   <section class="section section--compact container">
-    {
-      releases.length ? (
-        <div class="grid grid-3">
-          {releases.map((item) => (
-            <a class="card card-link" href={item.url} target="_blank" rel="noopener noreferrer">
-              <img class="card-image" src={item.image} alt={item.imageAlt} width="800" height="450" loading="lazy" />
-              <div class="card-body">
-                <span class="badge">Steam-Release</span>
-                <h2>{item.title}</h2>
-                <div class="meta">
-                  <span>Quelle: Steam</span>
-                  {item.updatedAt ? <time datetime={item.updatedAt}>Stand: {item.updatedAt}</time> : null}
-                </div>
-              </div>
-            </a>
-          ))}
-        </div>
-      ) : (
-        <div class="release-source-fallback">
-          <p>
-            Eine geprüfte automatische Steam-Release-Datenquelle wird gerade vorbereitet.
-            Bis dahin zeigt SpielSignal keine erfundenen Veröffentlichungstermine.
-          </p>
-          <a class="card card-link" href={fallback.url} target="_blank" rel="noopener noreferrer">
-            <img class="card-image" src={fallback.image} alt={fallback.imageAlt} width="800" height="450" />
-            <div class="card-body">
-              <span class="badge">Offizielle Quelle</span>
-              <h2>{fallback.title}</h2>
-              <p class="muted">Quelle: Steam</p>
-            </div>
-          </a>
-        </div>
-      )
-    }
+    <SteamReleaseGrid items={releases} />
   </section>
 </BaseLayout>

@@ -1,0 +1,34 @@
+---
+import type { PcGamePassEntry } from "../data/pcGamePassEntries";
+
+interface Props {
+  entries: PcGamePassEntry[];
+}
+
+const { entries } = Astro.props;
+const formatDate = (value?: string) => value
+  ? new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(new Date(value))
+  : undefined;
+---
+
+{entries.length ? (
+  <div class="game-pass-grid">
+    {entries.map((entry) => (
+      <a class="game-pass-card" href={entry.officialUrl} target="_blank" rel="noopener noreferrer">
+        <div class="game-pass-visual">
+          {entry.imageUrl ? <img src={entry.imageUrl} alt="" width="720" height="405" loading="lazy" /> : <span>PC</span>}
+        </div>
+        <div>
+          <span class="badge">PC Game Pass</span>
+          <strong>{entry.title}</strong>
+          <small>{formatDate(entry.date) ?? "Datum wird ergänzt"} · Quelle: Xbox</small>
+        </div>
+      </a>
+    ))}
+  </div>
+) : (
+  <div class="empty-editorial-state">
+    <strong>Die ersten PC-Game-Pass-Einträge werden gerade geprüft.</strong>
+    <p>Öffentlich erscheinen ausschließlich freigegebene PC-Titel aus offiziellen Xbox-Quellen.</p>
+  </div>
+)}

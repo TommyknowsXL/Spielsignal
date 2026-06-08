@@ -31,17 +31,13 @@ editorialNotes:
   - "Kein eigener Spieletest und keine Wertung."
 ---
 
-# Gothic 1 Remake sorgt auf Steam für Aufmerksamkeit
-
-Gothic 1 Remake erhält rund um seine Veröffentlichung viel Aufmerksamkeit. In der SpielSignal-Erhebung vom 7. Juni 2026 führte das Rollenspiel die deutschen Steam-Topseller an. Solche Ranglisten sind jedoch Momentaufnahmen und können sich jederzeit verändern. Wir fassen zusammen, was die offiziellen Seiten über das Remake bestätigen und weshalb der Titel für PC-Spieler interessant ist.
+Gothic 1 Remake sorgte zum Release für viel Aufmerksamkeit auf Steam. Zeitweise gehörte das Rollenspiel zu den gefragtesten Titeln in den deutschen Steam-Topsellern. Steam-Ranglisten verändern sich laufend und bilden immer nur eine Momentaufnahme ab. Wir fassen zusammen, was die offiziellen Seiten über das Remake bestätigen und weshalb der Titel für PC-Spieler interessant ist.
 
 ## Warum das Remake gerade auffällt
 
-Zum Zeitpunkt der SpielSignal-Erhebung am 7. Juni 2026 um 22:54:09 Uhr UTC stand Gothic 1 Remake auf Rang 1 der deutschen Steam-Topseller.
+Gothic 1 Remake war unmittelbar nach seiner Veröffentlichung stark in den deutschen Steam-Topsellern sichtbar. Aus einer solchen Platzierung lässt sich allerdings weder eine konkrete Verkaufszahl noch ein langfristiger Erfolg ableiten.
 
-Der Snapshot stammt aus der im Repository dokumentierten Steam-Auswertung und zeigt, dass das Remake unmittelbar nach seiner Veröffentlichung stark sichtbar war. Aus diesem Rang lässt sich allerdings weder eine konkrete Verkaufszahl noch ein langfristiger Erfolg ableiten.
-
-Steam-Ranglisten sind Momentaufnahmen. Belastbare Stückzahlen oder Umsätze nennt der Snapshot nicht.
+Steam-Ranglisten sind Momentaufnahmen. Belastbare Stückzahlen oder Umsätze sind daraus nicht ersichtlich.
 
 ## Was ist Gothic 1 Remake?
 
@@ -102,9 +98,3 @@ Inhaltlich ist der Ansatz klar: Das Remake möchte die offene, reaktive Kolonie 
 Für PC-Spieler ist Gothic 1 Remake besonders dann relevant, wenn sie ein klassisch ausgerichtetes Einzelspieler-Rollenspiel suchen oder wissen möchten, wie ein prägender PC-Titel in einer vollständigen Neuauflage umgesetzt wurde.
 
 Ob die Balance aus Treue und Modernisierung trägt, muss eine eigene Prüfung zeigen. Bis dahin lassen sich die starke Sichtbarkeit auf Steam und die offiziell bestätigten Funktionen sachlich festhalten, nicht aber eine Qualitätswertung.
-
-## Quellen
-
-- [Offizielle Steam-Store-Seite von Gothic 1 Remake](https://store.steampowered.com/app/1297900/Gothic_1_Remake/)
-- [Offizielle Webseite von Gothic 1 Remake](https://gothic.thqnordic.com/)
-- SpielSignal-Agenten-Snapshot der deutschen Steam-Topseller: `src/data/editorial/archive/2026-06-07.json`, Erhebung am 7. Juni 2026 um 22:54:09 UTC

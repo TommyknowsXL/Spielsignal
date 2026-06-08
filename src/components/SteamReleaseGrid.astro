@@ -1,0 +1,30 @@
+---
+import type { SteamSidebarItem } from "../lib/steamData";
+
+interface Props {
+  items: SteamSidebarItem[];
+  compact?: boolean;
+}
+
+const { items, compact = false } = Astro.props;
+---
+
+{items.length ? (
+  <div class:list={["steam-release-grid", compact && "steam-release-grid--compact"]}>
+    {items.map((item) => (
+      <a class="release-card-magazine" href={item.url} target="_blank" rel="noopener noreferrer">
+        <img src={item.image} data-fallback-src={item.fallbackImage ?? "/images/categories/news-default.svg"} alt={item.imageAlt} width="720" height="405" loading="lazy" />
+        <span class="release-card-copy">
+          <span class="badge">Steam-Release</span>
+          <strong>{item.title}</strong>
+          <small>{item.valueLabel ?? "Quelle: Steam"}</small>
+        </span>
+      </a>
+    ))}
+  </div>
+) : (
+  <div class="empty-editorial-state">
+    <strong>Die automatische Steam-Release-Übersicht wird derzeit vorbereitet.</strong>
+    <p>SpielSignal zeigt hier erst verlässlich geprüfte, echte Store-Daten.</p>
+  </div>
+)}

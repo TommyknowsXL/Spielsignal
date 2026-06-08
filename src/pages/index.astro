@@ -1,17 +1,18 @@
 ---
 import { getCollection } from "astro:content";
 import AdSlot from "../components/AdSlot.astro";
-import ArticleCard from "../components/ArticleCard.astro";
-import ExternalNewsCard from "../components/ExternalNewsCard.astro";
-import Hero from "../components/Hero.astro";
+import ExternalNewsList from "../components/ExternalNewsList.astro";
+import HeroNews from "../components/HeroNews.astro";
+import NewsListItem from "../components/NewsListItem.astro";
+import PcGamePassGrid from "../components/PcGamePassGrid.astro";
 import SectionHeader from "../components/SectionHeader.astro";
+import SteamReleaseGrid from "../components/SteamReleaseGrid.astro";
 import SteamTrendsSidebar from "../components/SteamTrendsSidebar.astro";
-import TrendingSidebar from "../components/TrendingSidebar.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { approvedPcGamePassEntries } from "../data/pcGamePassEntries";
 import { getAggregatedNews } from "../lib/newsFeed";
 import { prepareNewsItems } from "../lib/newsPresentation";
-import { getSteamTrends } from "../lib/steamData";
-import { getTrendingItems } from "../lib/trending";
+import { getSteamReleases, getSteamTrends } from "../lib/steamData";
 
 export const prerender = false;
 
@@ -20,80 +21,66 @@ Astro.response.headers.set(
   "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400"
 );
 
-const feedResult = await getAggregatedNews();
-const preparedNews = await prepareNewsItems(feedResult.items, { limit: 18 });
-const seenUrls = new Set<string>();
-const seenSteamApps = new Set<string>();
-const topNews = [...preparedNews]
-  .sort((left, right) => {
-    const imagePriority = (item: typeof left) => item.imageKind === "steam" ? 0 : item.imageKind === "approved" ? 1 : 2;
-    return imagePriority(left) - imagePriority(right) || Date.parse(right.date) - Date.parse(left.date);
-  })
-  .filter((item) => {
-    if (seenUrls.has(item.url) || item.similarTo) return false;
-    if (item.steamAppId && seenSteamApps.has(item.steamAppId)) return false;
-    seenUrls.add(item.url);
-    if (item.steamAppId) seenSteamApps.add(item.steamAppId);
-    return true;
-  })
-  .slice(0, 6);
-const trendingResult = await getTrendingItems(preparedNews);
-const steamTrends = await getSteamTrends();
 const articles = (await getCollection("articles", ({ data }) => data.status === "published"))
   .sort((left, right) => right.data.createdAt.valueOf() - left.data.createdAt.valueOf())
-  .slice(0, 3);
+  .slice(0, 8);
+const feedResult = await getAggregatedNews();
+const externalNews = await prepareNewsItems(feedResult.items, { limit: 5 });
+const steamTrends = await getSteamTrends();
+const releases = (await getSteamReleases()).slice(0, 6);
+const newGamePass = approvedPcGamePassEntries.filter((entry) => entry.type === "new");
+const leavingGamePass = approvedPcGamePassEntries.filter((entry) => entry.type === "leaving-soon");
 ---
 
 <BaseLayout
-  title="SpielSignal – Aktuelle PC-Gaming-News"
-  description="Aktuelle PC-Gaming-News, offizielle Steam-Trends und eigene SpielSignal-Artikel."
+  title="SpielSignal | PC-Gaming-News, Steam-Releases und PC Game Pass"
+  description="Aktuelle PC-Gaming-News, neue Steam-Releases und neue PC-Game-Pass-Spiele auf einen Blick."
 >
-  <Hero />
-
+  <HeroNews articles={articles.slice(0, 5)} />
   <div class="container home-ad"><AdSlot format="wide" /></div>
 
-  <section class="section section--compact" id="aktuelle-meldungen">
-    <div class="container">
-      <SectionHeader eyebrow="Externe Kurzmeldungen" title="Aktuelle Gaming-News" href="/news/" linkLabel="Alle News" />
-      {topNews.length ? (
-        <div class="grid grid-3">{topNews.map((item) => <ExternalNewsCard item={item} />)}</div>
-      ) : (
-        <div class="empty-editorial-state">
-          <strong>Neue Meldungen werden gerade geprüft.</strong>
-          <p>Sobald der freigegebene Gaming-Feed passende PC-Themen liefert, erscheinen sie hier.</p>
-        </div>
-      )}
-    </div>
-  </section>
-
   <section class="section section--compact">
-    <div class="container home-signal-grid">
-      <div>
-        <p class="eyebrow">Leserinteresse</p>
-        {trendingResult.items.length ? (
-          <TrendingSidebar result={{ ...trendingResult, heading: "Trending auf SpielSignal" }} />
-        ) : (
-          <div class="empty-editorial-state"><p>Noch keine aktuellen Trends verfügbar.</p></div>
-        )}
+    <div class="container magazine-layout">
+      <div class="magazine-main">
+        <SectionHeader eyebrow="Aus der Redaktion" title="Aktuelle SpielSignal-News" href="/news/" linkLabel="Alle News" />
+        <div class="news-list">
+          {articles.slice(0, 8).map((entry, index) => (
+            <>
+              <NewsListItem entry={entry} />
+              {index === 2 ? <AdSlot format="feed" /> : null}
+            </>
+          ))}
+        </div>
+        {articles.length < 2 ? (
+          <p class="editorial-note">Weitere eigene SpielSignal-News sind in Vorbereitung.</p>
+        ) : null}
       </div>
-      <div>
-        <p class="eyebrow">Offizielle Store-Daten</p>
+      <aside class="magazine-sidebar">
+        <ExternalNewsList items={externalNews} />
         <SteamTrendsSidebar items={steamTrends} />
-      </div>
+        <AdSlot format="sidebar" />
+      </aside>
     </div>
   </section>
 
   <section class="section section--compact">
     <div class="container">
-      <SectionHeader eyebrow="Aus der Redaktion" title="Eigene SpielSignal-Artikel" href="/artikel/" linkLabel="Alle Artikel" />
-      {articles.length ? (
-        <div class="grid grid-3">{articles.map((entry) => <ArticleCard entry={entry} />)}</div>
-      ) : (
-        <div class="empty-editorial-state empty-editorial-state--inline">
-          <strong>Die ersten eigenen SpielSignal-Artikel sind in Vorbereitung.</strong>
-          <p>Veröffentlicht wird erst nach Quellen-, Fakten- und Bildprüfung.</p>
-        </div>
-      )}
+      <SectionHeader eyebrow="Offizielle Store-Daten" title="Neue Steam-Releases" href="/releases/" linkLabel="Zur Übersicht" />
+      <SteamReleaseGrid items={releases} compact />
+    </div>
+  </section>
+
+  <section class="section section--compact">
+    <div class="container">
+      <SectionHeader eyebrow="Offizielle Xbox-Quellen" title="Neu im PC Game Pass" href="/pc-game-pass/" linkLabel="Zur Übersicht" />
+      <PcGamePassGrid entries={newGamePass} />
+    </div>
+  </section>
+
+  <section class="section section--compact">
+    <div class="container">
+      <SectionHeader eyebrow="Rechtzeitig weiterspielen" title="Bald nicht mehr im PC Game Pass" href="/pc-game-pass/" linkLabel="Alle Einträge" />
+      <PcGamePassGrid entries={leavingGamePass} />
     </div>
   </section>
 
