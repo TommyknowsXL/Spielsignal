@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
@@ -25,6 +25,35 @@ import {
   renderBatchQueueDiagnostics,
   renderBatchQueueSummary
 } from "./agents/writeBatchQueueSummary";
+
+const temporaryRoots = new Set<string>();
+const relevantEnvironmentKeys = [
+  "AI_EDITORIAL_ENABLED",
+  "AI_EDITORIAL_MODEL",
+  "AI_EDITORIAL_MAX_ARTICLES",
+  "AI_EDITORIAL_MAX_RETRIES",
+  "AI_EDITORIAL_FAIL_WITHOUT_QUOTA",
+  "GITHUB_RUN_ID",
+  "OPENAI_API_KEY"
+] as const;
+const initialEnvironment = Object.fromEntries(
+  relevantEnvironmentKeys.map((key) => [key, process.env[key]])
+);
+
+async function createTestRoot(prefix: string): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), prefix));
+  temporaryRoots.add(root);
+  return root;
+}
+
+async function cleanupTestRoot(root: string): Promise<void> {
+  await rm(root, { recursive: true, force: true });
+  temporaryRoots.delete(root);
+}
+
+function shouldCreatePullRequest(completeDrafts: number): boolean {
+  return completeDrafts > 0;
+}
 
 const interestingCandidate: EditorialCandidate = {
   id: "rss-interesting",
@@ -94,7 +123,8 @@ const report: EditorialQueueReport = {
   }
 };
 
-const root = await mkdtemp(join(tmpdir(), "spielsignal-batch-"));
+try {
+const root = await createTestRoot("spielsignal-batch-");
 await mkdir(join(root, "src", "data", "editorial"), { recursive: true });
 await writeFile(
   join(root, "src", "data", "editorial", "latest-queue.json"),
@@ -358,8 +388,11 @@ assert.equal(batch.checkedCandidates, 2);
 assert.equal(batch.generatedDrafts, 1);
 assert.equal(batch.completeDrafts, 1);
 assert.equal(batch.rejectedCandidates, 1);
+assert.equal(shouldCreatePullRequest(batch.completeDrafts), true);
 assert.equal(batch.results[0].status, "draft");
 assert.equal(batch.results[1].status, "rejected");
+assert.equal(batch.results[1].aiInvoked, false);
+assert.equal(batch.results[1].filePath, undefined);
 assert.ok(batch.results[0].readerInterest.score >= 60);
 assert.ok(batch.results[1].readerInterest.score < 60);
 assert.equal(Object.values(batch.results[0].reviews).every((review) => review.passed), true);
@@ -371,7 +404,123 @@ assert.doesNotMatch(draft, /^# /m);
 assert.equal((draft.match(/^## Quellen$/gm) ?? []).length, 1);
 assert.doesNotMatch(draft, /src\/data\/editorial|\bUTC\b|\d{2}:\d{2}:\d{2}Z/);
 
-const explicitQueueRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-explicit-queue-"));
+const multipleDraftRoot = await createTestRoot("spielsignal-batch-multiple-drafts-");
+await mkdir(join(multipleDraftRoot, "src", "data", "editorial"), { recursive: true });
+const multipleDraftCandidates = Array.from({ length: 3 }, (_, index): EditorialCandidate => ({
+  ...interestingCandidate,
+  id: `multi-draft-${index + 1}`,
+  title: `Batch Game ${index + 1} erhält ein neues PC-Update`,
+  gameTitle: `Batch Game ${index + 1}`,
+  steamAppId: `12345${index + 1}`,
+  steamStoreUrl: `https://store.steampowered.com/app/12345${index + 1}/`
+}));
+await writeFile(
+  join(multipleDraftRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  `${JSON.stringify({
+    ...report,
+    candidates: [...multipleDraftCandidates, boringCandidate]
+  }, null, 2)}\n`,
+  "utf8"
+);
+let multipleDraftAiCalls = 0;
+const multipleDraftAiFetch: typeof fetch = async () => {
+  multipleDraftAiCalls += 1;
+  return Response.json({
+    output_text: JSON.stringify({
+      drafts: multipleDraftCandidates.map((candidate) => ({
+        candidateId: candidate.id,
+        title: `${candidate.gameTitle}: Das neue PC-Update im Überblick`,
+        summary: `Das Update für ${candidate.gameTitle} wird anhand der offiziellen Steam-Quelle eingeordnet.`,
+        seoTitle: `${candidate.gameTitle}: Neues PC-Update | SpielSignal`,
+        seoDescription: `Alle bestätigten Angaben zum neuen PC-Update für ${candidate.gameTitle} im kompakten Überblick.`,
+        markdownBody: longBody.replaceAll("Strategy Test", candidate.gameTitle ?? "Batch Game"),
+        recommendedImages: [{
+          position: "hero",
+          searchTarget: `${candidate.gameTitle} offizielles Key Art`,
+          preferredSourceType: "steam-store",
+          required: true
+        }],
+        warnings: []
+      }))
+    })
+  });
+};
+const multipleDraftBatch = await createEditorialBatch({
+  rootDirectory: multipleDraftRoot,
+  candidateIds: [...multipleDraftCandidates.map((candidate) => candidate.id), boringCandidate.id],
+  selectionMode: "manual",
+  articleTypeDefault: "news-overview",
+  primarySourceGroups: [
+    ...multipleDraftCandidates.map((candidate) => [candidate.steamStoreUrl!]),
+    []
+  ],
+  generatedAt: "2026-06-08T10:30:00.000Z",
+  environment: {
+    GITHUB_RUN_ID: "three-complete-drafts",
+    AI_EDITORIAL_ENABLED: "true",
+    AI_EDITORIAL_MODEL: "gpt-5-mini",
+    AI_EDITORIAL_MAX_ARTICLES: "3",
+    OPENAI_API_KEY: "test-only-key"
+  },
+  fetchImpl: multipleDraftAiFetch
+});
+assert.equal(multipleDraftAiCalls, 2);
+assert.equal(multipleDraftBatch.completeDrafts, 3);
+assert.equal(multipleDraftBatch.generatedDrafts, 3);
+assert.equal(multipleDraftBatch.rejectedCandidates, 1);
+assert.equal(shouldCreatePullRequest(multipleDraftBatch.completeDrafts), true);
+assert.equal(multipleDraftBatch.branchName, "editorial-batch/three-complete-drafts");
+assert.deepEqual(
+  multipleDraftBatch.results.filter((entry) => entry.status === "draft").map((entry) => entry.candidateId),
+  multipleDraftCandidates.map((candidate) => candidate.id)
+);
+assert.equal(
+  multipleDraftBatch.results.filter((entry) => entry.status === "rejected").every((entry) => !entry.filePath),
+  true
+);
+const multipleDraftReport = await readFile(multipleDraftBatch.reportPath, "utf8");
+for (const candidate of multipleDraftCandidates) {
+  assert.match(multipleDraftReport, new RegExp(candidate.id));
+  await readFile(multipleDraftBatch.results.find((entry) => entry.candidateId === candidate.id)!.filePath!, "utf8");
+}
+assert.match(await readFile(multipleDraftBatch.rejectedReportPath!, "utf8"), /rss-boring/);
+await cleanupTestRoot(multipleDraftRoot);
+
+const rejectedOnlyRoot = await createTestRoot("spielsignal-batch-rejected-only-");
+await mkdir(join(rejectedOnlyRoot, "src", "data", "editorial"), { recursive: true });
+await writeFile(
+  join(rejectedOnlyRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  `${JSON.stringify({ ...report, candidates: [boringCandidate] }, null, 2)}\n`,
+  "utf8"
+);
+let rejectedOnlyAiCalls = 0;
+const rejectedOnlyBatch = await createEditorialBatch({
+  rootDirectory: rejectedOnlyRoot,
+  candidateIds: [boringCandidate.id],
+  selectionMode: "manual",
+  articleTypeDefault: "news-overview",
+  generatedAt: "2026-06-08T10:45:00.000Z",
+  environment: {
+    GITHUB_RUN_ID: "rejected-only",
+    AI_EDITORIAL_ENABLED: "true",
+    OPENAI_API_KEY: "test-only-key"
+  },
+  fetchImpl: async () => {
+    rejectedOnlyAiCalls += 1;
+    throw new Error("KI darf für abgelehnte Kandidaten nicht aufgerufen werden.");
+  }
+});
+assert.equal(rejectedOnlyAiCalls, 0);
+assert.equal(rejectedOnlyBatch.completeDrafts, 0);
+assert.equal(rejectedOnlyBatch.generatedDrafts, 0);
+assert.equal(rejectedOnlyBatch.rejectedCandidates, 1);
+assert.equal(rejectedOnlyBatch.results[0].status, "rejected");
+assert.equal(rejectedOnlyBatch.results[0].filePath, undefined);
+assert.equal(shouldCreatePullRequest(rejectedOnlyBatch.completeDrafts), false);
+assert.match(await readFile(rejectedOnlyBatch.rejectedReportPath!, "utf8"), /rss-boring/);
+await cleanupTestRoot(rejectedOnlyRoot);
+
+const explicitQueueRoot = await createTestRoot("spielsignal-batch-explicit-queue-");
 const explicitQueuePath = join(explicitQueueRoot, "fresh", "queue.json");
 await mkdir(join(explicitQueueRoot, "fresh"), { recursive: true });
 await writeFile(explicitQueuePath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
@@ -386,6 +535,7 @@ const explicitQueueBatch = await createEditorialBatch({
   environment: { GITHUB_RUN_ID: "explicit-queue", AI_EDITORIAL_ENABLED: "false" }
 });
 assert.equal(explicitQueueBatch.results[0].candidateId, interestingCandidate.id);
+await cleanupTestRoot(explicitQueueRoot);
 
 await assert.rejects(
   () => createEditorialBatch({
@@ -400,7 +550,9 @@ await assert.rejects(
   () => loadEditorialQueue("missing/queue.json", root),
   /Queue-Datei nicht gefunden: missing\/queue\.json/
 );
-const invalidJsonRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-invalid-json-"));
+await cleanupTestRoot(root);
+
+const invalidJsonRoot = await createTestRoot("spielsignal-batch-invalid-json-");
 await mkdir(join(invalidJsonRoot, "src", "data", "editorial"), { recursive: true });
 await writeFile(
   join(invalidJsonRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
@@ -429,13 +581,14 @@ await assert.rejects(
   () => loadEditorialQueue(DEFAULT_EDITORIAL_QUEUE_PATH, invalidJsonRoot),
   /Queue-Erzeugungszeitpunkt fehlt/
 );
+await cleanupTestRoot(invalidJsonRoot);
 
 const manyCandidates = Array.from({ length: 25 }, (_, index) => ({
   ...interestingCandidate,
   id: `candidate-${String(index + 1).padStart(2, "0")}`,
   title: `Kandidat ${index + 1} mit einem bewusst langen Titel für die sichere gekürzte Queue-Ausgabe`
 }));
-const invalidIdRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-invalid-id-"));
+const invalidIdRoot = await createTestRoot("spielsignal-batch-invalid-id-");
 await mkdir(join(invalidIdRoot, "src", "data", "editorial"), { recursive: true });
 await writeFile(
   join(invalidIdRoot, "src", "data", "editorial", "latest-queue.json"),
@@ -461,8 +614,9 @@ await assert.rejects(
     return true;
   }
 );
+await cleanupTestRoot(invalidIdRoot);
 
-const autoTopRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-auto-top-"));
+const autoTopRoot = await createTestRoot("spielsignal-batch-auto-top-");
 await mkdir(join(autoTopRoot, "src", "data", "editorial"), { recursive: true });
 const autoCandidates = Array.from({ length: 6 }, (_, index) => ({
   ...interestingCandidate,
@@ -491,7 +645,7 @@ const autoTopBatch = await createEditorialBatch({
 assert.equal(autoTopBatch.checkedCandidates, 3);
 assert.deepEqual(autoTopBatch.results.map((entry) => entry.candidateId), ["auto-1", "auto-2", "auto-3"]);
 
-const hardenedSelectionRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-hardened-selection-"));
+const hardenedSelectionRoot = await createTestRoot("spielsignal-batch-hardened-selection-");
 await mkdir(join(hardenedSelectionRoot, "src", "data", "editorial"), { recursive: true });
 await mkdir(join(hardenedSelectionRoot, "src", "content", "articles"), { recursive: true });
 await writeFile(
@@ -546,8 +700,9 @@ assert.match(
   /store\.steampowered\.com\/news\/app\/1962700/
 );
 assert.equal(hardenedSelection.results[0].status, "needs-source-review");
+await cleanupTestRoot(hardenedSelectionRoot);
 
-const subnauticaRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-subnautica-"));
+const subnauticaRoot = await createTestRoot("spielsignal-batch-subnautica-");
 await mkdir(join(subnauticaRoot, "src", "data", "editorial"), { recursive: true });
 const subnauticaCandidate: EditorialCandidate = {
   ...interestingCandidate,
@@ -636,8 +791,11 @@ assert.doesNotMatch(
   subnauticaDraft.match(/primarySources: \[[^\n]+\]/)?.[0] ?? "",
   /gamestar\.de/
 );
+assert.equal(shouldCreatePullRequest(subnauticaBatch.completeDrafts), true);
+assert.match(subnauticaBatch.branchName, /^editorial-batch\/subnautica-source-enrichment$/);
+await cleanupTestRoot(subnauticaRoot);
 
-const sourceGateRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-source-gate-"));
+const sourceGateRoot = await createTestRoot("spielsignal-batch-source-gate-");
 await mkdir(join(sourceGateRoot, "src", "data", "editorial"), { recursive: true });
 const sourceLessCandidate: EditorialCandidate = {
   ...interestingCandidate,
@@ -673,6 +831,13 @@ assert.equal(forbiddenAiCalls, 0);
 assert.equal(sourceGateBatch.results[0].sourceGatePassed, false);
 assert.equal(sourceGateBatch.results[0].aiInvoked, false);
 assert.equal(sourceGateBatch.results[0].status, "needs-source-review");
+assert.equal(sourceGateBatch.completeDrafts, 0);
+assert.equal(shouldCreatePullRequest(sourceGateBatch.completeDrafts), false);
+assert.doesNotMatch(
+  await readFile(sourceGateBatch.results[0].filePath!, "utf8"),
+  /^status: "draft"$/m
+);
+await cleanupTestRoot(sourceGateRoot);
 
 const summaryPath = join(autoTopRoot, "summary.md");
 const outputPath = join(autoTopRoot, "output.txt");
@@ -714,8 +879,9 @@ assert.match(queueSummary, /candidate-20/);
 assert.doesNotMatch(queueSummary, /candidate-21/);
 assert.match(queueSummary, /5 Kandidaten sind/);
 assert.doesNotMatch(queueSummary, /<script>|secret-value-must-not-appear|sourceUrl|OPENAI_API_KEY|STEAM_WEB_API_KEY/);
+await cleanupTestRoot(autoTopRoot);
 
-const noAiRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-no-ai-"));
+const noAiRoot = await createTestRoot("spielsignal-batch-no-ai-");
 await mkdir(join(noAiRoot, "src", "data", "editorial"), { recursive: true });
 await writeFile(
   join(noAiRoot, "src", "data", "editorial", "latest-queue.json"),
@@ -736,6 +902,9 @@ assert.match(
   await readFile(noAiBatch.reportPath, "utf8"),
   /Keine vollständigen Artikel erzeugt[\s\S]*ausschließlich der Diagnose/
 );
+assert.equal(noAiBatch.completeDrafts, 0);
+assert.equal(shouldCreatePullRequest(noAiBatch.completeDrafts), false);
+await cleanupTestRoot(noAiRoot);
 
 const interestAccepted = runReaderInterestCheck(interestingCandidate);
 const interestRejected = runReaderInterestCheck(boringCandidate);
@@ -823,6 +992,7 @@ assert.match(workflow, /AI_EDITORIAL_MAX_RETRIES: \$\{\{ vars\.AI_EDITORIAL_MAX_
 assert.match(workflow, /AI_EDITORIAL_FAIL_WITHOUT_QUOTA: \$\{\{ vars\.AI_EDITORIAL_FAIL_WITHOUT_QUOTA \|\| 'true' \}\}/);
 assert.match(workflow, /Branch und Commit erstellen[\s\S]*if: steps\.batch\.outputs\.completeDrafts != '0'/);
 assert.match(workflow, /Pull Request erstellen[\s\S]*if: steps\.batch\.outputs\.completeDrafts != '0'/);
+assert.equal((workflow.match(/\bgh pr create\b/g) ?? []).length, 1);
 assert.match(workflow, /Editorial Batch: \$REPORT_DATE · \$COMPLETE_DRAFTS vollständige Entwürfe/);
 assert.match(workflow, /PR_URL=\$\(gh pr create/);
 assert.match(workflow, /PR: \$PR_URL/);
@@ -847,7 +1017,10 @@ const subnauticaEditorialDraft = await readFile(
   "src/content/drafts/subnautica-2-news-overview.md",
   "utf8"
 );
-assert.equal((subnauticaEditorialDraft.match(/^## Quellen$/gm) ?? []).length, 0);
+assert.ok(
+  (subnauticaEditorialDraft.match(/^## Quellen$/gm) ?? []).length <= 1,
+  "Ein vollständiger Entwurf darf höchstens einen Markdown-Quellenbereich enthalten."
+);
 assert.equal((subnauticaEditorialDraft.match(/^title:/gm) ?? []).length, 1);
 assert.doesNotMatch(
   subnauticaEditorialDraft.split("---").at(-1) ?? "",
@@ -856,7 +1029,15 @@ assert.doesNotMatch(
 assert.match(subnauticaEditorialDraft, /heroImageCandidateStatus: "pending-review"/);
 assert.match(subnauticaEditorialDraft, /heroImage: "\/images\/categories\/survival\.svg"/);
 assert.match(subnauticaEditorialDraft, /type: "ad"[\s\S]*slot: "article-inline-1"/);
+assert.equal(temporaryRoots.size, 0);
+assert.deepEqual(
+  Object.fromEntries(relevantEnvironmentKeys.map((key) => [key, process.env[key]])),
+  initialEnvironment
+);
 
 console.log(
   "Editorial-Batch-Tests erfolgreich: Mehrfachauswahl, Maximalgrenze, Reviews, Qualitätsgate, KI-Fallback und sicherer Workflow."
 );
+} finally {
+  await Promise.all([...temporaryRoots].map((root) => cleanupTestRoot(root)));
+}
