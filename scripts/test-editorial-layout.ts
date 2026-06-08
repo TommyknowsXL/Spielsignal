@@ -24,6 +24,9 @@ const gothicFrontmatterEnd = gothic.indexOf("\n---", 4);
 const gothicData = parseYaml(gothic.slice(4, gothicFrontmatterEnd)) as {
   contentBlocks: Array<{ type: string; text?: string; slot?: string; rightsStatus?: string }>;
 };
+const gothicReaderText = gothicData.contentBlocks
+  .flatMap((block) => block.text ? [block.text] : [])
+  .join("\n");
 
 assert.match(header, /News/);
 assert.match(header, /Steam-Releases/);
@@ -50,9 +53,11 @@ assert.match(article, /data-fallback-src="\/images\/categories\/news-default\.sv
 assert.match(article, /return "Steam"/);
 assert.match(article, /return "THQ Nordic"/);
 assert.match(article, /Weitere News/);
+assert.equal((article.match(/data-article-more-news/g) ?? []).length, 1);
 assert.match(article, /SteamTrendsSidebar/);
 assert.match(article, /AdSlot/);
 assert.match(article, /placement="article-bottom"/);
+assert.ok(article.indexOf('placement="article-bottom"') < article.indexOf("data-article-more-news"));
 assert.match(article, /placement="article-sidebar"/);
 assert.match(contentBlocks, /article-content-image/);
 assert.match(contentBlocks, /Bildquelle:/);
@@ -90,6 +95,8 @@ assert.equal(gothicData.contentBlocks.filter((block) => block.type === "heading"
 assert.equal((gothic.match(/^# /gm) ?? []).length, 0);
 assert.equal((gothic.match(/^## Quellen$/gm) ?? []).length, 0);
 assert.doesNotMatch(gothic.split("---").slice(2).join("---"), /src\/data\/editorial|22:54:09|UTC|SpielSignal-Erhebung/);
+assert.doesNotMatch(gothicReaderText, /Snapshot|UTC|Entwurf|Workflow|Repository|src\/|docs\/|redaktionelle Notiz|interne/i);
+assert.match(gothicReaderText, /Die starke Platzierung in den Steam-Topsellern ist ein nachvollziehbares Signal/);
 assert.doesNotMatch(gothic, /steamdb\.info|gamestar\.de|pcgames\.de|gamepro\.de/i);
 assert.match(imageRights, /Gothic 1 Remake \| Hero/);
 assert.match(imageRights, /Steam-App-ID/);

@@ -2064,6 +2064,10 @@ figure.article-hero-image {
   margin-block: 2rem;
 }
 
+.article-related-news {
+  margin-top: clamp(2.5rem, 6vw, 4rem);
+}
+
 .article-inline-ad .ad-slot,
 .article-ad .ad-slot {
   min-height: 170px;
