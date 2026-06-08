@@ -3,13 +3,21 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
-import { createEditorialBatch } from "./agents/createEditorialBatch";
+import {
+  createEditorialBatch,
+  DEFAULT_EDITORIAL_QUEUE_PATH,
+  loadEditorialQueue
+} from "./agents/createEditorialBatch";
 import { runFactCheck } from "./agents/review/factCheck";
 import { runReaderInterestCheck } from "./agents/review/readerInterestCheck";
 import { runTechnicalCheck } from "./agents/review/technicalCheck";
 import type { DraftReviewInput } from "./agents/review/types";
 import type { EditorialCandidate, EditorialQueueReport } from "./agents/types";
-import { renderBatchQueueSummary } from "./agents/writeBatchQueueSummary";
+import {
+  prepareBatchQueue,
+  renderBatchQueueDiagnostics,
+  renderBatchQueueSummary
+} from "./agents/writeBatchQueueSummary";
 
 const interestingCandidate: EditorialCandidate = {
   id: "rss-interesting",
@@ -143,6 +151,7 @@ const aiFetch: typeof fetch = async (_input, init) => {
 const batch = await createEditorialBatch({
   rootDirectory: root,
   candidateIds: [interestingCandidate.id, boringCandidate.id],
+  selectionMode: "manual",
   articleTypeDefault: "news-overview",
   primarySourceGroups: [["https://store.steampowered.com/app/123456/Strategy_Test/"], []],
   editorialNote: "Nur bestätigte Fakten verwenden.",
@@ -176,6 +185,22 @@ assert.doesNotMatch(draft, /^# /m);
 assert.equal((draft.match(/^## Quellen$/gm) ?? []).length, 1);
 assert.doesNotMatch(draft, /src\/data\/editorial|\bUTC\b|\d{2}:\d{2}:\d{2}Z/);
 
+const explicitQueueRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-explicit-queue-"));
+const explicitQueuePath = join(explicitQueueRoot, "fresh", "queue.json");
+await mkdir(join(explicitQueueRoot, "fresh"), { recursive: true });
+await writeFile(explicitQueuePath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+const explicitQueueBatch = await createEditorialBatch({
+  rootDirectory: explicitQueueRoot,
+  queuePath: "fresh/queue.json",
+  candidateIds: [interestingCandidate.id],
+  selectionMode: "manual",
+  articleTypeDefault: "news-overview",
+  primarySourceGroups: [[]],
+  generatedAt: "2026-06-08T10:00:00.000Z",
+  environment: { GITHUB_RUN_ID: "explicit-queue", AI_EDITORIAL_ENABLED: "false" }
+});
+assert.equal(explicitQueueBatch.results[0].candidateId, interestingCandidate.id);
+
 await assert.rejects(
   () => createEditorialBatch({
     rootDirectory: root,
@@ -183,6 +208,40 @@ await assert.rejects(
     articleTypeDefault: "news-overview"
   }),
   /Maximal 5 Candidate IDs/
+);
+
+await assert.rejects(
+  () => loadEditorialQueue("missing/queue.json", root),
+  /Queue-Datei nicht gefunden: missing\/queue\.json/
+);
+const invalidJsonRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-invalid-json-"));
+await mkdir(join(invalidJsonRoot, "src", "data", "editorial"), { recursive: true });
+await writeFile(
+  join(invalidJsonRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  "{not-json",
+  "utf8"
+);
+await assert.rejects(
+  () => loadEditorialQueue(DEFAULT_EDITORIAL_QUEUE_PATH, invalidJsonRoot),
+  /Queue-Datei enthält kein valides JSON/
+);
+await writeFile(
+  join(invalidJsonRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  JSON.stringify({ generatedAt: "2026-06-08T10:00:00.000Z", candidates: [] }),
+  "utf8"
+);
+await assert.rejects(
+  () => loadEditorialQueue(DEFAULT_EDITORIAL_QUEUE_PATH, invalidJsonRoot),
+  /Queue-Datei enthält keine Kandidaten/
+);
+await writeFile(
+  join(invalidJsonRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  JSON.stringify({ candidates: [interestingCandidate] }),
+  "utf8"
+);
+await assert.rejects(
+  () => loadEditorialQueue(DEFAULT_EDITORIAL_QUEUE_PATH, invalidJsonRoot),
+  /Queue-Erzeugungszeitpunkt fehlt/
 );
 
 const manyCandidates = Array.from({ length: 25 }, (_, index) => ({
@@ -204,8 +263,10 @@ await assert.rejects(
     articleTypeDefault: "news-overview"
   }),
   (error: Error) => {
-    assert.match(error.message, /Candidate ID nicht gefunden: rss-missing/);
-    assert.match(error.message, /Verfügbare Candidate IDs in der frisch erzeugten Queue:/);
+    assert.match(error.message, /Candidate ID nicht in der aktuell verwendeten Queue gefunden:\nrss-missing/);
+    assert.match(error.message, /Verwendete Queue:\nsrc\/data\/editorial\/latest-queue\.json/);
+    assert.match(error.message, /Queue erzeugt:\n2026-06-08T09:30:00\.000Z/);
+    assert.match(error.message, /Verfügbare Candidate IDs:/);
     assert.match(error.message, /candidate-01/);
     assert.match(error.message, /candidate-20/);
     assert.doesNotMatch(error.message, /candidate-21/);
@@ -214,6 +275,61 @@ await assert.rejects(
     return true;
   }
 );
+
+const autoTopRoot = await mkdtemp(join(tmpdir(), "spielsignal-batch-auto-top-"));
+await mkdir(join(autoTopRoot, "src", "data", "editorial"), { recursive: true });
+const autoCandidates = Array.from({ length: 6 }, (_, index) => ({
+  ...interestingCandidate,
+  id: `auto-${index + 1}`,
+  score: 100 - index,
+  scoreReasons: [
+    "Aktuelle Meldung",
+    "Klarer PC-Gaming-Bezug",
+    `Konkreter Nutzen ${index + 1}`
+  ]
+}));
+await writeFile(
+  join(autoTopRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  `${JSON.stringify({ ...report, candidates: autoCandidates }, null, 2)}\n`,
+  "utf8"
+);
+const autoTopBatch = await createEditorialBatch({
+  rootDirectory: autoTopRoot,
+  queuePath: DEFAULT_EDITORIAL_QUEUE_PATH,
+  selectionMode: "auto-top",
+  articleTypeDefault: "news-overview",
+  maxArticles: 3,
+  generatedAt: "2026-06-08T10:00:00.000Z",
+  environment: { GITHUB_RUN_ID: "auto-top", AI_EDITORIAL_ENABLED: "false" }
+});
+assert.equal(autoTopBatch.checkedCandidates, 3);
+assert.deepEqual(autoTopBatch.results.map((entry) => entry.candidateId), ["auto-1", "auto-2", "auto-3"]);
+
+const summaryPath = join(autoTopRoot, "summary.md");
+const outputPath = join(autoTopRoot, "output.txt");
+const preparedAutoTop = await prepareBatchQueue({
+  rootDirectory: autoTopRoot,
+  queuePath: DEFAULT_EDITORIAL_QUEUE_PATH,
+  selectionMode: "auto-top",
+  maxArticles: 3,
+  summaryPath,
+  outputPath
+});
+assert.deepEqual(preparedAutoTop.selectedCandidateIds, ["auto-1", "auto-2", "auto-3"]);
+assert.match(await readFile(summaryPath, "utf8"), /Automatisch ausgewählte Kandidaten/);
+assert.match(await readFile(outputPath, "utf8"), /selectedCandidateIds=auto-1,auto-2,auto-3/);
+const diagnostics = renderBatchQueueDiagnostics({
+  report: {
+    ...report,
+    candidates: autoCandidates,
+    sourceErrors: ["OPENAI_API_KEY=secret-value"]
+  },
+  queuePath: DEFAULT_EDITORIAL_QUEUE_PATH,
+  selectedCandidateIds: preparedAutoTop.selectedCandidateIds
+});
+assert.match(diagnostics, /Queue-Pfad: src\/data\/editorial\/latest-queue\.json/);
+assert.match(diagnostics, /Queue-Erzeugungszeit: 2026-06-08T09:30:00\.000Z/);
+assert.doesNotMatch(diagnostics, /OPENAI_API_KEY|secret-value|sourceErrors/);
 
 const queueSummary = renderBatchQueueSummary({
   ...report,
@@ -277,21 +393,32 @@ assert.equal(runTechnicalCheck({ ...reviewFixture, markdown: `\uFEFF${reviewFixt
 assert.equal(runTechnicalCheck({ ...reviewFixture, readerText: "# Titel\n\n# Titel zwei" }).passed, false);
 
 const workflow = await readFile(".github/workflows/create-editorial-batch.yml", "utf8");
+const dailyWorkflow = await readFile(".github/workflows/daily-editorial-queue.yml", "utf8");
+const reportWriter = await readFile("scripts/agents/reportWriter.ts", "utf8");
 assert.doesNotThrow(() => parseYaml(workflow, { uniqueKeys: true }));
 assert.match(workflow, /name: Create Editorial Batch/);
+assert.match(workflow, /selection_mode:/);
+assert.match(workflow, /- manual/);
+assert.match(workflow, /- auto-top/);
 assert.match(workflow, /candidate_ids:/);
 assert.match(workflow, /editorial-batch\/\$\{\{ github\.run_id \}\}/);
 assert.match(workflow, /git ls-remote --exit-code --heads origin/);
 assert.doesNotMatch(workflow, /--force|\bgh\s+pr\s+merge\b|\bgit\s+merge\b/);
 assert.ok(workflow.indexOf("Frische Tagesqueue erzeugen") < workflow.indexOf("Batch-Entwürfe erzeugen"));
 assert.match(workflow, /Frische Tagesqueue erzeugen[\s\S]*npm run editorial:daily/);
+assert.match(workflow, /rm -f "\$QUEUE_PATH"[\s\S]*npm run editorial:daily/);
 assert.match(workflow, /STEAM_WEB_API_KEY: \$\{\{ secrets\.STEAM_WEB_API_KEY \}\}/);
 assert.match(workflow, /STEAM_SCOUT_ENABLED: "true"/);
 assert.match(workflow, /STEAM_RELEASES_ENABLED: "true"/);
 assert.match(workflow, /STEAM_TOP_SELLERS_ENABLED: "true"/);
 assert.match(workflow, /PUBLIC_STEAM_MOST_PLAYED_ENABLED: "false"/);
-assert.ok(workflow.indexOf("Batch-Auswahl zusammenfassen") < workflow.indexOf("Batch-Entwürfe erzeugen"));
-assert.match(workflow, /npm run editorial:batch-summary/);
+assert.ok(workflow.indexOf("Queue validieren und Batch-Auswahl vorbereiten") < workflow.indexOf("Batch-Entwürfe erzeugen"));
+assert.match(workflow, /QUEUE_PATH: src\/data\/editorial\/latest-queue\.json/);
+assert.match(workflow, /npm run editorial:batch-summary -- "\$SELECTION_MODE" "\$CANDIDATE_IDS" "\$MAX_ARTICLES" "\$QUEUE_PATH"/);
+assert.match(workflow, /npm run editorial:create-batch -- "\$SELECTED_CANDIDATE_IDS"[\s\S]*"\$QUEUE_PATH" "manual"/);
+assert.match(workflow, /steps\.queue\.outputs\.selectedCandidateIds/);
+assert.match(dailyWorkflow, /src\/data\/editorial\/latest-queue\.json/);
+assert.match(reportWriter, /join\(dataDirectory, "latest-queue\.json"\)/);
 assert.match(workflow, /if: always\(\)/);
 assert.match(workflow, /name: spielsignal-editorial-batch-diagnostics/);
 assert.match(workflow, /src\/data\/editorial\/latest-queue\.json/);

@@ -3,9 +3,18 @@ name: Create Editorial Batch
 on:
   workflow_dispatch:
     inputs:
-      candidate_ids:
-        description: "Mehrere Candidate IDs, durch Komma getrennt"
+      selection_mode:
+        description: "manual oder auto-top"
         required: true
+        default: "manual"
+        type: choice
+        options:
+          - manual
+          - auto-top
+      candidate_ids:
+        description: "Nur bei manual: Candidate IDs, durch Komma getrennt"
+        required: false
+        default: ""
         type: string
       article_type_default:
         description: "Standardtyp: news-overview, release-check, free-promotion oder guide"
@@ -41,18 +50,12 @@ jobs:
     timeout-minutes: 25
     env:
       BRANCH_NAME: editorial-batch/${{ github.run_id }}
+      QUEUE_PATH: src/data/editorial/latest-queue.json
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-
-      - name: Branch remote prüfen
-        run: |
-          if git ls-remote --exit-code --heads origin "$BRANCH_NAME"; then
-            echo "Branch existiert bereits: $BRANCH_NAME" >&2
-            exit 1
-          fi
 
       - name: Node.js einrichten
         uses: actions/setup-node@v6
@@ -64,7 +67,9 @@ jobs:
         run: npm ci
 
       - name: Frische Tagesqueue erzeugen
-        run: npm run editorial:daily
+        run: |
+          rm -f "$QUEUE_PATH"
+          npm run editorial:daily
         env:
           STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
           STEAM_SCOUT_ENABLED: "true"
@@ -72,15 +77,20 @@ jobs:
           STEAM_TOP_SELLERS_ENABLED: "true"
           PUBLIC_STEAM_MOST_PLAYED_ENABLED: "false"
 
-      - name: Batch-Auswahl zusammenfassen
-        run: npm run editorial:batch-summary
+      - name: Queue validieren und Batch-Auswahl vorbereiten
+        id: queue
+        run: npm run editorial:batch-summary -- "$SELECTION_MODE" "$CANDIDATE_IDS" "$MAX_ARTICLES" "$QUEUE_PATH"
+        env:
+          SELECTION_MODE: ${{ inputs.selection_mode }}
+          CANDIDATE_IDS: ${{ inputs.candidate_ids }}
+          MAX_ARTICLES: ${{ inputs.max_articles }}
 
       - name: Batch-Entwürfe erzeugen
         id: batch
-        run: npm run editorial:create-batch -- "$CANDIDATE_IDS" "$ARTICLE_TYPE_DEFAULT" "$PRIMARY_SOURCE_URLS" "$EDITORIAL_NOTE" "$MAX_ARTICLES"
+        run: npm run editorial:create-batch -- "$SELECTED_CANDIDATE_IDS" "$ARTICLE_TYPE_DEFAULT" "$PRIMARY_SOURCE_URLS" "$EDITORIAL_NOTE" "$MAX_ARTICLES" "$QUEUE_PATH" "manual"
         env:
           GITHUB_RUN_ID: ${{ github.run_id }}
-          CANDIDATE_IDS: ${{ inputs.candidate_ids }}
+          SELECTED_CANDIDATE_IDS: ${{ steps.queue.outputs.selectedCandidateIds }}
           ARTICLE_TYPE_DEFAULT: ${{ inputs.article_type_default }}
           PRIMARY_SOURCE_URLS: ${{ inputs.primary_source_urls }}
           EDITORIAL_NOTE: ${{ inputs.editorial_note }}
@@ -98,6 +108,10 @@ jobs:
 
       - name: Branch und Commit erstellen
         run: |
+          if git ls-remote --exit-code --heads origin "$BRANCH_NAME"; then
+            echo "Branch existiert bereits: $BRANCH_NAME" >&2
+            exit 1
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH_NAME"
