@@ -449,10 +449,15 @@ _Unsichere Angaben weglassen oder als offen markieren._
 _Sachliche Einordnung ergänzen._`;
 }
 
+function normalizeEditorialDashes(value: string): string {
+  return value.replace(/[\u2010-\u2014]/g, "-");
+}
+
 function sanitizedBody(body: string): string {
   const normalized = body
     .replace(/^\uFEFF/, "")
     .replace(/[\u00A0\u202A-\u202E\u2066-\u2069\uFEFF]/g, "")
+    .replace(/[\u2010-\u2014]/g, "-")
     .replace(/\r\n?/g, "\n")
     .replace(/^# .+$/gm, "")
     .replace(/^## Quellen[\s\S]*$/im, "")
@@ -554,7 +559,7 @@ function buildDraft(input: {
     ...(input.aiDraft?.warnings ?? []),
     "Vor Veröffentlichung Fakten, Bildrechte, SEO und Originalität manuell prüfen."
   ];
-  const markdown = `---
+  const markdown = normalizeEditorialDashes(`---
 title: ${JSON.stringify(title)}
 slug: ${JSON.stringify(slug)}
 articleType: ${JSON.stringify(input.articleType)}
@@ -584,8 +589,8 @@ ${status === "needs-source-review" ? "> **Kein fertiger Artikel: offizielle Prim
 ## Quellen
 
 ${sourceLines}
-`;
-  const readerText = `${body}\n\n## Quellen\n\n${sourceLines}`;
+`);
+  const readerText = normalizeEditorialDashes(`${body}\n\n## Quellen\n\n${sourceLines}`);
   const reviewInput: DraftReviewInput = {
     candidateId: candidate.id,
     title,

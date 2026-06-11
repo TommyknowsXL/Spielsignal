@@ -79,13 +79,18 @@ assert.match(gothic, /^status: "published"$/m);
 assert.match(gothic, /^heroImage: "https:\/\/shared\.fastly\.steamstatic\.com\/store_item_assets\/steam\/apps\/1297900\/header\.jpg"$/m);
 assert.match(gothic, /^heroImageAlt: ".+"$/m);
 assert.match(gothic, /^heroImageSourceName: "Steam \/ THQ Nordic"$/m);
-assert.match(gothic, /type: "ad"\n    slot: "article-inline-1"/);
 assert.match(gothic, /contentBlocks:/);
 const gothicHeadings = gothicData.contentBlocks
   .filter((block) => block.type === "heading")
   .map((block) => block.text);
 assert.equal(new Set(gothicHeadings).size, gothicHeadings.length);
 assert.equal(gothicData.contentBlocks.filter((block) => block.type === "ad").length, 1);
+assert.equal(
+  gothicData.contentBlocks.some(
+    (block) => block.type === "ad" && block.slot === "article-inline-1"
+  ),
+  true
+);
 assert.equal(
   gothicData.contentBlocks.every(
     (block) => block.type !== "image" || ["approved", "fallback"].includes(block.rightsStatus ?? "")

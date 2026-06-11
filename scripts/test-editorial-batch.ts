@@ -55,6 +55,44 @@ function shouldCreatePullRequest(completeDrafts: number): boolean {
   return completeDrafts > 0;
 }
 
+type ContentBlock = {
+  type: string;
+  slot?: string;
+  text?: string;
+  items?: string[];
+};
+
+function parseFrontmatter(markdown: string): Record<string, unknown> {
+  assert.equal(markdown.startsWith("---\n"), true, "Markdown muss Frontmatter enthalten.");
+  const closingMarker = markdown.indexOf("\n---", 4);
+  assert.notEqual(closingMarker, -1, "Frontmatter muss geschlossen sein.");
+  return parseYaml(markdown.slice(4, closingMarker), { uniqueKeys: true }) as Record<string, unknown>;
+}
+
+function contentBlocksFrom(markdown: string): ContentBlock[] {
+  const contentBlocks = parseFrontmatter(markdown).contentBlocks;
+  assert.equal(Array.isArray(contentBlocks), true, "contentBlocks muss ein Array sein.");
+  return contentBlocks as ContentBlock[];
+}
+
+function hasAdSlot(contentBlocks: ContentBlock[], slot: string): boolean {
+  return contentBlocks.some((block) => block.type === "ad" && block.slot === slot);
+}
+
+const inlineJsonBlocks = contentBlocksFrom(`---
+contentBlocks: [{"type":"ad","slot":"article-inline-1"}]
+---
+`);
+assert.equal(hasAdSlot(inlineJsonBlocks, "article-inline-1"), true);
+
+const yamlBlockContentBlocks = contentBlocksFrom(`---
+contentBlocks:
+  - type: "ad"
+    slot: "article-inline-1"
+---
+`);
+assert.equal(hasAdSlot(yamlBlockContentBlocks, "article-inline-1"), true);
+
 const interestingCandidate: EditorialCandidate = {
   id: "rss-interesting",
   createdAt: "2026-06-08T09:00:00.000Z",
@@ -172,7 +210,7 @@ const aiFetch: typeof fetch = async (_input, init) => {
         summary: "Für Strategy Test steht ein neues Steam-Update im Fokus. Bestätigte Details werden vor Veröffentlichung mit den offiziellen Patchnotes abgeglichen.",
         seoTitle: "Strategy Test: Neues Steam-Update für PC | SpielSignal",
         seoDescription: "Strategy Test erhält ein neues Steam-Update. SpielSignal fasst bestätigte PC-Angaben zusammen und markiert offene Patch-Details transparent.",
-        markdownBody: longBody,
+        markdownBody: `${longBody}\n\nSteam\u2011News, Patch\u2010Details, Release\u2012Zeit, RSS\u2013Themenhinweise und Update\u2014Plan werden normalisiert.`,
         recommendedImages: [{
           position: "hero",
           searchTarget: "Strategy Test offizielles Key Art",
@@ -399,10 +437,16 @@ assert.equal(Object.values(batch.results[0].reviews).every((review) => review.pa
 assert.match(await readFile(batch.reportPath, "utf8"), /SpielSignal Editorial Batch/);
 assert.match(await readFile(batch.rejectedReportPath!, "utf8"), /rss-boring/);
 const draft = await readFile(batch.results[0].filePath!, "utf8");
+const draftContentBlocks = contentBlocksFrom(draft);
 assert.match(draft, /status: "draft"/);
 assert.doesNotMatch(draft, /^# /m);
 assert.equal((draft.match(/^## Quellen$/gm) ?? []).length, 1);
 assert.doesNotMatch(draft, /src\/data\/editorial|\bUTC\b|\d{2}:\d{2}:\d{2}Z/);
+assert.equal(hasAdSlot(draftContentBlocks, "article-inline-1"), true);
+assert.equal(draftContentBlocks.some((block) => block.type === "paragraph"), true);
+assert.equal(draftContentBlocks.some((block) => block.type === "heading"), true);
+assert.doesNotMatch(draft, /[\u2010-\u2014]/);
+assert.match(draft, /Steam-News, Patch-Details, Release-Zeit, RSS-Themenhinweise und Update-Plan/);
 
 const multipleDraftRoot = await createTestRoot("spielsignal-batch-multiple-drafts-");
 await mkdir(join(multipleDraftRoot, "src", "data", "editorial"), { recursive: true });
@@ -1028,7 +1072,11 @@ assert.doesNotMatch(
 );
 assert.match(subnauticaEditorialDraft, /heroImageCandidateStatus: "pending-review"/);
 assert.match(subnauticaEditorialDraft, /heroImage: "\/images\/categories\/survival\.svg"/);
-assert.match(subnauticaEditorialDraft, /type: "ad"[\s\S]*slot: "article-inline-1"/);
+const subnauticaContentBlocks = contentBlocksFrom(subnauticaEditorialDraft);
+assert.equal(hasAdSlot(subnauticaContentBlocks, "article-inline-1"), true);
+assert.equal(subnauticaContentBlocks.some((block) => block.type === "paragraph"), true);
+assert.equal(subnauticaContentBlocks.some((block) => block.type === "heading"), true);
+assert.doesNotMatch(subnauticaEditorialDraft, /[\u2010-\u2014]/);
 assert.equal(temporaryRoots.size, 0);
 assert.deepEqual(
   Object.fromEntries(relevantEnvironmentKeys.map((key) => [key, process.env[key]])),
