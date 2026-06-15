@@ -27,6 +27,7 @@ export type VerifiedFact = {
 export type OfficialSourceEnrichment = {
   gameTitle?: string;
   steamAppId?: string;
+  searchedSources: string[];
   sources: OfficialPrimarySource[];
   verifiedFacts: VerifiedFact[];
   imageCandidateUrl?: string;
@@ -236,12 +237,14 @@ function linkedOfficialSources(
 
 async function findSteamApp(
   fetchImpl: typeof fetch,
-  gameTitle: string
+  gameTitle: string,
+  searchedSources: string[]
 ): Promise<{ appId: string; name: string } | undefined> {
   const endpoint = new URL("https://store.steampowered.com/api/storesearch/");
   endpoint.searchParams.set("term", gameTitle);
   endpoint.searchParams.set("l", "german");
   endpoint.searchParams.set("cc", "DE");
+  searchedSources.push(endpoint.toString());
   const payload = await fetchJson<StoreSearchResponse>(fetchImpl, endpoint.toString());
   const exact = (payload?.items ?? []).filter((item) =>
     item.id && sameGame(item.name, gameTitle)
@@ -294,21 +297,23 @@ export async function findOfficialPrimarySources(
 ): Promise<OfficialSourceEnrichment> {
   const fetchImpl = options.fetchImpl ?? fetch;
   const gameTitle = inferredGameTitle(input);
+  const searchedSources: string[] = [];
   let steamAppId = input.steamAppId?.trim();
   let matchedSteamName = gameTitle;
 
   if (!steamAppId && gameTitle) {
-    const match = await findSteamApp(fetchImpl, gameTitle);
+    const match = await findSteamApp(fetchImpl, gameTitle, searchedSources);
     steamAppId = match?.appId;
     matchedSteamName = match?.name ?? gameTitle;
   }
 
   if (!steamAppId) {
-    return { gameTitle, sources: [], verifiedFacts: [] };
+    return { gameTitle, searchedSources, sources: [], verifiedFacts: [] };
   }
 
   const storeUrl = `https://store.steampowered.com/app/${steamAppId}/`;
   const newsHubUrl = `https://store.steampowered.com/news/app/${steamAppId}/`;
+  searchedSources.push(storeUrl, newsHubUrl);
   const sources: OfficialPrimarySource[] = [{
     url: storeUrl,
     sourceType: "steam-store",
@@ -332,6 +337,7 @@ export async function findOfficialPrimarySources(
   }];
 
   const detailsUrl = `https://store.steampowered.com/api/appdetails?appids=${encodeURIComponent(steamAppId)}&l=german&cc=DE`;
+  searchedSources.push(detailsUrl);
   const details = await fetchJson<StoreDetailsResponse>(fetchImpl, detailsUrl);
   const app = details?.[steamAppId];
   if (app?.success && app.data?.name && (!gameTitle || sameGame(app.data.name, gameTitle))) {
@@ -348,6 +354,7 @@ export async function findOfficialPrimarySources(
     );
     if (site) {
       sources.push(site);
+      searchedSources.push(site.url);
       const officialHtml = await fetchText(fetchImpl, site.url);
       if (officialHtml) {
         sources.push(...linkedOfficialSources(officialHtml, site, matchedSteamName ?? gameTitle, input.title));
@@ -358,6 +365,7 @@ export async function findOfficialPrimarySources(
   const newsApiUrl =
     `https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=${encodeURIComponent(steamAppId)}` +
     "&count=20&maxlength=0&format=json";
+  searchedSources.push(newsApiUrl);
   const news = await fetchJson<SteamNewsResponse>(fetchImpl, newsApiUrl);
   const matchingNews = (news?.appnews?.newsitems ?? []).find((item) =>
     item.title && newsMatchesCandidate(item.title, input.title)
@@ -375,6 +383,7 @@ export async function findOfficialPrimarySources(
   return {
     gameTitle: matchedSteamName ?? gameTitle,
     steamAppId,
+    searchedSources: [...new Set(searchedSources)],
     sources: uniqueSources(sources),
     verifiedFacts: uniqueFacts(facts),
     imageCandidateUrl:

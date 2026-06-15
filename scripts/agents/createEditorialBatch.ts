@@ -48,13 +48,17 @@ export type BatchCandidateResult = {
   candidateId: string;
   title: string;
   articleType: BatchArticleType;
+  radarSourceName: string;
+  radarSourceUrl: string;
   readerInterest: EditorialReviewResult;
   reviews: Record<string, EditorialReviewResult>;
+  searchedOfficialSources: string[];
   primarySources: string[];
   foundPrimarySourceUrls: string[];
   verifiedPrimarySourceUrls: string[];
   foundPrimarySources: number;
   verifiedPrimarySources: number;
+  verifiedFacts: string[];
   steamAppId?: string;
   heroImageStatus: string;
   sourceGatePassed: boolean;
@@ -66,6 +70,7 @@ export type BatchCandidateResult = {
   filePath?: string;
   articlePath?: string;
   previewPath?: string;
+  decisionReason: string;
   recommendation: string;
 };
 
@@ -115,6 +120,7 @@ function uniqueUrls(values: string[]): string[] {
 
 type EnrichedCandidateSources = {
   candidate: EditorialCandidate;
+  searchedSources: string[];
   sources: OfficialPrimarySource[];
   verifiedFacts: VerifiedFact[];
 };
@@ -208,6 +214,7 @@ async function enrichCandidateSources(
   };
   return {
     candidate: enrichedCandidate,
+    searchedSources: discovered.searchedSources,
     sources,
     verifiedFacts: [...discovered.verifiedFacts, ...fallbackFacts]
   };
@@ -627,9 +634,27 @@ function fullGatePassed(reviews: Record<string, EditorialReviewResult>): boolean
   return Object.values(reviews).every((review) => review.passed);
 }
 
+function sourceGateReason(input: {
+  hasVerifiedSource: boolean;
+  hasFacts: boolean;
+  hasImage: boolean;
+}): string {
+  const missing = [
+    !input.hasVerifiedSource ? "keine verifizierte offizielle Primaerquelle" : "",
+    !input.hasFacts ? "keine belastbaren Fakten aus Primaerquellen" : "",
+    !input.hasImage ? "kein Bild/Fallback verfuegbar" : ""
+  ].filter(Boolean);
+  return missing.length
+    ? `Source-Gate abgelehnt: ${missing.join("; ")}.`
+    : "Source-Gate bestanden: offizielle Primaerquelle und verifizierte Fakten vorhanden.";
+}
+
 function reportMarkdown(result: EditorialBatchResult): string {
   const complete = result.results.filter((entry) => entry.status === "draft");
   const rejected = result.results.filter((entry) => entry.status === "rejected");
+  const zeroDraftReasons = result.completeDrafts === 0
+    ? result.results.map((entry) => `- ${entry.candidateId}: ${entry.decisionReason}`).join("\n")
+    : "";
   const completeDetails = complete.map((entry) => {
     const openPoints = [
       ...entry.readerInterest.warnings,
@@ -642,6 +667,12 @@ function reportMarkdown(result: EditorialBatchResult): string {
     return `### ${entry.title}
 
 - **Candidate ID:** ${entry.candidateId}
+- **Radarquelle:** ${entry.radarSourceName} (${entry.radarSourceUrl})
+- **Gesuchte offizielle Quellen:** ${entry.searchedOfficialSources.join(", ") || "keine automatische Quelle pruefbar"}
+- **Gefundene Primaerquellen:** ${entry.foundPrimarySourceUrls.join(", ") || "keine"}
+- **Verifizierte Fakten:** ${entry.verifiedFacts.join("; ") || "keine"}
+- **Entscheidung:** ${entry.decisionReason}
+- **KI-Aufruf:** ${entry.aiInvoked ? "gestartet" : "nicht gestartet"} (${entry.aiResult})
 - **Leserinteresse-Score:** ${entry.readerInterest.score}
 - **Artikeltyp:** ${entry.articleType}
 - **Verifizierte Primärquellen:** ${entry.verifiedPrimarySourceUrls.join(", ") || "keine"}
@@ -664,6 +695,12 @@ function reportMarkdown(result: EditorialBatchResult): string {
     return `### ${entry.title}
 
 - **Score:** ${entry.readerInterest.score}
+- **Radarquelle:** ${entry.radarSourceName} (${entry.radarSourceUrl})
+- **Gesuchte offizielle Quellen:** ${entry.searchedOfficialSources.join(", ") || "keine automatische Quelle pruefbar"}
+- **Gefundene Primaerquellen:** ${entry.foundPrimarySourceUrls.join(", ") || "keine"}
+- **Verifizierte Primaerquellen:** ${entry.verifiedPrimarySourceUrls.join(", ") || "keine"}
+- **KI-Aufruf:** ${entry.aiInvoked ? "gestartet" : "nicht gestartet"} (${entry.aiResult})
+- **Entscheidung:** ${entry.decisionReason}
 - **Ablehnungsgrund:** ${reasons.join("; ") || entry.recommendation}
 `;
   }).join("\n");
@@ -684,6 +721,8 @@ ${result.completeDrafts === 0
   : ""}
 
 ## Abgelehnte Themen
+
+${zeroDraftReasons ? `### Warum 0 Artikel erzeugt wurden\n\n${zeroDraftReasons}\n` : ""}
 
 ${rejectedDetails || "Keine abgelehnten Themen."}
 
@@ -776,6 +815,14 @@ export async function createEditorialBatch(
     const hasImage = Boolean(candidate.imageCandidateUrl || candidate.imagePath || "/images/categories/news-default.svg");
     return [candidate.id, hasVerifiedSource && hasFacts && hasImage] as const;
   }));
+  const sourceGateReasonMap = new Map(candidates.map((candidate) => {
+    const entry = enrichmentMap.get(candidate.id)!;
+    return [candidate.id, sourceGateReason({
+      hasVerifiedSource: entry.sources.some((source) => source.verified),
+      hasFacts: entry.verifiedFacts.length > 0,
+      hasImage: Boolean(candidate.imageCandidateUrl || candidate.imagePath || "/images/categories/news-default.svg")
+    })] as const;
+  }));
 
   const aiInputs = candidates
     .filter((candidate) =>
@@ -814,6 +861,7 @@ export async function createEditorialBatch(
       .filter((source) => source.verified)
       .map((source) => source.url);
     const sourceGatePassed = sourceGateMap.get(candidate.id) ?? false;
+    const sourceDecisionReason = sourceGateReasonMap.get(candidate.id) ?? "Source-Gate nicht ausgewertet.";
     const aiInvoked = sourceGatePassed && aiRequestedIds.has(candidate.id) && aiWasInvoked;
     const heroImageStatus = candidate.imageStatus === "approved"
       ? "Hero-Bild bereit"
@@ -825,13 +873,17 @@ export async function createEditorialBatch(
         candidateId: candidate.id,
         title: candidate.title,
         articleType: options.articleTypeDefault,
+        radarSourceName: candidate.sourceName,
+        radarSourceUrl: candidate.sourceUrl,
         readerInterest,
         reviews: {},
+        searchedOfficialSources: enrichment.searchedSources,
         primarySources,
         foundPrimarySourceUrls: enrichment.sources.map((source) => source.url),
         verifiedPrimarySourceUrls: primarySources,
         foundPrimarySources: enrichment.sources.length,
         verifiedPrimarySources: enrichment.sources.filter((source) => source.verified).length,
+        verifiedFacts: enrichment.verifiedFacts.map((fact) => fact.statement),
         steamAppId: candidate.steamAppId,
         heroImageStatus,
         sourceGatePassed,
@@ -840,7 +892,38 @@ export async function createEditorialBatch(
         readerEditResult: "Nicht aufgerufen.",
         imageSource: candidate.imageSourcePageUrl ?? candidate.imagePath ?? "Kein Bild",
         status: "rejected",
+        decisionReason: `Leserinteresse unter 60. ${sourceDecisionReason}`,
         recommendation: "Thema nicht als vollständigen Artikel verfolgen."
+      });
+      continue;
+    }
+
+    if (!sourceGatePassed) {
+      results.push({
+        candidateId: candidate.id,
+        title: candidate.title,
+        articleType: options.articleTypeDefault,
+        radarSourceName: candidate.sourceName,
+        radarSourceUrl: candidate.sourceUrl,
+        readerInterest,
+        reviews: {},
+        searchedOfficialSources: enrichment.searchedSources,
+        primarySources,
+        foundPrimarySourceUrls: enrichment.sources.map((source) => source.url),
+        verifiedPrimarySourceUrls: primarySources,
+        foundPrimarySources: enrichment.sources.length,
+        verifiedPrimarySources: enrichment.sources.filter((source) => source.verified).length,
+        verifiedFacts: enrichment.verifiedFacts.map((fact) => fact.statement),
+        steamAppId: candidate.steamAppId,
+        heroImageStatus,
+        sourceGatePassed,
+        aiInvoked: false,
+        aiResult: "Nicht aufgerufen: Source-Gate nicht bestanden.",
+        readerEditResult: "Nicht aufgerufen.",
+        imageSource: candidate.imageSourcePageUrl ?? candidate.imagePath ?? "Kein Bild",
+        status: "rejected",
+        decisionReason: sourceDecisionReason,
+        recommendation: "Keine Artikelerzeugung ohne verifizierte offizielle Primaerquelle und belastbare Fakten."
       });
       continue;
     }
@@ -870,13 +953,17 @@ export async function createEditorialBatch(
       candidateId: candidate.id,
       title: built.reviewInput.title,
       articleType: options.articleTypeDefault,
+      radarSourceName: candidate.sourceName,
+      radarSourceUrl: candidate.sourceUrl,
       readerInterest,
       reviews,
+      searchedOfficialSources: enrichment.searchedSources,
       primarySources,
       foundPrimarySourceUrls: enrichment.sources.map((source) => source.url),
       verifiedPrimarySourceUrls: primarySources,
       foundPrimarySources: enrichment.sources.length,
       verifiedPrimarySources: enrichment.sources.filter((source) => source.verified).length,
+      verifiedFacts: enrichment.verifiedFacts.map((fact) => fact.statement),
       steamAppId: candidate.steamAppId,
       heroImageStatus,
       sourceGatePassed,
@@ -896,6 +983,11 @@ export async function createEditorialBatch(
       filePath,
       articlePath: complete ? `/artikel/${built.reviewInput.slug}/` : undefined,
       previewPath: complete ? `/redaktion/vorschau/${built.reviewInput.slug}/` : undefined,
+      decisionReason: complete
+        ? "Akzeptiert: Leserinteresse, Source-Gate, KI-Entwurf und Qualitaetschecks bestanden."
+        : aiDraftMap.has(candidate.id)
+          ? "Abgelehnt: Qualitaetsgate nach KI-Entwurf nicht bestanden."
+          : "Nicht vollstaendig: Source-Gate bestanden, aber KI/Reader-Edit lieferte keinen fertigen Entwurf.",
       recommendation: complete
         ? readerInterest.score < 75
           ? "Vollständigen Entwurf besonders sorgfältig redaktionell prüfen."

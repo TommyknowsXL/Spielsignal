@@ -874,13 +874,17 @@ const sourceGateBatch = await createEditorialBatch({
 assert.equal(forbiddenAiCalls, 0);
 assert.equal(sourceGateBatch.results[0].sourceGatePassed, false);
 assert.equal(sourceGateBatch.results[0].aiInvoked, false);
-assert.equal(sourceGateBatch.results[0].status, "needs-source-review");
+assert.equal(sourceGateBatch.results[0].status, "rejected");
+assert.equal(sourceGateBatch.results[0].filePath, undefined);
 assert.equal(sourceGateBatch.completeDrafts, 0);
 assert.equal(shouldCreatePullRequest(sourceGateBatch.completeDrafts), false);
-assert.doesNotMatch(
-  await readFile(sourceGateBatch.results[0].filePath!, "utf8"),
-  /^status: "draft"$/m
-);
+const sourceGateReport = await readFile(sourceGateBatch.reportPath, "utf8");
+assert.match(sourceGateReport, /Radarquelle/);
+assert.match(sourceGateReport, /Gesuchte offizielle Quellen/);
+assert.match(sourceGateReport, /Gefundene Primaerquellen/);
+assert.match(sourceGateReport, /Warum 0 Artikel erzeugt wurden/);
+assert.match(sourceGateReport, /Source-Gate abgelehnt/);
+assert.match(sourceGateReport, /KI-Aufruf:\*\* nicht gestartet/);
 await cleanupTestRoot(sourceGateRoot);
 
 const summaryPath = join(autoTopRoot, "summary.md");
