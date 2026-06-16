@@ -1,19 +1,19 @@
 ---
-title: "Dragon's Dogma 2 bekommt eine ‚frosty Dark Arisen‘-Expansion und zwei große Updates - Steam-News"
+title: "Dragon's Dogma 2: Steam-News kündigen „frosty Dark Arisen“-Expansion und zwei große Updates an"
 slug: "dragon-s-dogma-2-news-overview"
 articleType: "news-overview"
 status: "draft"
-createdAt: "2026-06-15T23:49:46.647Z"
-updatedAt: "2026-06-15T23:49:46.647Z"
+createdAt: "2026-06-16T00:12:15.315Z"
+updatedAt: "2026-06-16T00:12:15.315Z"
 author: "SpielSignal-Redaktion"
 gameTitle: "Dragon's Dogma 2"
 steamAppId: "2054970"
 tags: []
-summary: "Steam veröffentlichte einen Eintrag, der eine ‚frosty Dark Arisen‘-Expansion sowie zwei größere Updates für Dragon's Dogma 2 nennt."
-seoTitle: "Dragon's Dogma 2: ‚frosty Dark Arisen‘-Expansion und zwei Updates laut Steam-News"
-seoDescription: "Steam listet eine News, die eine ‚frosty Dark Arisen‘-Expansion und zwei große Updates für Dragon's Dogma 2 ankündigt. Konkrete Details zu Terminen oder Inhalten fehlen."
+summary: "Im offiziellen Steam-News-Hub steht: „Dragon's Dogma 2 is getting a frosty Dark Arisen expansion, plus two big updates that fix some of the things you moaned about back in 2024“. Weitere Angaben zu Termin, Preis oder Inhalten fehlen."
+seoTitle: "Dragon's Dogma 2: 'frosty Dark Arisen' Expansion und zwei Updates angekündigt"
+seoDescription: "Ein Eintrag im offiziellen Steam-News-Hub nennt eine 'frosty Dark Arisen' Expansion für Dragon's Dogma 2 sowie zwei große Updates. Veröffentlichungsdatum, Preis und Inhaltsdetails werden nicht genannt."
 heroImage: "/images/categories/rollenspiele.svg"
-heroImageAlt: "Titelbild zu Dragon's Dogma 2 bekommt eine ‚frosty Dark Arisen‘-Expansion und zwei große Updates - Steam-News"
+heroImageAlt: "Titelbild zu Dragon's Dogma 2: Steam-News kündigen „frosty Dark Arisen“-Expansion und zwei große Updates an"
 heroImageSourceName: "SpielSignal"
 heroImageSourceType: "spielsignal-fallback"
 heroImageSourceUrl: "https://store.steampowered.com/app/2054970/"
@@ -21,29 +21,36 @@ imageRightsStatus: "fallback"
 heroImageCandidate: "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2054970/header.jpg"
 heroImageCandidateSourceUrl: "https://store.steampowered.com/app/2054970/"
 heroImageCandidateStatus: "pending-review"
-contentBlocks: [{"type":"paragraph","text":"Kurzfassung"},{"type":"ad","slot":"article-inline-1"},{"type":"paragraph","text":"Steam hat im News-Hub einen Beitrag veröffentlicht, der für Dragon's Dogma 2 „a frosty Dark Arisen expansion, plus two big updates that fix some of the things you moaned about back in 2024“ erwähnt."},{"type":"paragraph","text":"Bestätigt"},{"type":"list","items":["Steam führt das Spiel unter dem Namen Dragon's Dogma 2.","Im offiziellen Steam-News-Hub erscheint die Meldung mit dem oben zitierten Wortlaut."]},{"type":"paragraph","text":"Offene Fragen"},{"type":"list","items":["Es liegen keine Angaben zu Erscheinungsdatum, Preis oder konkretem Inhalt der Expansion vor.","Es gibt keine bestätigten Informationen zu Plattformverfügbarkeit, Umfang der Updates oder Monetarisierung."]},{"type":"paragraph","text":"Einordnung"},{"type":"paragraph","text":"Die Nachricht im Steam-Hub ist eine offizielle Kommunikation und nennt eine Expansion sowie zwei größere Updates wörtlich. Konkrete Details, etwa ein Release-Zeitplan oder inhaltliche Beschreibungen, werden in der veröffentlichten Meldung nicht genannt. Weitere Informationen müssten von Entwicklerinnen, Publishern oder ergänzenden offiziellen Ankündigungen folgen."}]
+contentBlocks: [{"type":"paragraph","text":"Einleitung"},{"type":"ad","slot":"article-inline-1"},{"type":"paragraph","text":"Laut einem Eintrag im offiziellen Steam-News-Hub bekommt Dragon's Dogma 2 eine „frosty Dark Arisen“ Expansion - dazu sind zwei größere Updates angekündigt, die offenbar Kritikpunkte aus 2024 angehen sollen."},{"type":"paragraph","text":"Bestätigte Angaben"},{"type":"list","items":["Steam führt das Spiel unter dem Namen Dragon's Dogma 2.","Im offiziellen Steam-News-Hub steht wörtlich: „Dragon's Dogma 2 is getting a frosty Dark Arisen expansion, plus two big updates that fix some of the things you moaned about back in 2024“."]},{"type":"paragraph","text":"Bestätigte Änderungen"},{"type":"list","items":["Angekündigt wurde eine Expansion mit dem Zusatz „frosty Dark Arisen“.","Zusätzlich wurden zwei große Updates erwähnt, die bestehende Kritikpunkte adressieren sollen."]},{"type":"paragraph","text":"Offene Punkte"},{"type":"list","items":["Es gibt keine bestätigte Angabe zu einem Veröffentlichungsdatum für die Expansion oder die Updates.","Preis, Vorbestelloptionen oder mögliche Monetarisierungsdetails (z. B. Mikrotransaktionen) werden nicht genannt.","Konkrete Inhalte der Expansion (Umfang, neue Gebiete, Spielmechaniken) sind nicht beschrieben.","Es fehlen Hinweise zu unterstützten Plattformen oder zu Systemanforderungen."]},{"type":"paragraph","text":"Kurz einzuordnen"},{"type":"paragraph","text":"Die Steam-Mitteilung nennt klar Expansion und Updates, liefert aber keine technischen, zeitlichen oder kommerziellen Details. Für genaue Informationen zu Release, Umfang und Preis sind weitere offizielle Ankündigungen von Entwickler oder Publisher abzuwarten."}]
 externalTipSources: ["https://www.gamestar.de/artikel/capcom-mikrotransaktionen-dragons-dogma-2,3454600.html"]
 primarySources: ["https://store.steampowered.com/app/2054970/","https://store.steampowered.com/news/app/2054970/","https://www.dragonsdogma.com/2/"]
-editorialNotes: ["Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen.","Alle Angaben stammen aus den gelisteten offiziellen Quellen.","Die Source-Meldung nennt eine Expansion und Updates, enthält aber keine Angaben zu Terminen, Preisen oder Inhalten.","Zitierte Formulierung stammt aus dem Steam-News-Hub; weitergehende Details wurden nicht übernommen.","Vor Veröffentlichung Fakten, Bildrechte, SEO und Originalität manuell prüfen."]
+editorialNotes: ["Inhalt und PC-Bezug anhand der Originalquelle redaktionell prüfen.","Die Quellen enthalten keine Angaben zu Veröffentlichungstermin, Preis oder Inhalten der Expansion - diese Punkte bleiben offen.","In den vorliegenden Primärquellen gibt es keine Bestätigung zu Mikrotransaktionen; dazu liegen keine Aussagen vor.","Das zitierte Steam-Posting ist eine Momentaufnahme; spätere Steam-Updates können Informationen ergänzen oder ändern.","Vor Veröffentlichung Fakten, Bildrechte, SEO und Originalität manuell prüfen."]
 ---
 
-Kurzfassung
+Einleitung
 
-Steam hat im News-Hub einen Beitrag veröffentlicht, der für Dragon's Dogma 2 „a frosty Dark Arisen expansion, plus two big updates that fix some of the things you moaned about back in 2024“ erwähnt.
+Laut einem Eintrag im offiziellen Steam-News-Hub bekommt Dragon's Dogma 2 eine „frosty Dark Arisen“ Expansion - dazu sind zwei größere Updates angekündigt, die offenbar Kritikpunkte aus 2024 angehen sollen.
 
-Bestätigt
+Bestätigte Angaben
 
 - Steam führt das Spiel unter dem Namen Dragon's Dogma 2.
-- Im offiziellen Steam-News-Hub erscheint die Meldung mit dem oben zitierten Wortlaut.
+- Im offiziellen Steam-News-Hub steht wörtlich: „Dragon's Dogma 2 is getting a frosty Dark Arisen expansion, plus two big updates that fix some of the things you moaned about back in 2024“. 
 
-Offene Fragen
+Bestätigte Änderungen
 
-- Es liegen keine Angaben zu Erscheinungsdatum, Preis oder konkretem Inhalt der Expansion vor.
-- Es gibt keine bestätigten Informationen zu Plattformverfügbarkeit, Umfang der Updates oder Monetarisierung.
+- Angekündigt wurde eine Expansion mit dem Zusatz „frosty Dark Arisen“.
+- Zusätzlich wurden zwei große Updates erwähnt, die bestehende Kritikpunkte adressieren sollen.
 
-Einordnung
+Offene Punkte
 
-Die Nachricht im Steam-Hub ist eine offizielle Kommunikation und nennt eine Expansion sowie zwei größere Updates wörtlich. Konkrete Details, etwa ein Release-Zeitplan oder inhaltliche Beschreibungen, werden in der veröffentlichten Meldung nicht genannt. Weitere Informationen müssten von Entwicklerinnen, Publishern oder ergänzenden offiziellen Ankündigungen folgen.
+- Es gibt keine bestätigte Angabe zu einem Veröffentlichungsdatum für die Expansion oder die Updates.
+- Preis, Vorbestelloptionen oder mögliche Monetarisierungsdetails (z. B. Mikrotransaktionen) werden nicht genannt.
+- Konkrete Inhalte der Expansion (Umfang, neue Gebiete, Spielmechaniken) sind nicht beschrieben.
+- Es fehlen Hinweise zu unterstützten Plattformen oder zu Systemanforderungen.
+
+Kurz einzuordnen
+
+Die Steam-Mitteilung nennt klar Expansion und Updates, liefert aber keine technischen, zeitlichen oder kommerziellen Details. Für genaue Informationen zu Release, Umfang und Preis sind weitere offizielle Ankündigungen von Entwickler oder Publisher abzuwarten.
 
 ## Quellen
 
