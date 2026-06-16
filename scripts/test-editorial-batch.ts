@@ -277,6 +277,13 @@ const strategySourceFetch: typeof fetch = async (input) => {
       headers: { "content-type": "text/html" }
     });
   }
+  if (url === "https://strategy.test/patchnotes/update-1-1") {
+    return new Response(
+      "Strategy Test Update 1.1 launches on Steam for PC on June 8, 2026. " +
+      "The patch adds improved save handling, a redesigned build menu, and new resource shortage warnings.",
+      { status: 200, headers: { "content-type": "text/html" } }
+    );
+  }
   return new Response("", { status: 404 });
 };
 
@@ -404,6 +411,13 @@ const officialSourceFetch: typeof fetch = async (input) => {
       <a href="https://www.xbox.com/en-US/games/store/subnautica-2/example">Xbox</a>
       <a href="/forums/community">Forum</a>
     `, { status: 200, headers: { "content-type": "text/html" } });
+  }
+  if (url === "https://unknownworlds.com/news/update-1-1") {
+    return new Response(
+      "Subnautica 2 Update 1.1 launches for PC on Steam on June 8, 2026. " +
+      "The patch adds Marrowbreach balance changes, Nibbler behavior updates, and performance fixes for the PC build.",
+      { status: 200, headers: { "content-type": "text/html" } }
+    );
   }
   return new Response("", { status: 404 });
 };
@@ -583,6 +597,14 @@ const multipleDraftSourceFetch: typeof fetch = async (input) => {
       status: 200,
       headers: { "content-type": "text/html" }
     });
+  }
+  const patchMatch = url.match(/^https:\/\/batch-game-(\d)\.test\/patchnotes\/update-1-1$/);
+  if (patchMatch) {
+    return new Response(
+      `Batch Game ${patchMatch[1]} Update 1.1 launches for PC on Steam on June 8, 2026. ` +
+      `The patch adds improved save handling, a redesigned build menu, and new resource shortage warnings.`,
+      { status: 200, headers: { "content-type": "text/html" } }
+    );
   }
   return new Response("", { status: 404 });
 };
@@ -848,7 +870,8 @@ assert.doesNotMatch(
   hardenedSelection.results[0].verifiedPrimarySourceUrls.join(" "),
   /store\.steampowered\.com\/news\/app\/1962700/
 );
-assert.equal(hardenedSelection.results[0].status, "needs-source-review");
+assert.equal(hardenedSelection.results[0].status, "rejected");
+assert.match(hardenedSelection.results[0].decisionReason, /Nicht genug verifizierte Fakten/);
 await cleanupTestRoot(hardenedSelectionRoot);
 
 const subnauticaRoot = await createTestRoot("spielsignal-batch-subnautica-");
@@ -1048,6 +1071,13 @@ const dedupeBatch = await createEditorialBatch({
     if (url === "https://county.test/") {
       return new Response('<a href="/patchnotes/demo-update">Demo Update Patchnotes</a>', { status: 200 });
     }
+    if (url === "https://county.test/patchnotes/demo-update") {
+      return new Response(
+        "County of Fortune Demo Update launches for PC on Steam on June 8, 2026. " +
+        "The demo update adds a new tutorial island, save transfer support, and updated economy balancing.",
+        { status: 200, headers: { "content-type": "text/html" } }
+      );
+    }
     return new Response("", { status: 404 });
   },
   fetchImpl: async () => {
@@ -1164,6 +1194,46 @@ assert.equal(thinBatch.results[0].status, "rejected");
 assert.match(thinBatch.results[0].decisionReason, /Nicht genug verifizierte Fakten/);
 assert.match(await readFile(thinBatch.reportPath, "utf8"), /Duenne Faktenlage/);
 await cleanupTestRoot(thinFactsRoot);
+
+const stubRoot = await createTestRoot("spielsignal-batch-research-stub-");
+await mkdir(join(stubRoot, "src", "data", "editorial"), { recursive: true });
+const stubCandidate: EditorialCandidate = {
+  ...interestingCandidate,
+  id: "rss-research-stub",
+  title: "Strategy Test Update 1.1 startet heute",
+  gameTitle: "Strategy Test",
+  steamAppId: "123456",
+  steamStoreUrl: "https://store.steampowered.com/app/123456/"
+};
+await writeFile(
+  join(stubRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  `${JSON.stringify({ ...report, candidates: [stubCandidate] }, null, 2)}\n`,
+  "utf8"
+);
+const stubBatch = await createEditorialBatch({
+  rootDirectory: stubRoot,
+  candidateIds: [stubCandidate.id],
+  articleTypeDefault: "news-overview",
+  sourceFetchImpl: strategySourceFetch,
+  generatedAt: "2026-06-08T12:00:00.000Z",
+  environment: {
+    GITHUB_RUN_ID: "research-stub",
+    AI_EDITORIAL_ENABLED: "false"
+  }
+});
+assert.equal(stubBatch.completeDrafts, 0);
+assert.equal(stubBatch.researchStubs, 1);
+assert.equal(stubBatch.rejectedCandidates, 1);
+assert.equal(stubBatch.results[0].status, "needs-source-review");
+assert.ok(stubBatch.results[0].filePath);
+const stubReport = await readFile(stubBatch.reportPath, "utf8");
+assert.match(stubReport, /Recherche-Stubs \/ Needs Source Review/);
+assert.match(stubReport, /fehlender KI-Pruefung|Gepruefter KI-Entwurf fehlt|KI deaktiviert/);
+assert.doesNotMatch(
+  stubReport.split("## Fertige Entw").at(1)?.split("## Recherche-Stubs").at(0) ?? "",
+  /rss-research-stub/
+);
+await cleanupTestRoot(stubRoot);
 
 const summaryPath = join(autoTopRoot, "summary.md");
 const outputPath = join(autoTopRoot, "output.txt");

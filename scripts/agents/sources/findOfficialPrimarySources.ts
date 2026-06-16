@@ -164,6 +164,46 @@ async function fetchText(fetchImpl: typeof fetch, url: string): Promise<string |
   }
 }
 
+function plainTextFromHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function concreteFactsFromOfficialText(input: {
+  html: string;
+  sourceUrl: string;
+  sourceType: string;
+  candidateTitle: string;
+}): VerifiedFact[] {
+  const text = plainTextFromHtml(input.html);
+  const titleWords = normalizeTitle(input.candidateTitle)
+    .split(" ")
+    .filter((word) => word.length >= 4);
+  const sentences = text
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length >= 30 && sentence.length <= 240);
+  const facts = sentences.filter((sentence) => {
+    const normalized = normalizeTitle(sentence);
+    const titleOverlap = titleWords.filter((word) => normalized.includes(word)).length;
+    const hasConcreteSignal = /\b(update|patch|demo|release|termin|date|datum|juni|july|juli|preis|price|edition|feature|umfang|content|inhalt|plattform|platform|steam|pc|version|roadmap|trailer|dlc|hotfix|available|verfugbar|verfuegbar|verfügbar|change|anderung|aenderung|änderung)\b/i.test(sentence);
+    const onlyHeadline = /\b(news|headline|meldung|title|titel|faq)\b/i.test(sentence) && !/\b(date|datum|juni|preis|price|feature|inhalt|plattform|pc|steam|version|verfugbar|verfügbar|change|patch|update)\b/i.test(sentence);
+    return hasConcreteSignal && !onlyHeadline && (titleOverlap > 0 || /pc|steam|demo|patch|update|release|version/i.test(sentence));
+  });
+  return facts.slice(0, 4).map((statement) => ({
+    statement,
+    sourceUrl: input.sourceUrl,
+    sourceType: input.sourceType,
+    confidence: 0.88
+  }));
+}
+
 function linkedOfficialSources(
   html: string,
   officialSite: OfficialPrimarySource,
@@ -196,7 +236,7 @@ function linkedOfficialSources(
     if (
       sameOfficialHost &&
       /patch|update|changelog|release-notes|news/i.test(url.pathname) &&
-      (matchesGame || matchesEvent)
+      (matchesGame || matchesEvent || /patch|update|changelog|release-notes/i.test(url.pathname))
     ) {
       discovered.push({
         url: url.toString(),
@@ -379,15 +419,24 @@ export async function findOfficialPrimarySources(
       searchedSources.push(site.url);
       const officialHtml = await fetchText(fetchImpl, site.url);
       if (officialHtml) {
+        facts.push(...concreteFactsFromOfficialText({
+          html: officialHtml,
+          sourceUrl: site.url,
+          sourceType: site.sourceType,
+          candidateTitle: input.title
+        }));
         const linkedSources = linkedOfficialSources(officialHtml, site, matchedSteamName ?? gameTitle, input.title);
         sources.push(...linkedSources);
         for (const linkedSource of linkedSources.filter((source) => source.sourceType === "official-patchnotes")) {
-          facts.push({
-            statement: `Eine offizielle Patchnotes-Seite dokumentiert den Anlass zu "${input.title}".`,
-            sourceUrl: linkedSource.url,
-            sourceType: linkedSource.sourceType,
-            confidence: 0.9
-          });
+          const patchHtml = await fetchText(fetchImpl, linkedSource.url);
+          if (patchHtml) {
+            facts.push(...concreteFactsFromOfficialText({
+              html: patchHtml,
+              sourceUrl: linkedSource.url,
+              sourceType: linkedSource.sourceType,
+              candidateTitle: input.title
+            }));
+          }
         }
       }
     }

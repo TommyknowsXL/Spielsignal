@@ -72,6 +72,7 @@ export type BatchCandidateResult = {
   previewPath?: string;
   decisionReason: string;
   recommendation: string;
+  missingFacts?: string[];
 };
 
 type DedupedCandidate = {
@@ -87,6 +88,8 @@ export type EditorialBatchResult = {
   checkedCandidates: number;
   generatedDrafts: number;
   completeDrafts: number;
+  researchStubs: number;
+  skippedDuplicates: number;
   rejectedCandidates: number;
   results: BatchCandidateResult[];
   reportPath: string;
@@ -716,18 +719,11 @@ function hasConcreteEvent(candidate: EditorialCandidate): boolean {
 function concreteEventFacts(entry: EnrichedCandidateSources): VerifiedFact[] {
   return entry.verifiedFacts.filter((fact) => {
     const text = normalizedKey(fact.statement);
-    if (/app id|steam app id|app-id|unter dem namen|steam fuehrt|steam führt|meldung.*veroffentlicht|meldung.*veroeffentlicht|news beitrag.*exist/.test(text)) {
+    if (/app id|steam app id|app-id|unter dem namen|steam fuehrt|steam führt|meldung.*veroffentlicht|meldung.*veroeffentlicht|news beitrag.*exist|news hub|steam news|dokumentiert den anlass/.test(text)) {
       return false;
     }
     return /datum|demo|zeitraum|verfugbar|verfuegbar|plattform|preis|patch|update|feature|umfang|release|version|inhalt|anderung|aenderung|roadmap|trailer|dlc/.test(text);
   });
-}
-
-function supportingEventSourceCount(entry: EnrichedCandidateSources): number {
-  return entry.sources.filter((source) =>
-    source.verified &&
-    ["official-patchnotes", "official-developer-site", "official-publisher-site", "official-trailer", "steam-news-hub"].includes(source.sourceType)
-  ).length;
 }
 
 function sourceGateDetails(candidate: EditorialCandidate, entry: EnrichedCandidateSources): {
@@ -737,8 +733,7 @@ function sourceGateDetails(candidate: EditorialCandidate, entry: EnrichedCandida
 } {
   const hasVerifiedSource = entry.sources.some((source) => source.verified);
   const concreteFacts = concreteEventFacts(entry);
-  const sourceFacts = supportingEventSourceCount(entry);
-  const hasEnoughFacts = concreteFacts.length >= 2 || (concreteFacts.length + sourceFacts) >= 2;
+  const hasEnoughFacts = concreteFacts.length >= 2;
   const hasEvent = hasConcreteEvent(candidate);
   const hasImage = Boolean(candidate.imageCandidateUrl || candidate.imagePath || "/images/categories/news-default.svg");
   const missing = [
@@ -758,6 +753,7 @@ function sourceGateDetails(candidate: EditorialCandidate, entry: EnrichedCandida
 
 function reportMarkdown(result: EditorialBatchResult): string {
   const complete = result.results.filter((entry) => entry.status === "draft");
+  const researchStubs = result.results.filter((entry) => entry.status === "needs-source-review");
   const rejected = result.results.filter((entry) => entry.status === "rejected");
   const uniqueDraftFiles = [...new Set(result.results.flatMap((entry) =>
     entry.status === "draft" && entry.filePath ? [relative(process.cwd(), entry.filePath).replace(/\\/g, "/")] : []
@@ -774,9 +770,27 @@ function reportMarkdown(result: EditorialBatchResult): string {
     .filter((entry) => entry.foundPrimarySourceUrls.some((url) => url.includes("store.steampowered.com/news/")))
     .map((entry) => {
       const official = entry.verifiedPrimarySourceUrls.some((url) => url.includes("store.steampowered.com/news/"));
-      return `- ${entry.candidateId}: Steam-News-Hub ${official ? "offiziell bestaetigt" : "nur aggregiert/unklar"}`;
+      const reason = official
+        ? "konkreter Beitrag ist Entwickler-/Publisher-Post"
+        : "Autor/Quelle unklar oder nur aggregiert/sekundaer";
+      return `- ${entry.candidateId}: Steam-News-Hub ${official ? "offiziell bestaetigt" : "unklar/sekundaer"} - ${reason}`;
     })
     .join("\n");
+  const researchStubDetails = researchStubs.map((entry) => `### ${entry.title}
+
+- **Candidate ID:** ${entry.candidateId}
+- **Grund:** ${entry.decisionReason}
+- **Dateipfad:** ${entry.filePath ? relative(process.cwd(), entry.filePath).replace(/\\/g, "/") : "nicht erzeugt"}
+- **Fehlende Fakten:** ${entry.missingFacts?.join("; ") || "Nicht genug verifizierte Fakten fuer vollstaendigen Artikel"}
+- **KI-Aufruf:** ${entry.aiInvoked ? "gestartet" : "nicht gestartet"} (${entry.aiResult})
+`).join("\n");
+  const sourceRoleDetails = result.results.map((entry) => `### ${entry.candidateId}
+
+- **Radarquelle:** ${entry.radarSourceName} (${entry.radarSourceUrl})
+- **Sekundärquellen:** ${entry.radarSourceUrl}
+- **Verifizierte Primärquellen:** ${entry.verifiedPrimarySourceUrls.join(", ") || "keine"}
+- **Eigene redaktionelle Einordnung:** ${entry.status === "draft" ? "im Draft vorhanden und manuell zu pruefen" : "nicht erzeugt, weil Gate nicht veroeffentlichungsreif war"}
+`).join("\n");
   const zeroDraftReasons = result.completeDrafts === 0
     ? result.results.map((entry) => `- ${entry.candidateId}: ${entry.decisionReason}`).join("\n")
     : "";
@@ -835,6 +849,8 @@ function reportMarkdown(result: EditorialBatchResult): string {
 - **Branch:** ${result.branchName}
 - **Geprüfte Kandidaten:** ${result.checkedCandidates}
 - **Vollständige Drafts:** ${result.completeDrafts}
+- **Recherche-Stubs:** ${result.researchStubs}
+- **Übersprungene Duplikate:** ${result.skippedDuplicates}
 - **Abgelehnte Kandidaten:** ${result.rejectedCandidates}
 
 ## Eindeutige Draft-Dateien
@@ -853,6 +869,10 @@ ${thinFactDetails || "Keine Kandidaten wegen zu duenner Faktenlage abgelehnt."}
 
 ${steamNewsDetails || "Keine Steam-News-Hub-Quelle bewertet."}
 
+## Quellenrollen
+
+${sourceRoleDetails || "Keine Quellenrollen dokumentiert."}
+
 ## Fertige Entwürfe
 
 ${completeDetails || "Keine vollständigen Entwürfe."}
@@ -861,9 +881,13 @@ ${result.completeDrafts === 0
   ? "> **Keine vollständigen Artikel erzeugt. Gerüste dienen ausschließlich der Diagnose und erzeugen keinen Pull Request.**\n"
   : ""}
 
-## Abgelehnte Themen
+## Recherche-Stubs / Needs Source Review
+
+${researchStubDetails || "Keine Recherche-Stubs."}
 
 ${zeroDraftReasons ? `### Warum 0 Artikel erzeugt wurden\n\n${zeroDraftReasons}\n` : ""}
+
+## Abgelehnte Themen
 
 ${rejectedDetails || "Keine abgelehnten Themen."}
 
@@ -952,13 +976,17 @@ export async function createEditorialBatch(
     candidate.id,
     runReaderInterestCheck(candidate)
   ]));
-  const sourceGateMap = new Map(candidates.map((candidate) => {
+  const sourceGateDetailsMap = new Map(candidates.map((candidate) => {
     const entry = enrichmentMap.get(candidate.id)!;
-    return [candidate.id, sourceGateDetails(candidate, entry).passed] as const;
+    return [candidate.id, sourceGateDetails(candidate, entry)] as const;
+  }));
+  const sourceGateMap = new Map(candidates.map((candidate) => {
+    const details = sourceGateDetailsMap.get(candidate.id)!;
+    return [candidate.id, details.passed] as const;
   }));
   const sourceGateReasonMap = new Map(candidates.map((candidate) => {
-    const entry = enrichmentMap.get(candidate.id)!;
-    return [candidate.id, sourceGateDetails(candidate, entry).reason] as const;
+    const details = sourceGateDetailsMap.get(candidate.id)!;
+    return [candidate.id, details.reason] as const;
   }));
 
   const aiInputs = candidates
@@ -1032,6 +1060,7 @@ export async function createEditorialBatch(
       .filter((source) => source.verified)
       .map((source) => source.url);
     const sourceGatePassed = sourceGateMap.get(candidate.id) ?? false;
+    const gateDetails = sourceGateDetailsMap.get(candidate.id);
     const sourceDecisionReason = sourceGateReasonMap.get(candidate.id) ?? "Source-Gate nicht ausgewertet.";
     const aiInvoked = sourceGatePassed && aiRequestedIds.has(candidate.id) && aiWasInvoked;
     const heroImageStatus = candidate.imageStatus === "approved"
@@ -1064,7 +1093,10 @@ export async function createEditorialBatch(
         imageSource: candidate.imageSourcePageUrl ?? candidate.imagePath ?? "Kein Bild",
         status: "rejected",
         decisionReason: `Leserinteresse unter 60. ${sourceDecisionReason}`,
-        recommendation: "Thema nicht als vollständigen Artikel verfolgen."
+        recommendation: "Thema nicht als vollständigen Artikel verfolgen.",
+        missingFacts: gateDetails && gateDetails.concreteFacts.length < 2
+          ? ["Mindestens zwei konkrete, spielrelevante Fakten zum Anlass fehlen."]
+          : []
       });
       continue;
     }
@@ -1094,7 +1126,10 @@ export async function createEditorialBatch(
         imageSource: candidate.imageSourcePageUrl ?? candidate.imagePath ?? "Kein Bild",
         status: "rejected",
         decisionReason: sourceDecisionReason,
-        recommendation: "Keine Artikelerzeugung ohne verifizierte offizielle Primaerquelle und belastbare Fakten."
+        recommendation: "Keine Artikelerzeugung ohne verifizierte offizielle Primaerquelle und belastbare Fakten.",
+        missingFacts: gateDetails && gateDetails.concreteFacts.length < 2
+          ? ["Mindestens zwei konkrete, spielrelevante Fakten zum Anlass fehlen."]
+          : []
       });
       continue;
     }
@@ -1165,7 +1200,11 @@ export async function createEditorialBatch(
           : "Vollständigen Entwurf manuell prüfen."
         : scaffold
           ? "Offizielle Primärquelle und geprüfte Fakten ergänzen."
-          : "Qualitätsfehler beheben, bevor ein Draft gespeichert wird."
+          : "Qualitätsfehler beheben, bevor ein Draft gespeichert wird.",
+      missingFacts: complete ? [] : [
+        ...Object.values(reviews).flatMap((review) => review.requiredFixes),
+        ...(aiDraftMap.has(candidate.id) ? [] : ["Gepruefter KI-Entwurf fehlt."])
+      ]
     });
   }
 
@@ -1173,6 +1212,8 @@ export async function createEditorialBatch(
   await mkdir(reportDirectory, { recursive: true });
   const reportPath = join(reportDirectory, `${reportDate}-${runId}.md`);
   const rejected = results.filter((entry) => entry.status === "rejected");
+  const researchStubs = results.filter((entry) => entry.status === "needs-source-review");
+  const skippedDuplicates = results.filter((entry) => /Duplicate uebersprungen/i.test(entry.decisionReason));
   const rejectedReportPath = rejected.length
     ? join(reportDirectory, `${reportDate}-${runId}-rejected.md`)
     : undefined;
@@ -1185,7 +1226,9 @@ export async function createEditorialBatch(
     completeDrafts: new Set(results.flatMap((entry) =>
       entry.status === "draft" && entry.filePath ? [entry.filePath] : []
     )).size,
-    rejectedCandidates: rejected.length,
+    researchStubs: researchStubs.length,
+    skippedDuplicates: skippedDuplicates.length,
+    rejectedCandidates: rejected.length + researchStubs.length,
     results,
     reportPath,
     rejectedReportPath,
@@ -1237,6 +1280,8 @@ if (executedDirectly) {
       checkedCandidates: result.checkedCandidates,
       generatedDrafts: result.generatedDrafts,
       completeDrafts: result.completeDrafts,
+      researchStubs: result.researchStubs,
+      skippedDuplicates: result.skippedDuplicates,
       rejectedCandidates: result.rejectedCandidates,
       reportDate: result.reportDate,
       publicationReady: result.completeDrafts > 0,
