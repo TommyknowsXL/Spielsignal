@@ -1,4 +1,5 @@
 import { normalizeTitle } from "../../../src/config/newsSources";
+import type { CandidateEntityAnalysis } from "../entityAnalysis";
 import { extractGameTitle } from "../gameTitle";
 
 export type OfficialPrimarySource = {
@@ -10,7 +11,12 @@ export type OfficialPrimarySource = {
     | "official-publisher-site"
     | "official-patchnotes"
     | "official-trailer"
-    | "official-xbox-page";
+    | "official-xbox-page"
+    | "official-investor-relations"
+    | "official-company-newsroom"
+    | "official-regulatory-document"
+    | "official-platform-news"
+    | "official-event-page";
   sourceName: string;
   verified: boolean;
   confidence: number;
@@ -32,6 +38,8 @@ export type OfficialSourceEnrichment = {
   verifiedFacts: VerifiedFact[];
   imageCandidateUrl?: string;
   imageSourcePageUrl?: string;
+  entityAnalysis?: CandidateEntityAnalysis;
+  sourceDiagnostics: string[];
 };
 
 type StoreSearchResponse = {
@@ -106,12 +114,120 @@ function inferredGameTitle(input: {
   gameTitle?: string;
 }): string | undefined {
   if (input.gameTitle?.trim()) return input.gameTitle.trim();
+  if (/^(steam|steam next fest|electronic arts|ea|w[üu]rdet ihr das spielen\??)$/i.test(input.title.trim())) return undefined;
   const extracted = extractGameTitle(input.title);
   if (extracted) return extracted;
   const withoutEvent = input.title
     .replace(/\s+(?:update|patch|hotfix|release|launch|trailer|demo)\b.*$/i, "")
     .trim();
   return withoutEvent.length >= 3 ? withoutEvent : undefined;
+}
+
+function officialUrl(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    return isBlockedUrl(url) ? undefined : url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function companyOfficialSources(entity: string): OfficialPrimarySource[] {
+  if (/^(electronic arts|ea)$/i.test(entity)) {
+    return [{
+      url: "https://ir.ea.com/",
+      sourceType: "official-investor-relations",
+      sourceName: "EA Investor Relations",
+      verified: true,
+      confidence: 0.92,
+      discoveredVia: "company-topic-investor-relations"
+    }, {
+      url: "https://www.ea.com/news",
+      sourceType: "official-company-newsroom",
+      sourceName: "EA Newsroom",
+      verified: true,
+      confidence: 0.9,
+      discoveredVia: "company-topic-newsroom"
+    }, {
+      url: "https://www.sec.gov/edgar/browse/?CIK=712515",
+      sourceType: "official-regulatory-document",
+      sourceName: "SEC EDGAR",
+      verified: true,
+      confidence: 0.86,
+      discoveredVia: "company-topic-sec-filings"
+    }];
+  }
+  return [];
+}
+
+function platformOfficialSources(entity: string): OfficialPrimarySource[] {
+  if (/^steam$/i.test(entity)) {
+    return [{
+      url: "https://store.steampowered.com/news/",
+      sourceType: "official-platform-news",
+      sourceName: "Steam News",
+      verified: true,
+      confidence: 0.88,
+      discoveredVia: "platform-topic-official-news"
+    }];
+  }
+  return [];
+}
+
+function eventOfficialSources(entity: string): OfficialPrimarySource[] {
+  if (/^steam next fest$/i.test(entity)) {
+    return [{
+      url: "https://store.steampowered.com/sale/nextfest",
+      sourceType: "official-event-page",
+      sourceName: "Steam Next Fest",
+      verified: true,
+      confidence: 0.9,
+      discoveredVia: "event-topic-official-page"
+    }, {
+      url: "https://store.steampowered.com/news/",
+      sourceType: "official-platform-news",
+      sourceName: "Steam News",
+      verified: true,
+      confidence: 0.82,
+      discoveredVia: "event-topic-platform-news"
+    }];
+  }
+  return [];
+}
+
+async function enrichNonGameOfficialSources(
+  analysis: CandidateEntityAnalysis,
+  fetchImpl: typeof fetch,
+  searchedSources: string[]
+): Promise<{ sources: OfficialPrimarySource[]; facts: VerifiedFact[]; diagnostics: string[] }> {
+  const entity = analysis.mainEntity;
+  if (!entity) {
+    return { sources: [], facts: [], diagnostics: ["Keine sichere Hauptentitaet fuer adaptive Quellensuche."] };
+  }
+  const sources = analysis.entityType === "event"
+    ? eventOfficialSources(entity)
+    : analysis.entityType === "platform"
+      ? platformOfficialSources(entity)
+      : companyOfficialSources(entity);
+  const diagnostics = sources.length
+    ? sources.map((source) => `${source.sourceName}: passende offizielle Quellgruppe ${source.sourceType}.`)
+    : [`Keine hinterlegte offizielle Quellgruppe fuer ${entity}.`];
+  const facts: VerifiedFact[] = [];
+  for (const source of sources) {
+    const url = officialUrl(source.url);
+    if (!url) continue;
+    searchedSources.push(url);
+    const html = await fetchText(fetchImpl, url);
+    if (html) {
+      facts.push(...concreteFactsFromOfficialText({
+        html,
+        sourceUrl: url,
+        sourceType: source.sourceType,
+        candidateTitle: `${analysis.cleanedTitle} ${analysis.searchTerms.join(" ")}`
+      }));
+    }
+  }
+  return { sources, facts, diagnostics };
 }
 
 function sameGame(left: string | undefined, right: string | undefined): boolean {
@@ -348,14 +464,47 @@ export async function findOfficialPrimarySources(
     gameTitle?: string;
     steamAppId?: string;
     sourceUrl?: string;
+    entityAnalysis?: CandidateEntityAnalysis;
   },
   options: {
     fetchImpl?: typeof fetch;
   } = {}
 ): Promise<OfficialSourceEnrichment> {
   const fetchImpl = options.fetchImpl ?? fetch;
-  const gameTitle = inferredGameTitle(input);
+  const analysis = input.entityAnalysis;
+  const sourceDiagnostics: string[] = [];
+  const gameTitle = analysis?.entityType === "game"
+    ? analysis.mainEntity ?? inferredGameTitle(input)
+    : inferredGameTitle(input);
   const searchedSources: string[] = [];
+  if (analysis) {
+    searchedSources.push(...analysis.searchTerms.map((term) => `search-term:${term}`));
+    searchedSources.push(...analysis.sourceGroups.map((group) => `source-group:${group}`));
+  }
+
+  if (analysis?.needsResolution) {
+    return {
+      gameTitle: undefined,
+      searchedSources: [...new Set(searchedSources)],
+      sources: [],
+      verifiedFacts: [],
+      entityAnalysis: analysis,
+      sourceDiagnostics: ["entity-needs-resolution: Keine sichere Hauptentitaet erkannt."]
+    };
+  }
+
+  if (analysis && analysis.entityType !== "game" && analysis.entityType !== "unknown") {
+    const nonGame = await enrichNonGameOfficialSources(analysis, fetchImpl, searchedSources);
+    return {
+      gameTitle: undefined,
+      searchedSources: [...new Set(searchedSources)],
+      sources: uniqueSources(nonGame.sources),
+      verifiedFacts: uniqueFacts(nonGame.facts),
+      entityAnalysis: analysis,
+      sourceDiagnostics: nonGame.diagnostics
+    };
+  }
+
   let steamAppId = input.steamAppId?.trim();
   let matchedSteamName = gameTitle;
 
@@ -366,7 +515,14 @@ export async function findOfficialPrimarySources(
   }
 
   if (!steamAppId) {
-    return { gameTitle, searchedSources, sources: [], verifiedFacts: [] };
+    return {
+      gameTitle,
+      searchedSources,
+      sources: [],
+      verifiedFacts: [],
+      entityAnalysis: analysis,
+      sourceDiagnostics: ["Keine Steam-App nach normalisierter Spielsuche gefunden."]
+    };
   }
 
   const storeUrl = `https://store.steampowered.com/app/${steamAppId}/`;
@@ -477,6 +633,8 @@ export async function findOfficialPrimarySources(
     verifiedFacts: uniqueFacts(facts),
     imageCandidateUrl:
       `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${steamAppId}/header.jpg`,
-    imageSourcePageUrl: storeUrl
+    imageSourcePageUrl: storeUrl,
+    entityAnalysis: analysis,
+    sourceDiagnostics
   };
 }

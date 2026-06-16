@@ -8,6 +8,7 @@ import {
   DEFAULT_EDITORIAL_QUEUE_PATH,
   loadEditorialQueue
 } from "./agents/createEditorialBatch";
+import { analyzeEditorialCandidate } from "./agents/entityAnalysis";
 import {
   classifyEditorialAiError,
   prepareEditorialAiDrafts
@@ -421,6 +422,85 @@ const officialSourceFetch: typeof fetch = async (input) => {
   }
   return new Response("", { status: 404 });
 };
+
+const eaAnalysis = analyzeEditorialCandidate({
+  title: "Electronic Arts - Um Schulden von 20 Milliarden Dollar abzubezahlen packt EA jetzt Werbung direkt in eure Spiele",
+  sourceUrl: "https://www.gamestar.de/artikel/ea-werbung-spiele-schulden,123.html",
+  scoreReasons: ["Finanz- und Strategiemeldung"]
+});
+assert.equal(eaAnalysis.mainEntity, "Electronic Arts");
+assert.equal(eaAnalysis.entityType, "publisher");
+assert.equal(eaAnalysis.topicType, "financial-news");
+assert.ok(eaAnalysis.sourceGroups.includes("investor-relations"));
+assert.ok(eaAnalysis.searchTerms.some((term) => /investor relations/i.test(term)));
+
+const steamAnalysis = analyzeEditorialCandidate({
+  title: "Steam - Neues Update fuer den Client startet heute",
+  sourceUrl: "https://example.test/steam-client-update",
+  scoreReasons: ["Plattform-News"]
+});
+assert.equal(steamAnalysis.mainEntity, "Steam");
+assert.equal(steamAnalysis.entityType, "platform");
+assert.equal(steamAnalysis.topicType, "game-update");
+
+const nextFestAnalysis = analyzeEditorialCandidate({
+  title: "Steam Next Fest: Neue Demos fuer PC-Spieler angekuendigt",
+  sourceUrl: "https://example.test/steam-next-fest-demos",
+  scoreReasons: ["Event"]
+});
+assert.equal(nextFestAnalysis.mainEntity, "Steam Next Fest");
+assert.equal(nextFestAnalysis.entityType, "event");
+assert.equal(nextFestAnalysis.topicType, "event");
+
+const editorialQuestionAnalysis = analyzeEditorialCandidate({
+  title: "Wuerdet ihr das spielen? - Nach 3D-Remake von Diablo 2 zeigt Entwickler ein neues Mittelalter-Rollenspiel",
+  sourceUrl: "https://example.test/neues-mittelalter-rollenspiel",
+  summary: "Ein Entwickler zeigt ein neues Projekt, ein sicherer Name fehlt.",
+  scoreReasons: ["Neues Projekt ohne offiziellen Namen"]
+});
+assert.equal(editorialQuestionAnalysis.mainEntity, undefined);
+assert.equal(editorialQuestionAnalysis.entityType, "unknown");
+assert.equal(editorialQuestionAnalysis.needsResolution, true);
+assert.ok(editorialQuestionAnalysis.removedTitleParts.some((part) => /spielen/i.test(part)));
+
+const communityAnalysis = analyzeEditorialCandidate({
+  title: "Welches Spiel liegt am laengsten auf eurer Wunschliste?",
+  sourceUrl: "https://example.test/community-wunschliste",
+  scoreReasons: ["Community-Diskussion"]
+});
+assert.equal(communityAnalysis.topicType, "opinion/community-topic");
+
+const eaSources = await findOfficialPrimarySources({
+  candidateId: "rss-ea-finance",
+  title: "Electronic Arts - Um Schulden von 20 Milliarden Dollar abzubezahlen packt EA jetzt Werbung direkt in eure Spiele",
+  sourceUrl: "https://www.gamestar.de/artikel/ea-werbung-spiele-schulden,123.html",
+  entityAnalysis: eaAnalysis
+}, {
+  fetchImpl: async (input) => {
+    const url = String(input);
+    if (url === "https://ir.ea.com/") {
+      return new Response("<p>Electronic Arts reports quarterly earnings and discusses debt, advertising strategy and future investment plans for PC and console games.</p>", { status: 200 });
+    }
+    if (url === "https://www.ea.com/news") {
+      return new Response("<p>Electronic Arts shares official company news about advertising tests, player experience and platform strategy.</p>", { status: 200 });
+    }
+    if (url.includes("sec.gov")) {
+      return new Response("<p>Electronic Arts filings include debt, revenue and risk factors for interactive entertainment products.</p>", { status: 200 });
+    }
+    return new Response("", { status: 404 });
+  }
+});
+assert.ok(eaSources.searchedSources.some((source) => source.includes("ir.ea.com")));
+assert.ok(eaSources.sources.some((source) => source.sourceType === "official-investor-relations"));
+assert.doesNotMatch(eaSources.searchedSources.join("\n"), /storesearch.*Electronic%20Arts/i);
+
+const legalAnalysis = analyzeEditorialCandidate({
+  title: "Microsoft: Behoerde prueft neue Game-Pass-Regeln",
+  sourceUrl: "https://example.test/microsoft-behoerde-game-pass",
+  scoreReasons: ["Regulatorisches Verfahren"]
+});
+assert.equal(legalAnalysis.topicType, "legal/regulatory");
+assert.ok(legalAnalysis.sourceGroups.includes("regulator-sites"));
 
 const subnauticaSources = await findOfficialPrimarySources({
   candidateId: "rss-0384d324f7939a2b",
@@ -1234,6 +1314,50 @@ assert.doesNotMatch(
   /rss-research-stub/
 );
 await cleanupTestRoot(stubRoot);
+
+const entityResolutionRoot = await createTestRoot("spielsignal-batch-entity-resolution-");
+await mkdir(join(entityResolutionRoot, "src", "data", "editorial"), { recursive: true });
+const unresolvedCandidate: EditorialCandidate = {
+  ...interestingCandidate,
+  id: "rss-entity-needs-resolution",
+  title: "Wuerdet ihr das spielen? - Nach 3D-Remake von Diablo 2 zeigt Entwickler ein neues Mittelalter-Rollenspiel",
+  gameTitle: undefined,
+  steamAppId: undefined,
+  steamStoreUrl: undefined,
+  sourceUrl: "https://www.gamestar.de/artikel/neues-mittelalter-rollenspiel,123.html"
+};
+await writeFile(
+  join(entityResolutionRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  `${JSON.stringify({ ...report, candidates: [unresolvedCandidate] }, null, 2)}\n`,
+  "utf8"
+);
+let unsafeSteamSearch = false;
+const unresolvedBatch = await createEditorialBatch({
+  rootDirectory: entityResolutionRoot,
+  candidateIds: [unresolvedCandidate.id],
+  articleTypeDefault: "news-overview",
+  sourceFetchImpl: async (input) => {
+    const url = String(input);
+    if (/storesearch/i.test(url)) unsafeSteamSearch = true;
+    return new Response("", { status: 404 });
+  },
+  fetchImpl: async () => {
+    throw new Error("KI darf bei unsicherer Entitaet nicht starten.");
+  },
+  environment: {
+    GITHUB_RUN_ID: "entity-needs-resolution",
+    AI_EDITORIAL_ENABLED: "true",
+    OPENAI_API_KEY: "test-only-key"
+  }
+});
+assert.equal(unsafeSteamSearch, false);
+assert.equal(unresolvedBatch.completeDrafts, 0);
+assert.equal(unresolvedBatch.results[0].status, "rejected");
+assert.match(unresolvedBatch.results[0].decisionReason, /entity-needs-resolution/);
+const unresolvedReport = await readFile(unresolvedBatch.reportPath, "utf8");
+assert.match(unresolvedReport, /Entity- und Quellendiagnose/);
+assert.match(unresolvedReport, /keine sichere Entitaet/);
+await cleanupTestRoot(entityResolutionRoot);
 
 const summaryPath = join(autoTopRoot, "summary.md");
 const outputPath = join(autoTopRoot, "output.txt");

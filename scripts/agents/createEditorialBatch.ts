@@ -2,6 +2,7 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { isSuitablePrimarySource } from "./createEditorialDraft";
+import { analyzeEditorialCandidate, type CandidateEntityAnalysis } from "./entityAnalysis";
 import {
   prepareEditorialAiDrafts,
   prepareReaderEditedDrafts,
@@ -73,6 +74,8 @@ export type BatchCandidateResult = {
   decisionReason: string;
   recommendation: string;
   missingFacts?: string[];
+  entityAnalysis?: CandidateEntityAnalysis;
+  sourceDiagnostics?: string[];
 };
 
 type DedupedCandidate = {
@@ -132,6 +135,8 @@ type EnrichedCandidateSources = {
   searchedSources: string[];
   sources: OfficialPrimarySource[];
   verifiedFacts: VerifiedFact[];
+  entityAnalysis?: CandidateEntityAnalysis;
+  sourceDiagnostics: string[];
 };
 
 function sourceTypeForUrl(url: string): OfficialPrimarySource["sourceType"] {
@@ -169,12 +174,14 @@ async function enrichCandidateSources(
   supplied: string[],
   fetchImpl: typeof fetch
 ): Promise<EnrichedCandidateSources> {
+  const entityAnalysis = analyzeEditorialCandidate(candidate);
   const discovered = await findOfficialPrimarySources({
     candidateId: candidate.id,
     title: candidate.title,
-    gameTitle: candidate.gameTitle,
+    gameTitle: entityAnalysis.entityType === "game" ? entityAnalysis.mainEntity ?? candidate.gameTitle : candidate.gameTitle,
     steamAppId: candidate.steamAppId,
-    sourceUrl: candidate.sourceUrl
+    sourceUrl: candidate.sourceUrl,
+    entityAnalysis
   }, { fetchImpl });
   const manualSources = suppliedOfficialSources(supplied, false);
   const nonRssSource = candidate.sourceType !== "rss-news"
@@ -225,7 +232,9 @@ async function enrichCandidateSources(
     candidate: enrichedCandidate,
     searchedSources: discovered.searchedSources,
     sources,
-    verifiedFacts: [...discovered.verifiedFacts, ...fallbackFacts]
+    verifiedFacts: [...discovered.verifiedFacts, ...fallbackFacts],
+    entityAnalysis: discovered.entityAnalysis ?? entityAnalysis,
+    sourceDiagnostics: discovered.sourceDiagnostics
   };
 }
 
@@ -734,9 +743,11 @@ function sourceGateDetails(candidate: EditorialCandidate, entry: EnrichedCandida
   const hasVerifiedSource = entry.sources.some((source) => source.verified);
   const concreteFacts = concreteEventFacts(entry);
   const hasEnoughFacts = concreteFacts.length >= 2;
-  const hasEvent = hasConcreteEvent(candidate);
+  const needsEntityResolution = Boolean(entry.entityAnalysis?.needsResolution);
+  const hasEvent = !needsEntityResolution && hasConcreteEvent(candidate);
   const hasImage = Boolean(candidate.imageCandidateUrl || candidate.imagePath || "/images/categories/news-default.svg");
   const missing = [
+    needsEntityResolution ? "entity-needs-resolution: keine sichere Hauptentitaet" : "",
     !hasVerifiedSource ? "keine verifizierte offizielle Primaerquelle" : "",
     !hasEvent ? "kein konkreter aktueller Anlass" : "",
     !hasEnoughFacts ? "Nicht genug verifizierte Fakten fuer vollstaendigen Artikel" : "",
@@ -776,6 +787,19 @@ function reportMarkdown(result: EditorialBatchResult): string {
       return `- ${entry.candidateId}: Steam-News-Hub ${official ? "offiziell bestaetigt" : "unklar/sekundaer"} - ${reason}`;
     })
     .join("\n");
+  const entityDetails = result.results.map((entry) => {
+    const analysis = entry.entityAnalysis;
+    return `### ${entry.candidateId}
+
+- **Erkannte Hauptentitaet:** ${analysis?.mainEntity ?? "keine sichere Entitaet"}
+- **Entitaetstyp:** ${analysis?.entityType ?? "unknown"}
+- **Anlass/Thementyp:** ${analysis?.topicType ?? "unknown"}
+- **Entfernte Titelbestandteile:** ${analysis?.removedTitleParts.join("; ") || "keine"}
+- **Verwendete Suchbegriffe:** ${analysis?.searchTerms.join(", ") || "keine"}
+- **Gepruefte offizielle Quellengruppen:** ${analysis?.sourceGroups.join(", ") || "keine"}
+- **Quellendiagnose:** ${entry.sourceDiagnostics?.join("; ") || "keine Zusatzdiagnose"}
+`;
+  }).join("\n");
   const researchStubDetails = researchStubs.map((entry) => `### ${entry.title}
 
 - **Candidate ID:** ${entry.candidateId}
@@ -868,6 +892,10 @@ ${thinFactDetails || "Keine Kandidaten wegen zu duenner Faktenlage abgelehnt."}
 ## Steam-News-Hub-Bewertung
 
 ${steamNewsDetails || "Keine Steam-News-Hub-Quelle bewertet."}
+
+## Entity- und Quellendiagnose
+
+${entityDetails || "Keine Entity-Diagnose dokumentiert."}
 
 ## Quellenrollen
 
@@ -1049,7 +1077,9 @@ export async function createEditorialBatch(
       imageSource: candidate.imageSourcePageUrl ?? candidate.imagePath ?? "Kein Bild",
       status: "rejected",
       decisionReason: `Duplicate uebersprungen: zusammengefuehrt mit ${duplicate.duplicateOf}. ${duplicate.duplicateReason ?? ""}`.trim(),
-      recommendation: "Keinen zweiten Draft fuer denselben Zielslug oder dieselbe offizielle Quelle erzeugen."
+      recommendation: "Keinen zweiten Draft fuer denselben Zielslug oder dieselbe offizielle Quelle erzeugen.",
+      entityAnalysis: duplicate.entry.entityAnalysis,
+      sourceDiagnostics: duplicate.entry.sourceDiagnostics
     });
   }
 
@@ -1096,7 +1126,9 @@ export async function createEditorialBatch(
         recommendation: "Thema nicht als vollständigen Artikel verfolgen.",
         missingFacts: gateDetails && gateDetails.concreteFacts.length < 2
           ? ["Mindestens zwei konkrete, spielrelevante Fakten zum Anlass fehlen."]
-          : []
+          : [],
+        entityAnalysis: enrichment.entityAnalysis,
+        sourceDiagnostics: enrichment.sourceDiagnostics
       });
       continue;
     }
@@ -1129,7 +1161,9 @@ export async function createEditorialBatch(
         recommendation: "Keine Artikelerzeugung ohne verifizierte offizielle Primaerquelle und belastbare Fakten.",
         missingFacts: gateDetails && gateDetails.concreteFacts.length < 2
           ? ["Mindestens zwei konkrete, spielrelevante Fakten zum Anlass fehlen."]
-          : []
+          : [],
+        entityAnalysis: enrichment.entityAnalysis,
+        sourceDiagnostics: enrichment.sourceDiagnostics
       });
       continue;
     }
@@ -1204,7 +1238,9 @@ export async function createEditorialBatch(
       missingFacts: complete ? [] : [
         ...Object.values(reviews).flatMap((review) => review.requiredFixes),
         ...(aiDraftMap.has(candidate.id) ? [] : ["Gepruefter KI-Entwurf fehlt."])
-      ]
+      ],
+      entityAnalysis: enrichment.entityAnalysis,
+      sourceDiagnostics: enrichment.sourceDiagnostics
     });
   }
 
