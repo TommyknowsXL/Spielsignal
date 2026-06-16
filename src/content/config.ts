@@ -127,7 +127,7 @@ export const articleSchema = articleFields
 export const draftSchema = articleFields
   .omit({ status: true, primarySources: true })
   .extend({
-    status: z.enum(["draft", "review", "needs-source-review"]),
+    status: z.enum(["draft", "review", "ready-for-review", "needs-source-review", "approved", "rejected"]),
     primarySources: z.array(z.string().url()).default([])
   })
   .refine((entry) => entry.articleType !== "test" || Boolean(entry.playedMinutes), {

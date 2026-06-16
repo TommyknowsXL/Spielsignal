@@ -1,0 +1,38 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Redaktionsworkflow | SpielSignal"
+  description="Interner SpielSignal-Workflow fuer Draft-Freigaben."
+  robots="noindex, nofollow"
+>
+  <section class="editorial-workspace container">
+    <p class="eyebrow">Interne Redaktion</p>
+    <h1>Sicherer Freigabe-Workflow</h1>
+    <div class="editorial-workflow-panel editorial-workflow-panel--wide">
+      <h2>Speichern</h2>
+      <p>
+        Die Astro-Seiten schreiben im Hosting nicht direkt in <code>src/content</code>. Aenderungen werden
+        als Patch-Hinweis vorbereitet und muessen auf einem Branch committed werden.
+      </p>
+      <h2>Freigeben</h2>
+      <p>
+        Status im Draft auf <code>approved</code> setzen, Datei in <code>src/content/articles/</code>
+        uebernehmen, Artikelstatus dort auf <code>published</code> setzen, Tests und Build im Pull Request
+        laufen lassen. Veroeffentlicht wird erst durch Merge nach <code>main</code>.
+      </p>
+      <h2>Ablehnen</h2>
+      <p>
+        Status im Draft auf <code>rejected</code> setzen und Grund in <code>editorialNotes</code>
+        dokumentieren. Es wird keine oeffentliche Artikeldatei erzeugt.
+      </p>
+      <h2>Zugriffsschutz</h2>
+      <p>
+        Die Seiten sind <code>noindex</code>, nicht in der Navigation und aus der Sitemap ausgeschlossen.
+        In Vercel muss zusaetzlich Deployment Protection fuer Preview Deployments oder eine gleichwertige
+        Authentifizierung aktiviert sein. Eine unbekannte URL gilt nicht als Schutz.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

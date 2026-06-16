@@ -1,0 +1,97 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const redaktionEnabled = process.env.VERCEL_ENV === "preview";
+const drafts = (redaktionEnabled ? await getCollection("drafts") : [])
+  .sort((left, right) => right.data.updatedAt.valueOf() - left.data.updatedAt.valueOf());
+
+const formatDate = (date: Date) => date.toLocaleDateString("de-DE", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric"
+});
+
+const statusLabel = (status: string) => {
+  if (status === "needs-source-review") return "Recherche-Stub";
+  if (status === "ready-for-review" || status === "review") return "Pruefbereit";
+  if (status === "approved") return "Freigegeben";
+  if (status === "rejected") return "Abgelehnt";
+  return "Draft";
+};
+
+const qualityStatus = (draft: typeof drafts[number]) => {
+  if (draft.data.status === "needs-source-review") return "Quellenpruefung offen";
+  if (draft.data.primarySources.length < 1) return "Primaerquelle fehlt";
+  if (draft.data.imageRightsStatus !== "approved") return "Bildfreigabe offen";
+  return "Bereit zur redaktionellen Pruefung";
+};
+---
+
+<BaseLayout
+  title="Interne Redaktion | SpielSignal"
+  description="Interne SpielSignal-Redaktionsuebersicht fuer Draft-Pruefung."
+  robots="noindex, nofollow"
+>
+  <section class="editorial-workspace container">
+    <div class="editorial-workspace__header">
+      <div>
+        <p class="eyebrow">Interne Redaktion</p>
+        <h1>Drafts pruefen</h1>
+        <p>
+          Diese Ansicht ist fuer Preview- und Review-Workflows gedacht. Sie veroeffentlicht nichts direkt
+          und ersetzt keine geschuetzte Hosting-Anmeldung.
+        </p>
+      </div>
+      <a class="secondary-button" href="/redaktion/workflow/">Workflow</a>
+    </div>
+
+    <div class="editorial-security-note">
+      <strong>Zugriffsschutz:</strong> Redaktionsseiten sind nicht verlinkt, tragen <code>noindex</code>
+      und werden aus der Sitemap ausgeschlossen. In Vercel muss zusaetzlich Deployment Protection oder
+      ein vergleichbarer Zugriffsschutz fuer Preview-/Redaktionsrouten aktiv sein.
+    </div>
+
+    {!redaktionEnabled ? (
+      <div class="editorial-empty-state">
+        Redaktionsdaten werden nur in geschuetzten Preview-Deployments geladen. Bitte Vercel Deployment
+        Protection aktivieren und die Preview-URL verwenden.
+      </div>
+    ) : null}
+
+    <div class="editorial-draft-table" role="table" aria-label="Redaktionelle Drafts">
+      <div class="editorial-draft-table__row editorial-draft-table__row--head" role="row">
+        <span>Titel</span>
+        <span>Status</span>
+        <span>Typ</span>
+        <span>Quellen</span>
+        <span>Bild</span>
+        <span>Pruefung</span>
+        <span>Aktionen</span>
+      </div>
+
+      {redaktionEnabled && drafts.length ? drafts.map((draft) => (
+        <article class={`editorial-draft-table__row editorial-draft-table__row--${draft.data.status}`} role="row">
+          <div>
+            <h2>{draft.data.title}</h2>
+            <p>{draft.data.gameTitle ?? "Kein Spielname gesetzt"} · {formatDate(draft.data.createdAt)}</p>
+            <code>src/content/drafts/{draft.id}</code>
+          </div>
+          <span class="editorial-status-badge">{statusLabel(draft.data.status)}</span>
+          <span>{draft.data.articleType}</span>
+          <span>{draft.data.primarySources.length}</span>
+          <span>{draft.data.imageRightsStatus}</span>
+          <span>{qualityStatus(draft)}</span>
+          <nav aria-label={`Aktionen fuer ${draft.data.title}`} class="editorial-actions">
+            <a href={`/redaktion/vorschau/${draft.data.slug}/`}>Vorschau</a>
+            <a href={`/redaktion/bearbeiten/${draft.data.slug}/`}>Bearbeiten</a>
+            <a href={`/redaktion/bearbeiten/${draft.data.slug}/?action=approve`}>Freigeben</a>
+            <a href={`/redaktion/bearbeiten/${draft.data.slug}/?action=reject`}>Ablehnen</a>
+          </nav>
+        </article>
+      )) : redaktionEnabled ? (
+        <div class="editorial-empty-state">Keine Draft-Dateien in <code>src/content/drafts/</code> gefunden.</div>
+      ) : null}
+    </div>
+  </section>
+</BaseLayout>

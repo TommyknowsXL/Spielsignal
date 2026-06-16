@@ -6,7 +6,9 @@ export default defineConfig({
   site: "https://spielsignal.de",
   output: "static",
   adapter: vercel(),
-  integrations: [sitemap()],
+  integrations: [sitemap({
+    filter: (page) => !page.includes("/redaktion/")
+  })],
   build: {
     format: "directory"
   }

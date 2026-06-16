@@ -1,11 +1,12 @@
 ---
 import { getCollection, render, type CollectionEntry } from "astro:content";
+import AdSlot from "../../../components/AdSlot.astro";
 import ArticleContentBlocks from "../../../components/ArticleContentBlocks.astro";
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 
 export async function getStaticPaths() {
   if (process.env.VERCEL_ENV !== "preview") return [];
-  const drafts = await getCollection("drafts", ({ data }) => data.status === "draft");
+  const drafts = await getCollection("drafts");
   return drafts.map((entry) => ({
     params: { slug: entry.data.slug },
     props: { entry }
@@ -15,6 +16,17 @@ export async function getStaticPaths() {
 const { entry } = Astro.props as { entry: CollectionEntry<"drafts"> };
 const { Content } = await render(entry);
 const data = entry.data;
+const formattedDate = data.createdAt.toLocaleDateString("de-DE", {
+  day: "2-digit",
+  month: "long",
+  year: "numeric"
+});
+const blockText = data.contentBlocks?.flatMap((block) => {
+  if (block.type === "paragraph" || block.type === "heading") return [block.text];
+  if (block.type === "list") return block.items;
+  return [];
+}).join(" ") ?? "";
+const readingMinutes = Math.max(1, Math.ceil((blockText || entry.body || "").trim().split(/\s+/).filter(Boolean).length / 220));
 const sourceLabel = (source: string) => {
   const host = new URL(source).hostname.replace(/^www\./, "");
   if (host.includes("steampowered.com")) {
@@ -33,9 +45,17 @@ const sourceLabel = (source: string) => {
 >
   <div class="draft-preview-banner" role="status">ENTWURF · NICHT VERÖFFENTLICHT</div>
   <header class="article-header container">
+    <nav class="breadcrumbs" aria-label="Brotkrumen">
+      <a href="/redaktion/">Redaktion</a><span>/</span><span>Vorschau</span>
+    </nav>
     <span class="badge">Redaktionelle Vorschau</span>
     <h1>{data.title}</h1>
     <p class="article-deck">{data.summary}</p>
+    <div class="meta article-meta">
+      <time datetime={data.createdAt.toISOString()}>{formattedDate}</time>
+      <span>Â·</span><span>{data.author}</span>
+      <span>Â·</span><span>{readingMinutes} Min. Lesezeit</span>
+    </div>
   </header>
 
   <figure class="container article-hero-image">
@@ -57,7 +77,9 @@ const sourceLabel = (source: string) => {
   <div class="container article-layout">
     <article class="article-main">
       <div class="article-body">
-        {data.contentBlocks?.length ? <ArticleContentBlocks blocks={data.contentBlocks} /> : <Content />}
+        {data.contentBlocks?.length
+          ? <ArticleContentBlocks blocks={data.contentBlocks} />
+          : <><Content /><div class="article-inline-ad"><AdSlot placement="article-inline-1" /></div></>}
       </div>
       <section class="sources-box">
         <p class="eyebrow">Quellen</p>
@@ -70,6 +92,23 @@ const sourceLabel = (source: string) => {
             </li>
           ))}
         </ul>
+      </section>
+      <section class="editorial-internal-panel">
+        <p class="eyebrow">Interne Pruefung</p>
+        <dl>
+          <div><dt>Status</dt><dd>{data.status}</dd></div>
+          <div><dt>Artikeltyp</dt><dd>{data.articleType}</dd></div>
+          <div><dt>Tags</dt><dd>{data.tags.join(", ") || "keine"}</dd></div>
+          <div><dt>Bildstatus</dt><dd>{data.imageRightsStatus}{data.heroImageCandidateStatus ? ` / ${data.heroImageCandidateStatus}` : ""}</dd></div>
+          <div><dt>SEO-Titel</dt><dd>{data.seoTitle}</dd></div>
+          <div><dt>SEO-Beschreibung</dt><dd>{data.seoDescription}</dd></div>
+        </dl>
+        {data.editorialNotes?.length ? (
+          <>
+            <h2>Interne Hinweise</h2>
+            <ul>{data.editorialNotes.map((note) => <li>{note}</li>)}</ul>
+          </>
+        ) : null}
       </section>
     </article>
   </div>
