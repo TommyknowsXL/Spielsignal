@@ -54,6 +54,7 @@ type SteamNewsResponse = {
       title?: string;
       url?: string;
       feedlabel?: string;
+      author?: string;
     }>;
   };
 };
@@ -274,6 +275,23 @@ function officialSiteSource(
   };
 }
 
+function normalizeOwnerName(value: string | undefined): string {
+  return normalizeTitle(value ?? "")
+    .replace(/\b(entertainment|studios?|games?|inc|llc|ltd|gmbh|se|ab|corp|corporation)\b/g, "")
+    .trim();
+}
+
+function officialSteamNewsOwner(
+  item: { feedlabel?: string; author?: string },
+  owners: string[]
+): string | undefined {
+  const labels = [item.feedlabel, item.author].map(normalizeOwnerName).filter(Boolean);
+  const normalizedOwners = owners.map(normalizeOwnerName).filter(Boolean);
+  return labels.find((label) =>
+    normalizedOwners.some((owner) => owner && (label.includes(owner) || owner.includes(label)))
+  );
+}
+
 function newsMatchesCandidate(newsTitle: string, candidateTitle: string): boolean {
   const normalizedNews = normalizeTitle(newsTitle);
   const significantWords = normalizeTitle(candidateTitle)
@@ -325,9 +343,9 @@ export async function findOfficialPrimarySources(
     url: newsHubUrl,
     sourceType: "steam-news-hub",
     sourceName: "Steam",
-    verified: true,
-    confidence: input.steamAppId ? 0.94 : 0.9,
-    discoveredVia: input.steamAppId ? "candidate-steam-app-id" : "official-steam-store-search"
+    verified: false,
+    confidence: 0.55,
+    discoveredVia: "steam-news-hub-pending-official-author-check"
   }];
   const facts: VerifiedFact[] = [{
     statement: `Die offizielle Steam-App-ID für ${matchedSteamName ?? gameTitle ?? input.title} lautet ${steamAppId}.`,
@@ -340,6 +358,10 @@ export async function findOfficialPrimarySources(
   searchedSources.push(detailsUrl);
   const details = await fetchJson<StoreDetailsResponse>(fetchImpl, detailsUrl);
   const app = details?.[steamAppId];
+  const owners = [
+    ...(app?.data?.developers ?? []),
+    ...(app?.data?.publishers ?? [])
+  ];
   if (app?.success && app.data?.name && (!gameTitle || sameGame(app.data.name, gameTitle))) {
     matchedSteamName = app.data.name;
     facts.push({
@@ -357,7 +379,16 @@ export async function findOfficialPrimarySources(
       searchedSources.push(site.url);
       const officialHtml = await fetchText(fetchImpl, site.url);
       if (officialHtml) {
-        sources.push(...linkedOfficialSources(officialHtml, site, matchedSteamName ?? gameTitle, input.title));
+        const linkedSources = linkedOfficialSources(officialHtml, site, matchedSteamName ?? gameTitle, input.title);
+        sources.push(...linkedSources);
+        for (const linkedSource of linkedSources.filter((source) => source.sourceType === "official-patchnotes")) {
+          facts.push({
+            statement: `Eine offizielle Patchnotes-Seite dokumentiert den Anlass zu "${input.title}".`,
+            sourceUrl: linkedSource.url,
+            sourceType: linkedSource.sourceType,
+            confidence: 0.9
+          });
+        }
       }
     }
   }
@@ -372,6 +403,15 @@ export async function findOfficialPrimarySources(
   );
   if (matchingNews?.title) {
     const officialNewsUrl = safeUrl(matchingNews.url)?.toString() ?? newsHubUrl;
+    const ownerLabel = officialSteamNewsOwner(matchingNews, owners);
+    sources.push({
+      url: officialNewsUrl,
+      sourceType: "steam-news-hub",
+      sourceName: matchingNews.feedlabel ?? matchingNews.author ?? "Steam News",
+      verified: Boolean(ownerLabel),
+      confidence: ownerLabel ? 0.9 : 0.45,
+      discoveredVia: ownerLabel ? "steam-news-official-owner-match" : "steam-news-author-unclear-or-aggregated"
+    });
     facts.push({
       statement: `Im offiziellen Steam-News-Hub ist die Meldung "${matchingNews.title}" veröffentlicht.`,
       sourceUrl: officialNewsUrl,

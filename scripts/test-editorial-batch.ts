@@ -99,7 +99,7 @@ const interestingCandidate: EditorialCandidate = {
   sourceType: "rss-news",
   sourceName: "Themenradar",
   sourceUrl: "https://example.test/radar/strategy-update",
-  title: "Neues Steam-Update für PC-Strategiespiel startet heute",
+  title: "Neues Steam-Update fÃƒÂ¼r PC-Strategiespiel startet heute",
   gameTitle: "Strategy Test",
   steamAppId: "123456",
   steamStoreUrl: "https://store.steampowered.com/app/123456/Strategy_Test/",
@@ -111,14 +111,14 @@ const interestingCandidate: EditorialCandidate = {
   imageStatus: "fallback",
   imagePath: "/images/categories/strategie.svg",
   editorialStatus: "needs-review",
-  openChecks: ["Offizielle Patchnotes prüfen."],
-  recommendedNextAction: "Offizielle Primärquelle prüfen."
+  openChecks: ["Offizielle Patchnotes prÃƒÂ¼fen."],
+  recommendedNextAction: "Offizielle PrimÃƒÂ¤rquelle prÃƒÂ¼fen."
 };
 
 const boringCandidate: EditorialCandidate = {
   ...interestingCandidate,
   id: "rss-boring",
-  title: "Schauspieler spricht über neue Netflix-Serie",
+  title: "Schauspieler spricht ÃƒÂ¼ber neue Netflix-Serie",
   gameTitle: undefined,
   steamAppId: undefined,
   steamStoreUrl: undefined,
@@ -172,27 +172,49 @@ await writeFile(
 
 const longBody = `## Was ist passiert?
 
-Strategy Test erhält laut den bereitgestellten offiziellen Angaben ein neues Update für die PC-Version auf Steam. Der Entwurf beschränkt sich auf die dokumentierten Eckdaten und lässt nicht belegte Details bewusst offen.
+Strategy Test erhÃƒÂ¤lt laut den bereitgestellten offiziellen Angaben ein neues Update fÃƒÂ¼r die PC-Version auf Steam. Der Entwurf beschrÃƒÂ¤nkt sich auf die dokumentierten Eckdaten und lÃƒÂ¤sst nicht belegte Details bewusst offen.
 
 ## Die wichtigsten Fakten
 
-Die Steam-App-ID lautet 123456. Das Thema betrifft ein Strategiespiel für PC. Weitere Änderungen müssen vor Veröffentlichung direkt mit den offiziellen Patchnotes abgeglichen werden. Der Themenhinweis aus dem RSS-Feed ist nicht die Faktenbasis.
+Die Steam-App-ID lautet 123456. Das Thema betrifft ein Strategiespiel fÃƒÂ¼r PC. Weitere Ãƒâ€žnderungen mÃƒÂ¼ssen vor VerÃƒÂ¶ffentlichung direkt mit den offiziellen Patchnotes abgeglichen werden. Der Themenhinweis aus dem RSS-Feed ist nicht die Faktenbasis.
 
-## Warum ist das für PC-Spieler interessant?
+## Warum ist das fÃƒÂ¼r PC-Spieler interessant?
 
-Updates können Bedienung, Stabilität oder Inhalte verändern. Welche konkreten Punkte hier betroffen sind, bleibt ohne zusätzliche bestätigte Fakten offen. PC-Spieler sollten deshalb die offiziellen Hinweise prüfen und keine weitergehenden Versprechen aus diesem Entwurf ableiten.
+Updates kÃƒÂ¶nnen Bedienung, StabilitÃƒÂ¤t oder Inhalte verÃƒÂ¤ndern. Welche konkreten Punkte hier betroffen sind, bleibt ohne zusÃƒÂ¤tzliche bestÃƒÂ¤tigte Fakten offen. PC-Spieler sollten deshalb die offiziellen Hinweise prÃƒÂ¼fen und keine weitergehenden Versprechen aus diesem Entwurf ableiten.
 
-## Was ist offiziell bestätigt?
+## Was ist offiziell bestÃƒÂ¤tigt?
 
-Bestätigt sind nur der Spielbezug, die Steam-App-ID und die Zuordnung zur offiziellen Steam-Seite. Der Artikel behauptet weder eine bestimmte Versionsnummer noch ein Veröffentlichungsdatum, eine Wertung oder eine gemessene Reichweite.
+BestÃƒÂ¤tigt sind nur der Spielbezug, die Steam-App-ID und die Zuordnung zur offiziellen Steam-Seite. Der Artikel behauptet weder eine bestimmte Versionsnummer noch ein VerÃƒÂ¶ffentlichungsdatum, eine Wertung oder eine gemessene Reichweite.
 
 ## Was bleibt offen?
 
-Umfang, Dateigröße, genaue Patch-Inhalte und mögliche technische Auswirkungen sind noch offen. Diese Angaben dürfen erst ergänzt werden, wenn sie in offiziellen Patchnotes oder einer Entwickler-Mitteilung belegt sind.
+Umfang, DateigrÃƒÂ¶ÃƒÅ¸e, genaue Patch-Inhalte und mÃƒÂ¶gliche technische Auswirkungen sind noch offen. Diese Angaben dÃƒÂ¼rfen erst ergÃƒÂ¤nzt werden, wenn sie in offiziellen Patchnotes oder einer Entwickler-Mitteilung belegt sind.
 
 ## Unsere Einordnung
 
-Das Thema besitzt einen klaren Nutzen, sobald konkrete Änderungen offiziell dokumentiert sind. Bis dahin bleibt der Text zurückhaltend und trennt den Themenhinweis von belegbaren Fakten.`;
+Das Thema besitzt einen klaren Nutzen, sobald konkrete Ãƒâ€žnderungen offiziell dokumentiert sind. Bis dahin bleibt der Text zurÃƒÂ¼ckhaltend und trennt den Themenhinweis von belegbaren Fakten.`;
+
+void longBody;
+
+const polishedLongBody = `## Was ist passiert?
+
+Strategy Test erhaelt laut offizieller Patchnote das Update 1.1 fuer die PC-Version auf Steam. Der Entwickler nennt den 8. Juni 2026 als Startdatum und beschreibt den Patch als Stabilitaets- und Komfortupdate.
+
+## Die wichtigsten Fakten
+
+Update 1.1 erscheint fuer die PC-Fassung auf Steam. Die Patchnotes nennen verbesserte Speicherstaende, ein ueberarbeitetes Baumenue und neue Warnhinweise fuer Ressourcenengpaesse. Zusaetzlich bestaetigt der Entwickler, dass bestehende Spielstaende kompatibel bleiben.
+
+## Warum ist das fuer PC-Spieler interessant?
+
+PC-Spieler bekommen damit ein konkretes Update, das taegliche Ablaeufe im Strategiespiel erleichtert. Wichtig ist vor allem die Speicherstand-Kompatibilitaet, weil laufende Kampagnen nach dem Patch weiter genutzt werden koennen.
+
+## Was muessen Spieler wissen?
+
+Wer Strategy Test bereits installiert hat, sollte nach dem Update 1.1 besonders das Baumenue und die neuen Ressourcenwarnungen pruefen. Fuer neue Spieler ist die Steam-Version weiter die zentrale PC-Plattform.
+
+## Unsere Einordnung
+
+Das Update beantwortet eine klare Nutzerfrage: Was ist neu und warum lohnt sich der Download? Die offiziellen Angaben reichen fuer einen kompakten News-Ueberblick.`;
 
 const aiFetch: typeof fetch = async (_input, init) => {
   const request = JSON.parse(String(init?.body)) as {
@@ -206,21 +228,56 @@ const aiFetch: typeof fetch = async (_input, init) => {
     output_text: JSON.stringify({
       drafts: [{
         candidateId: interestingCandidate.id,
-        title: "Strategy Test: Neues Steam-Update für PC angekündigt",
-        summary: "Für Strategy Test steht ein neues Steam-Update im Fokus. Bestätigte Details werden vor Veröffentlichung mit den offiziellen Patchnotes abgeglichen.",
-        seoTitle: "Strategy Test: Neues Steam-Update für PC | SpielSignal",
-        seoDescription: "Strategy Test erhält ein neues Steam-Update. SpielSignal fasst bestätigte PC-Angaben zusammen und markiert offene Patch-Details transparent.",
-        markdownBody: `${longBody}\n\nSteam\u2011News, Patch\u2010Details, Release\u2012Zeit, RSS\u2013Themenhinweise und Update\u2014Plan werden normalisiert.`,
+        title: "Strategy Test: Neues Steam-Update fÃƒÂ¼r PC angekÃƒÂ¼ndigt",
+        summary: "FÃƒÂ¼r Strategy Test steht ein neues Steam-Update im Fokus. BestÃƒÂ¤tigte Details werden vor VerÃƒÂ¶ffentlichung mit den offiziellen Patchnotes abgeglichen.",
+        seoTitle: "Strategy Test: Neues Steam-Update fÃƒÂ¼r PC | SpielSignal",
+        seoDescription: "Strategy Test erhÃƒÂ¤lt ein neues Steam-Update. SpielSignal fasst bestÃƒÂ¤tigte PC-Angaben zusammen und markiert offene Patch-Details transparent.",
+        markdownBody: `${polishedLongBody}\n\nSteam\u2011News, Patch\u2010Details, Release\u2012Zeit, RSS\u2013Themenhinweise und Update\u2014Plan werden normalisiert.`,
         recommendedImages: [{
           position: "hero",
           searchTarget: "Strategy Test offizielles Key Art",
           preferredSourceType: "steam-store",
           required: true
         }],
-        warnings: ["Patch-Inhalte vor Veröffentlichung ergänzen."]
+        warnings: ["Patch-Inhalte vor VerÃƒÂ¶ffentlichung ergÃƒÂ¤nzen."]
       }]
     })
   }), { status: 200, headers: { "content-type": "application/json" } });
+};
+
+const strategySourceFetch: typeof fetch = async (input) => {
+  const url = String(input);
+  if (url.includes("/api/appdetails")) {
+    return Response.json({
+      "123456": {
+        success: true,
+        data: {
+          name: "Strategy Test",
+          website: "https://strategy.test/",
+          developers: ["Strategy Test Studio"],
+          publishers: ["Strategy Test Studio"]
+        }
+      }
+    });
+  }
+  if (url.includes("ISteamNews/GetNewsForApp")) {
+    return Response.json({
+      appnews: {
+        newsitems: [{
+          title: "Neues Steam-Update fuer PC-Strategiespiel startet heute",
+          url: "https://store.steampowered.com/news/app/123456/view/111",
+          feedlabel: "Strategy Test Studio"
+        }]
+      }
+    });
+  }
+  if (url === "https://strategy.test/") {
+    return new Response('<a href="/patchnotes/update-1-1">Update 1.1 Patchnotes</a>', {
+      status: 200,
+      headers: { "content-type": "text/html" }
+    });
+  }
+  return new Response("", { status: 404 });
 };
 
 assert.equal(
@@ -299,7 +356,7 @@ const quotaResult = await prepareEditorialAiDrafts(
       error: { code: "insufficient_quota", message: "No credits remain" }
     }), { status: 429, headers: { "content-type": "application/json" } });
   },
-  { sleep: async () => { throw new Error("Quota darf kein Backoff auslösen."); }, log: (message) => quotaLogs.push(message) }
+  { sleep: async () => { throw new Error("Quota darf kein Backoff auslÃƒÂ¶sen."); }, log: (message) => quotaLogs.push(message) }
 );
 assert.equal(quotaAttempts, 1);
 assert.equal(quotaResult.errorCode, "insufficient_quota");
@@ -334,7 +391,8 @@ const officialSourceFetch: typeof fetch = async (input) => {
         newsitems: [{
           title: "Subnautica 2 Update 1.1",
           url: "https://store.steampowered.com/news/app/1962700/view/123456",
-          contents: "Dieser vollständige Fremdtext darf nicht an die KI gelangen."
+          feedlabel: "Unknown Worlds Entertainment",
+          contents: "Dieser vollstÃƒÂ¤ndige Fremdtext darf nicht an die KI gelangen."
         }]
       }
     });
@@ -408,9 +466,10 @@ const batch = await createEditorialBatch({
   selectionMode: "manual",
   articleTypeDefault: "news-overview",
   primarySourceGroups: [["https://store.steampowered.com/app/123456/Strategy_Test/"], []],
-  editorialNote: "Nur bestätigte Fakten verwenden.",
+  editorialNote: "Nur bestÃƒÂ¤tigte Fakten verwenden.",
   maxArticles: 5,
   generatedAt: "2026-06-08T10:00:00.000Z",
+  sourceFetchImpl: strategySourceFetch,
   environment: {
     GITHUB_RUN_ID: "987654",
     AI_EDITORIAL_ENABLED: "true",
@@ -453,7 +512,7 @@ await mkdir(join(multipleDraftRoot, "src", "data", "editorial"), { recursive: tr
 const multipleDraftCandidates = Array.from({ length: 3 }, (_, index): EditorialCandidate => ({
   ...interestingCandidate,
   id: `multi-draft-${index + 1}`,
-  title: `Batch Game ${index + 1} erhält ein neues PC-Update`,
+  title: `Batch Game ${index + 1} erhÃƒÂ¤lt ein neues PC-Update`,
   gameTitle: `Batch Game ${index + 1}`,
   steamAppId: `12345${index + 1}`,
   steamStoreUrl: `https://store.steampowered.com/app/12345${index + 1}/`
@@ -473,11 +532,11 @@ const multipleDraftAiFetch: typeof fetch = async () => {
     output_text: JSON.stringify({
       drafts: multipleDraftCandidates.map((candidate) => ({
         candidateId: candidate.id,
-        title: `${candidate.gameTitle}: Das neue PC-Update im Überblick`,
-        summary: `Das Update für ${candidate.gameTitle} wird anhand der offiziellen Steam-Quelle eingeordnet.`,
+        title: `${candidate.gameTitle}: Das neue PC-Update im ÃƒÅ“berblick`,
+        summary: `Das Update fÃƒÂ¼r ${candidate.gameTitle} wird anhand der offiziellen Steam-Quelle eingeordnet.`,
         seoTitle: `${candidate.gameTitle}: Neues PC-Update | SpielSignal`,
-        seoDescription: `Alle bestätigten Angaben zum neuen PC-Update für ${candidate.gameTitle} im kompakten Überblick.`,
-        markdownBody: longBody.replaceAll("Strategy Test", candidate.gameTitle ?? "Batch Game"),
+        seoDescription: `Alle bestÃƒÂ¤tigten Angaben zum neuen PC-Update fÃƒÂ¼r ${candidate.gameTitle} im kompakten ÃƒÅ“berblick.`,
+        markdownBody: polishedLongBody.replaceAll("Strategy Test", candidate.gameTitle ?? "Batch Game"),
         recommendedImages: [{
           position: "hero",
           searchTarget: `${candidate.gameTitle} offizielles Key Art`,
@@ -489,6 +548,44 @@ const multipleDraftAiFetch: typeof fetch = async () => {
     })
   });
 };
+const multipleDraftSourceFetch: typeof fetch = async (input) => {
+  const url = String(input);
+  const appId = url.match(/appids=(12345\d)/)?.[1] ?? url.match(/appid=(12345\d)/)?.[1];
+  if (url.includes("/api/appdetails") && appId) {
+    const index = appId.at(-1);
+    return Response.json({
+      [appId]: {
+        success: true,
+        data: {
+          name: `Batch Game ${index}`,
+          website: `https://batch-game-${index}.test/`,
+          developers: [`Batch Game ${index} Studio`],
+          publishers: [`Batch Game ${index} Studio`]
+        }
+      }
+    });
+  }
+  if (url.includes("ISteamNews/GetNewsForApp") && appId) {
+    const index = appId.at(-1);
+    return Response.json({
+      appnews: {
+        newsitems: [{
+          title: `Batch Game ${index} erhaelt ein neues PC-Update`,
+          url: `https://store.steampowered.com/news/app/${appId}/view/${index}`,
+          feedlabel: `Batch Game ${index} Studio`
+        }]
+      }
+    });
+  }
+  const siteMatch = url.match(/^https:\/\/batch-game-(\d)\.test\/$/);
+  if (siteMatch) {
+    return new Response(`<a href="/patchnotes/update-1-1">Update 1.1 Patchnotes</a>`, {
+      status: 200,
+      headers: { "content-type": "text/html" }
+    });
+  }
+  return new Response("", { status: 404 });
+};
 const multipleDraftBatch = await createEditorialBatch({
   rootDirectory: multipleDraftRoot,
   candidateIds: [...multipleDraftCandidates.map((candidate) => candidate.id), boringCandidate.id],
@@ -499,6 +596,7 @@ const multipleDraftBatch = await createEditorialBatch({
     []
   ],
   generatedAt: "2026-06-08T10:30:00.000Z",
+  sourceFetchImpl: multipleDraftSourceFetch,
   environment: {
     GITHUB_RUN_ID: "three-complete-drafts",
     AI_EDITORIAL_ENABLED: "true",
@@ -551,7 +649,7 @@ const rejectedOnlyBatch = await createEditorialBatch({
   },
   fetchImpl: async () => {
     rejectedOnlyAiCalls += 1;
-    throw new Error("KI darf für abgelehnte Kandidaten nicht aufgerufen werden.");
+    throw new Error("KI darf fÃƒÂ¼r abgelehnte Kandidaten nicht aufgerufen werden.");
   }
 });
 assert.equal(rejectedOnlyAiCalls, 0);
@@ -630,7 +728,7 @@ await cleanupTestRoot(invalidJsonRoot);
 const manyCandidates = Array.from({ length: 25 }, (_, index) => ({
   ...interestingCandidate,
   id: `candidate-${String(index + 1).padStart(2, "0")}`,
-  title: `Kandidat ${index + 1} mit einem bewusst langen Titel für die sichere gekürzte Queue-Ausgabe`
+  title: `Kandidat ${index + 1} mit einem bewusst langen Titel fÃƒÂ¼r die sichere gekÃƒÂ¼rzte Queue-Ausgabe`
 }));
 const invalidIdRoot = await createTestRoot("spielsignal-batch-invalid-id-");
 await mkdir(join(invalidIdRoot, "src", "data", "editorial"), { recursive: true });
@@ -665,6 +763,9 @@ await mkdir(join(autoTopRoot, "src", "data", "editorial"), { recursive: true });
 const autoCandidates = Array.from({ length: 6 }, (_, index) => ({
   ...interestingCandidate,
   id: `auto-${index + 1}`,
+  gameTitle: `Auto Game ${index + 1}`,
+  steamAppId: `22345${index + 1}`,
+  steamStoreUrl: `https://store.steampowered.com/app/22345${index + 1}/`,
   score: 100 - index,
   scoreReasons: [
     "Aktuelle Meldung",
@@ -720,7 +821,7 @@ const usefulRssUpdate = {
   gameTitle: "Subnautica 2",
   steamAppId: "1962700",
   steamStoreUrl: "https://store.steampowered.com/app/1962700/Subnautica_2/",
-  scoreReasons: ["Aktuelle Meldung", "Großes Update", "Klarer PC-Gaming-Bezug"]
+  scoreReasons: ["Aktuelle Meldung", "GroÃƒÅ¸es Update", "Klarer PC-Gaming-Bezug"]
 };
 await writeFile(
   join(hardenedSelectionRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
@@ -741,6 +842,10 @@ const hardenedSelection = await createEditorialBatch({
 assert.deepEqual(hardenedSelection.results.map((entry) => entry.candidateId), ["rss-subnautica-update"]);
 assert.match(
   hardenedSelection.results[0].primarySources.join(" "),
+  /store\.steampowered\.com\/app\/1962700/
+);
+assert.doesNotMatch(
+  hardenedSelection.results[0].verifiedPrimarySourceUrls.join(" "),
   /store\.steampowered\.com\/news\/app\/1962700/
 );
 assert.equal(hardenedSelection.results[0].status, "needs-source-review");
@@ -777,16 +882,16 @@ const subnauticaAiFetch: typeof fetch = async (_input, init) => {
   const userPayload = request.input.find((entry) => entry.role === "user")?.content ?? "";
   assert.match(userPayload, /rss-0384d324f7939a2b/);
   assert.match(userPayload, /official-steam|steam-news-hub|Steam-App-ID/i);
-  assert.doesNotMatch(userPayload, /Dieser vollständige Fremdtext|gamestar\.de\/artikel/);
+  assert.doesNotMatch(userPayload, /Dieser vollstÃƒÂ¤ndige Fremdtext|gamestar\.de\/artikel/);
   return Response.json({
     output_text: JSON.stringify({
       drafts: [{
         candidateId: "rss-0384d324f7939a2b",
         title: "Subnautica 2: Update 1.1 im offiziellen Steam-News-Hub",
-        summary: "Die offizielle Steam-Meldung zu Update 1.1 bildet die Faktenbasis für den SpielSignal-Entwurf.",
+        summary: "Die offizielle Steam-Meldung zu Update 1.1 bildet die Faktenbasis fÃƒÂ¼r den SpielSignal-Entwurf.",
         seoTitle: "Subnautica 2 Update 1.1: Offizielle Steam-Infos | SpielSignal",
-        seoDescription: "Subnautica 2 Update 1.1 ist im offiziellen Steam-News-Hub dokumentiert. SpielSignal ordnet die bestätigte PC-Meldung ein.",
-        markdownBody: longBody.replaceAll("Strategy Test", "Subnautica 2"),
+        seoDescription: "Subnautica 2 Update 1.1 ist im offiziellen Steam-News-Hub dokumentiert. SpielSignal ordnet die bestÃƒÂ¤tigte PC-Meldung ein.",
+        markdownBody: polishedLongBody.replaceAll("Strategy Test", "Subnautica 2"),
         recommendedImages: [{
           position: "hero",
           searchTarget: "Subnautica 2 offizielles Steam-Key-Art",
@@ -887,6 +992,179 @@ assert.match(sourceGateReport, /Source-Gate abgelehnt/);
 assert.match(sourceGateReport, /KI-Aufruf:\*\* nicht gestartet/);
 await cleanupTestRoot(sourceGateRoot);
 
+const dedupeRoot = await createTestRoot("spielsignal-batch-dedupe-");
+await mkdir(join(dedupeRoot, "src", "data", "editorial"), { recursive: true });
+const duplicateCandidates: EditorialCandidate[] = [
+  {
+    ...interestingCandidate,
+    id: "rss-county-a",
+    title: "County of Fortune Demo Update startet heute",
+    gameTitle: "County of Fortune",
+    steamAppId: "555001",
+    steamStoreUrl: "https://store.steampowered.com/app/555001/"
+  },
+  {
+    ...interestingCandidate,
+    id: "rss-county-b",
+    title: "County of Fortune Demo FAQ ist jetzt auf Steam",
+    gameTitle: "County of Fortune",
+    steamAppId: "555001",
+    steamStoreUrl: "https://store.steampowered.com/app/555001/",
+    score: 60
+  }
+];
+await writeFile(
+  join(dedupeRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  `${JSON.stringify({ ...report, candidates: duplicateCandidates }, null, 2)}\n`,
+  "utf8"
+);
+let dedupeAiCalls = 0;
+const dedupeBatch = await createEditorialBatch({
+  rootDirectory: dedupeRoot,
+  candidateIds: duplicateCandidates.map((candidate) => candidate.id),
+  articleTypeDefault: "news-overview",
+  sourceFetchImpl: async (input) => {
+    const url = String(input);
+    if (url.includes("/api/appdetails")) {
+      return Response.json({
+        "555001": {
+          success: true,
+          data: {
+            name: "County of Fortune",
+            website: "https://county.test/",
+            developers: ["County Studio"],
+            publishers: ["County Studio"]
+          }
+        }
+      });
+    }
+    if (url.includes("ISteamNews/GetNewsForApp")) {
+      return Response.json({ appnews: { newsitems: [{
+        title: "County of Fortune Demo Update startet heute",
+        url: "https://store.steampowered.com/news/app/555001/view/1",
+        feedlabel: "County Studio"
+      }] } });
+    }
+    if (url === "https://county.test/") {
+      return new Response('<a href="/patchnotes/demo-update">Demo Update Patchnotes</a>', { status: 200 });
+    }
+    return new Response("", { status: 404 });
+  },
+  fetchImpl: async () => {
+    dedupeAiCalls += 1;
+    return Response.json({ output_text: JSON.stringify({ drafts: [{
+      candidateId: "rss-county-a",
+      title: "County of Fortune: Demo-Update fuer PC",
+      summary: "County of Fortune erhaelt ein offizielles Demo-Update mit konkreten PC-Details.",
+      seoTitle: "County of Fortune: Demo-Update fuer PC | SpielSignal",
+      seoDescription: "County of Fortune bekommt ein Demo-Update fuer PC. SpielSignal fasst Start, Plattform und neue Demo-Hinweise zusammen.",
+      markdownBody: polishedLongBody.replaceAll("Strategy Test", "County of Fortune"),
+      recommendedImages: [{ position: "hero", searchTarget: "County of Fortune", preferredSourceType: "steam-store", required: true }],
+      warnings: []
+    }] }) });
+  },
+  environment: {
+    GITHUB_RUN_ID: "dedupe",
+    AI_EDITORIAL_ENABLED: "true",
+    AI_EDITORIAL_MODEL: "gpt-5-mini",
+    OPENAI_API_KEY: "test-only-key"
+  }
+});
+assert.equal(dedupeAiCalls, 2);
+assert.equal(dedupeBatch.generatedDrafts, 1);
+assert.equal(dedupeBatch.completeDrafts, 1);
+assert.equal(new Set(dedupeBatch.results.flatMap((entry) => entry.filePath ? [entry.filePath] : [])).size, 1);
+assert.ok(dedupeBatch.results.some((entry) => /Duplicate uebersprungen/.test(entry.decisionReason)));
+const dedupeReport = await readFile(dedupeBatch.reportPath, "utf8");
+assert.match(dedupeReport, /## Deduplizierung/);
+assert.match(dedupeReport, /Duplicate uebersprungen/);
+await cleanupTestRoot(dedupeRoot);
+
+const unclearSteamNews = await findOfficialPrimarySources({
+  candidateId: "rss-unclear-steam-news",
+  title: "Dragon's Dogma 2 Update startet",
+  gameTitle: "Dragon's Dogma 2",
+  steamAppId: "2054970"
+}, {
+  fetchImpl: async (input) => {
+    const url = String(input);
+    if (url.includes("/api/appdetails")) {
+      return Response.json({
+        "2054970": {
+          success: true,
+          data: { name: "Dragon's Dogma 2", developers: ["Capcom"], publishers: ["Capcom"] }
+        }
+      });
+    }
+    if (url.includes("ISteamNews/GetNewsForApp")) {
+      return Response.json({ appnews: { newsitems: [{
+        title: "Dragon's Dogma 2 Update startet",
+        url: "https://store.steampowered.com/news/app/2054970/view/1",
+        feedlabel: "External Gaming News"
+      }] } });
+    }
+    return new Response("", { status: 404 });
+  }
+});
+assert.ok(unclearSteamNews.sources.some((source) =>
+  source.sourceType === "steam-news-hub" && !source.verified
+));
+
+const thinFactsRoot = await createTestRoot("spielsignal-batch-thin-facts-");
+await mkdir(join(thinFactsRoot, "src", "data", "editorial"), { recursive: true });
+const thinCandidate: EditorialCandidate = {
+  ...interestingCandidate,
+  id: "rss-thin-facts",
+  title: "Dragon's Dogma 2 Update startet",
+  gameTitle: "Dragon's Dogma 2",
+  steamAppId: "2054970",
+  steamStoreUrl: "https://store.steampowered.com/app/2054970/"
+};
+await writeFile(
+  join(thinFactsRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  `${JSON.stringify({ ...report, candidates: [thinCandidate] }, null, 2)}\n`,
+  "utf8"
+);
+let thinAiCalls = 0;
+const thinBatch = await createEditorialBatch({
+  rootDirectory: thinFactsRoot,
+  candidateIds: [thinCandidate.id],
+  articleTypeDefault: "news-overview",
+  sourceFetchImpl: async (input) => {
+    const url = String(input);
+    if (url.includes("/api/appdetails")) {
+      return Response.json({
+        "2054970": {
+          success: true,
+          data: { name: "Dragon's Dogma 2", developers: ["Capcom"], publishers: ["Capcom"] }
+        }
+      });
+    }
+    if (url.includes("ISteamNews/GetNewsForApp")) {
+      return Response.json({ appnews: { newsitems: [{
+        title: "Dragon's Dogma 2 Update startet",
+        url: "https://store.steampowered.com/news/app/2054970/view/1"
+      }] } });
+    }
+    return new Response("", { status: 404 });
+  },
+  fetchImpl: async () => {
+    thinAiCalls += 1;
+    throw new Error("KI darf bei duenner Faktenlage nicht starten.");
+  },
+  environment: {
+    GITHUB_RUN_ID: "thin-facts",
+    AI_EDITORIAL_ENABLED: "true",
+    OPENAI_API_KEY: "test-only-key"
+  }
+});
+assert.equal(thinAiCalls, 0);
+assert.equal(thinBatch.completeDrafts, 0);
+assert.equal(thinBatch.results[0].status, "rejected");
+assert.match(thinBatch.results[0].decisionReason, /Nicht genug verifizierte Fakten/);
+assert.match(await readFile(thinBatch.reportPath, "utf8"), /Duenne Faktenlage/);
+await cleanupTestRoot(thinFactsRoot);
+
 const summaryPath = join(autoTopRoot, "summary.md");
 const outputPath = join(autoTopRoot, "output.txt");
 const preparedAutoTop = await prepareBatchQueue({
@@ -944,12 +1222,11 @@ const noAiBatch = await createEditorialBatch({
   generatedAt: "2026-06-08T10:00:00.000Z",
   environment: { GITHUB_RUN_ID: "987655", AI_EDITORIAL_ENABLED: "false" }
 });
-assert.equal(noAiBatch.results[0].status, "needs-source-review");
-assert.match(await readFile(noAiBatch.results[0].filePath!, "utf8"), /Kein fertiger Artikel/);
-assert.match(
-  await readFile(noAiBatch.reportPath, "utf8"),
-  /Keine vollständigen Artikel erzeugt[\s\S]*ausschließlich der Diagnose/
-);
+assert.equal(noAiBatch.results[0].status, "rejected");
+assert.equal(noAiBatch.results[0].filePath, undefined);
+const noAiReport = await readFile(noAiBatch.reportPath, "utf8");
+assert.match(noAiReport, /Warum 0 Artikel erzeugt wurden/);
+assert.match(noAiReport, /Nicht genug verifizierte Fakten/);
 assert.equal(noAiBatch.completeDrafts, 0);
 assert.equal(shouldCreatePullRequest(noAiBatch.completeDrafts), false);
 await cleanupTestRoot(noAiRoot);
@@ -959,7 +1236,7 @@ const interestRejected = runReaderInterestCheck(boringCandidate);
 const everrailInterest = runReaderInterestCheck({
   ...interestingCandidate,
   id: "everrail",
-  title: "Everrail für PC",
+  title: "Everrail fÃƒÂ¼r PC",
   gameTitle: "Everrail",
   steamAppId: undefined,
   steamStoreUrl: undefined,
@@ -982,7 +1259,7 @@ assert.doesNotMatch(JSON.stringify(interestAccepted), /Reichweite:\s*\d/i);
 
 const reviewFixture: DraftReviewInput = {
   candidateId: "fixture",
-  title: "Fixture für technische Prüfung",
+  title: "Fixture fÃƒÂ¼r technische PrÃƒÂ¼fung",
   articleType: "news-overview",
   markdown: "---\ntitle: Fixture\n---\n\n## Inhalt\n\nText",
   readerText: "## Inhalt\n\nText",
@@ -991,9 +1268,9 @@ const reviewFixture: DraftReviewInput = {
   imageStatus: "fallback",
   heroImage: "/images/categories/news-default.svg",
   slug: "fixture",
-  seoTitle: "Fixture für technische Prüfung | SpielSignal",
-  seoDescription: "Diese ausreichend lange Meta-Beschreibung dient ausschließlich der technischen Testprüfung.",
-  summary: "Diese ausreichend lange Zusammenfassung dient ausschließlich der technischen Testprüfung.",
+  seoTitle: "Fixture fÃƒÂ¼r technische PrÃƒÂ¼fung | SpielSignal",
+  seoDescription: "Diese ausreichend lange Meta-Beschreibung dient ausschlieÃƒÅ¸lich der technischen TestprÃƒÂ¼fung.",
+  summary: "Diese ausreichend lange Zusammenfassung dient ausschlieÃƒÅ¸lich der technischen TestprÃƒÂ¼fung.",
   wordCount: 20,
   hasOfficialFallbackImage: true
 };
@@ -1067,12 +1344,12 @@ const subnauticaEditorialDraft = await readFile(
 );
 assert.ok(
   (subnauticaEditorialDraft.match(/^## Quellen$/gm) ?? []).length <= 1,
-  "Ein vollständiger Entwurf darf höchstens einen Markdown-Quellenbereich enthalten."
+  "Ein vollstÃƒÂ¤ndiger Entwurf darf hÃƒÂ¶chstens einen Markdown-Quellenbereich enthalten."
 );
 assert.equal((subnauticaEditorialDraft.match(/^title:/gm) ?? []).length, 1);
 assert.doesNotMatch(
   subnauticaEditorialDraft.split("---").at(-1) ?? "",
-  /Steam-App-ID|in den verifizierten Fakten|bereitgestellte Quellen|Redaktioneller Hinweis|dieser Text basiert ausschließlich/i
+  /Steam-App-ID|in den verifizierten Fakten|bereitgestellte Quellen|Redaktioneller Hinweis|dieser Text basiert ausschlieÃƒÅ¸lich/i
 );
 assert.match(subnauticaEditorialDraft, /heroImageCandidateStatus: "pending-review"/);
 assert.match(subnauticaEditorialDraft, /heroImage: "\/images\/categories\/survival\.svg"/);
@@ -1088,7 +1365,7 @@ assert.deepEqual(
 );
 
 console.log(
-  "Editorial-Batch-Tests erfolgreich: Mehrfachauswahl, Maximalgrenze, Reviews, Qualitätsgate, KI-Fallback und sicherer Workflow."
+  "Editorial-Batch-Tests erfolgreich: Mehrfachauswahl, Maximalgrenze, Reviews, QualitÃƒÂ¤tsgate, KI-Fallback und sicherer Workflow."
 );
 } finally {
   await Promise.all([...temporaryRoots].map((root) => cleanupTestRoot(root)));

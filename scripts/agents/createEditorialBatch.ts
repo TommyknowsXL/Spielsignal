@@ -74,6 +74,12 @@ export type BatchCandidateResult = {
   recommendation: string;
 };
 
+type DedupedCandidate = {
+  entry: EnrichedCandidateSources;
+  duplicateOf?: string;
+  duplicateReason?: string;
+};
+
 export type EditorialBatchResult = {
   generatedAt: string;
   reportDate: string;
@@ -634,24 +640,143 @@ function fullGatePassed(reviews: Record<string, EditorialReviewResult>): boolean
   return Object.values(reviews).every((review) => review.passed);
 }
 
-function sourceGateReason(input: {
-  hasVerifiedSource: boolean;
-  hasFacts: boolean;
-  hasImage: boolean;
-}): string {
-  const missing = [
-    !input.hasVerifiedSource ? "keine verifizierte offizielle Primaerquelle" : "",
-    !input.hasFacts ? "keine belastbaren Fakten aus Primaerquellen" : "",
-    !input.hasImage ? "kein Bild/Fallback verfuegbar" : ""
+function normalizedKey(value: string | undefined): string {
+  return (value ?? "")
+    .toLocaleLowerCase("de")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function sourceKey(source: OfficialPrimarySource): string {
+  try {
+    const url = new URL(source.url);
+    return `${url.hostname.replace(/^www\./, "")}${url.pathname}`.replace(/\/$/, "");
+  } catch {
+    return source.url.replace(/\/$/, "");
+  }
+}
+
+function duplicateKeys(entry: EnrichedCandidateSources, articleType: BatchArticleType): string[] {
+  const candidate = entry.candidate;
+  const verifiedSourceKeys = entry.sources
+    .filter((source) => source.verified)
+    .map(sourceKey);
+  const game = normalizedKey(candidate.gameTitle ?? candidate.title);
+  return [
+    `slug:${candidateDraftSlug(candidate, articleType)}`,
+    `file:src/content/drafts/${candidateDraftSlug(candidate, articleType)}.md`,
+    candidate.steamAppId ? `steam:${candidate.steamAppId}` : "",
+    ...verifiedSourceKeys.map((source) => `game-source:${game}:${source}`)
   ].filter(Boolean);
-  return missing.length
-    ? `Source-Gate abgelehnt: ${missing.join("; ")}.`
-    : "Source-Gate bestanden: offizielle Primaerquelle und verifizierte Fakten vorhanden.";
+}
+
+function candidateStrength(entry: EnrichedCandidateSources): number {
+  const candidate = entry.candidate;
+  const verifiedSources = entry.sources.filter((source) => source.verified).length;
+  const concreteFacts = concreteEventFacts(entry).length;
+  return runReaderInterestCheck(candidate).score + verifiedSources * 10 + concreteFacts * 15 + candidate.score;
+}
+
+function dedupeEnrichedCandidates(
+  entries: EnrichedCandidateSources[],
+  articleType: BatchArticleType
+): DedupedCandidate[] {
+  const selected = new Map<string, EnrichedCandidateSources>();
+  const keyOwner = new Map<string, string>();
+  const ordered = [...entries].sort((left, right) =>
+    candidateStrength(right) - candidateStrength(left) ||
+    left.candidate.id.localeCompare(right.candidate.id)
+  );
+  const results: DedupedCandidate[] = [];
+  for (const entry of ordered) {
+    const keys = duplicateKeys(entry, articleType);
+    const duplicateKey = keys.find((key) => keyOwner.has(key));
+    if (duplicateKey) {
+      results.push({
+        entry,
+        duplicateOf: keyOwner.get(duplicateKey),
+        duplicateReason: `Duplicate skipped by ${duplicateKey}.`
+      });
+      continue;
+    }
+    selected.set(entry.candidate.id, entry);
+    for (const key of keys) keyOwner.set(key, entry.candidate.id);
+    results.push({ entry });
+  }
+  const resultMap = new Map(results.map((result) => [result.entry.candidate.id, result]));
+  return entries.map((entry) => resultMap.get(entry.candidate.id)!);
+}
+
+function hasConcreteEvent(candidate: EditorialCandidate): boolean {
+  return hasConcreteNewsEvent(candidate);
+}
+
+function concreteEventFacts(entry: EnrichedCandidateSources): VerifiedFact[] {
+  return entry.verifiedFacts.filter((fact) => {
+    const text = normalizedKey(fact.statement);
+    if (/app id|steam app id|app-id|unter dem namen|steam fuehrt|steam führt|meldung.*veroffentlicht|meldung.*veroeffentlicht|news beitrag.*exist/.test(text)) {
+      return false;
+    }
+    return /datum|demo|zeitraum|verfugbar|verfuegbar|plattform|preis|patch|update|feature|umfang|release|version|inhalt|anderung|aenderung|roadmap|trailer|dlc/.test(text);
+  });
+}
+
+function supportingEventSourceCount(entry: EnrichedCandidateSources): number {
+  return entry.sources.filter((source) =>
+    source.verified &&
+    ["official-patchnotes", "official-developer-site", "official-publisher-site", "official-trailer", "steam-news-hub"].includes(source.sourceType)
+  ).length;
+}
+
+function sourceGateDetails(candidate: EditorialCandidate, entry: EnrichedCandidateSources): {
+  passed: boolean;
+  reason: string;
+  concreteFacts: VerifiedFact[];
+} {
+  const hasVerifiedSource = entry.sources.some((source) => source.verified);
+  const concreteFacts = concreteEventFacts(entry);
+  const sourceFacts = supportingEventSourceCount(entry);
+  const hasEnoughFacts = concreteFacts.length >= 2 || (concreteFacts.length + sourceFacts) >= 2;
+  const hasEvent = hasConcreteEvent(candidate);
+  const hasImage = Boolean(candidate.imageCandidateUrl || candidate.imagePath || "/images/categories/news-default.svg");
+  const missing = [
+    !hasVerifiedSource ? "keine verifizierte offizielle Primaerquelle" : "",
+    !hasEvent ? "kein konkreter aktueller Anlass" : "",
+    !hasEnoughFacts ? "Nicht genug verifizierte Fakten fuer vollstaendigen Artikel" : "",
+    !hasImage ? "kein Bild/Fallback verfuegbar" : ""
+  ].filter(Boolean);
+  return {
+    passed: missing.length === 0,
+    reason: missing.length
+      ? `Source-Gate abgelehnt: ${missing.join("; ")}.`
+      : "Source-Gate bestanden: offizieller Anlass und mindestens zwei belastbare Fakten vorhanden.",
+    concreteFacts
+  };
 }
 
 function reportMarkdown(result: EditorialBatchResult): string {
   const complete = result.results.filter((entry) => entry.status === "draft");
   const rejected = result.results.filter((entry) => entry.status === "rejected");
+  const uniqueDraftFiles = [...new Set(result.results.flatMap((entry) =>
+    entry.status === "draft" && entry.filePath ? [relative(process.cwd(), entry.filePath).replace(/\\/g, "/")] : []
+  ))];
+  const duplicateDetails = result.results
+    .filter((entry) => /Duplicate uebersprungen/i.test(entry.decisionReason))
+    .map((entry) => `- ${entry.candidateId}: ${entry.decisionReason}`)
+    .join("\n");
+  const thinFactDetails = result.results
+    .filter((entry) => /Nicht genug verifizierte Fakten/i.test(entry.decisionReason))
+    .map((entry) => `- ${entry.candidateId}: ${entry.decisionReason}`)
+    .join("\n");
+  const steamNewsDetails = result.results
+    .filter((entry) => entry.foundPrimarySourceUrls.some((url) => url.includes("store.steampowered.com/news/")))
+    .map((entry) => {
+      const official = entry.verifiedPrimarySourceUrls.some((url) => url.includes("store.steampowered.com/news/"));
+      return `- ${entry.candidateId}: Steam-News-Hub ${official ? "offiziell bestaetigt" : "nur aggregiert/unklar"}`;
+    })
+    .join("\n");
   const zeroDraftReasons = result.completeDrafts === 0
     ? result.results.map((entry) => `- ${entry.candidateId}: ${entry.decisionReason}`).join("\n")
     : "";
@@ -711,6 +836,22 @@ function reportMarkdown(result: EditorialBatchResult): string {
 - **Geprüfte Kandidaten:** ${result.checkedCandidates}
 - **Vollständige Drafts:** ${result.completeDrafts}
 - **Abgelehnte Kandidaten:** ${result.rejectedCandidates}
+
+## Eindeutige Draft-Dateien
+
+${uniqueDraftFiles.map((file) => `- ${file}`).join("\n") || "Keine eindeutigen Draft-Dateien erzeugt."}
+
+## Deduplizierung
+
+${duplicateDetails || "Keine Duplikate uebersprungen."}
+
+## Duenne Faktenlage
+
+${thinFactDetails || "Keine Kandidaten wegen zu duenner Faktenlage abgelehnt."}
+
+## Steam-News-Hub-Bewertung
+
+${steamNewsDetails || "Keine Steam-News-Hub-Quelle bewertet."}
 
 ## Fertige Entwürfe
 
@@ -802,26 +943,22 @@ export async function createEditorialBatch(
       options.sourceFetchImpl ?? fetch
     )
   ));
-  const candidates = enriched.map((entry) => entry.candidate);
-  const enrichmentMap = new Map(enriched.map((entry) => [entry.candidate.id, entry]));
+  const deduped = dedupeEnrichedCandidates(enriched, options.articleTypeDefault);
+  const activeEnriched = deduped.filter((entry) => !entry.duplicateOf).map((entry) => entry.entry);
+  const duplicateEntries = deduped.filter((entry) => entry.duplicateOf);
+  const candidates = activeEnriched.map((entry) => entry.candidate);
+  const enrichmentMap = new Map(activeEnriched.map((entry) => [entry.candidate.id, entry]));
   const interestMap = new Map(candidates.map((candidate) => [
     candidate.id,
     runReaderInterestCheck(candidate)
   ]));
   const sourceGateMap = new Map(candidates.map((candidate) => {
     const entry = enrichmentMap.get(candidate.id)!;
-    const hasVerifiedSource = entry.sources.some((source) => source.verified);
-    const hasFacts = entry.verifiedFacts.length > 0;
-    const hasImage = Boolean(candidate.imageCandidateUrl || candidate.imagePath || "/images/categories/news-default.svg");
-    return [candidate.id, hasVerifiedSource && hasFacts && hasImage] as const;
+    return [candidate.id, sourceGateDetails(candidate, entry).passed] as const;
   }));
   const sourceGateReasonMap = new Map(candidates.map((candidate) => {
     const entry = enrichmentMap.get(candidate.id)!;
-    return [candidate.id, sourceGateReason({
-      hasVerifiedSource: entry.sources.some((source) => source.verified),
-      hasFacts: entry.verifiedFacts.length > 0,
-      hasImage: Boolean(candidate.imageCandidateUrl || candidate.imagePath || "/images/categories/news-default.svg")
-    })] as const;
+    return [candidate.id, sourceGateDetails(candidate, entry).reason] as const;
   }));
 
   const aiInputs = candidates
@@ -853,6 +990,40 @@ export async function createEditorialBatch(
   const aiRequestedIds = new Set(aiInputs.map((input) => input.candidate.id));
   const aiWasInvoked = Boolean(aiResult.attempts);
   const results: BatchCandidateResult[] = [];
+
+  for (const duplicate of duplicateEntries) {
+    const candidate = duplicate.entry.candidate;
+    const readerInterest = runReaderInterestCheck(candidate);
+    const primarySources = duplicate.entry.sources
+      .filter((source) => source.verified)
+      .map((source) => source.url);
+    results.push({
+      candidateId: candidate.id,
+      title: candidate.title,
+      articleType: options.articleTypeDefault,
+      radarSourceName: candidate.sourceName,
+      radarSourceUrl: candidate.sourceUrl,
+      readerInterest,
+      reviews: {},
+      searchedOfficialSources: duplicate.entry.searchedSources,
+      primarySources,
+      foundPrimarySourceUrls: duplicate.entry.sources.map((source) => source.url),
+      verifiedPrimarySourceUrls: primarySources,
+      foundPrimarySources: duplicate.entry.sources.length,
+      verifiedPrimarySources: duplicate.entry.sources.filter((source) => source.verified).length,
+      verifiedFacts: duplicate.entry.verifiedFacts.map((fact) => fact.statement),
+      steamAppId: candidate.steamAppId,
+      heroImageStatus: candidate.imageCandidateUrl ? "Offizieller Steam-Bildkandidat, manuelle Pruefung erforderlich" : "Hero-Bild nur Fallback",
+      sourceGatePassed: false,
+      aiInvoked: false,
+      aiResult: "Nicht aufgerufen: Duplicate vor KI-Aufruf uebersprungen.",
+      readerEditResult: "Nicht aufgerufen.",
+      imageSource: candidate.imageSourcePageUrl ?? candidate.imagePath ?? "Kein Bild",
+      status: "rejected",
+      decisionReason: `Duplicate uebersprungen: zusammengefuehrt mit ${duplicate.duplicateOf}. ${duplicate.duplicateReason ?? ""}`.trim(),
+      recommendation: "Keinen zweiten Draft fuer denselben Zielslug oder dieselbe offizielle Quelle erzeugen."
+    });
+  }
 
   for (const candidate of candidates) {
     const readerInterest = interestMap.get(candidate.id)!;
@@ -1010,8 +1181,10 @@ export async function createEditorialBatch(
     reportDate,
     branchName,
     checkedCandidates: results.length,
-    generatedDrafts: results.filter((entry) => entry.filePath).length,
-    completeDrafts: results.filter((entry) => entry.status === "draft").length,
+    generatedDrafts: new Set(results.flatMap((entry) => entry.filePath ? [entry.filePath] : [])).size,
+    completeDrafts: new Set(results.flatMap((entry) =>
+      entry.status === "draft" && entry.filePath ? [entry.filePath] : []
+    )).size,
     rejectedCandidates: rejected.length,
     results,
     reportPath,

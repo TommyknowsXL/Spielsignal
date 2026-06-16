@@ -20,5 +20,17 @@ export function runQualityCheck(input: DraftReviewInput): EditorialReviewResult 
     warnings.push("Wortlänge liegt im Zielbereich.");
   }
 
+  const unknownMentions = (input.readerText.match(/\boffen|unklar|nicht bekannt|keine weiteren details|bleibt offen|muss .*geprueft|muss .*geprüft/gi) ?? []).length;
+  const concreteSignals = (input.readerText.match(/\b(update|patch|demo|release|termin|datum|zeitraum|plattform|preis|feature|umfang|version|trailer|roadmap|dlc|verfuegbar|verfügbar|aenderung|änderung)\b/gi) ?? []).length;
+  if (unknownMentions >= 5 && unknownMentions > concreteSignals) {
+    requiredFixes.push("Entwurf beschreibt ueberwiegend offene Fragen statt belegter Neuigkeiten.");
+  }
+  if (concreteSignals < 2) {
+    requiredFixes.push("Mindestens zwei konkrete, verifizierte Fakten zum Anlass fehlen.");
+  }
+  if (!/(was ist neu|warum .*wichtig|spieler .*wissen|pc-spieler|bedeutet das|ändert sich|aendert sich)/i.test(input.readerText)) {
+    requiredFixes.push("Entwurf beantwortet keine klare Nutzerfrage fuer Spieler.");
+  }
+
   return requiredFixes.length ? failed(55, requiredFixes, warnings) : passed(82, ["Sachlicher, lesbarer Entwurf."],);
 }
