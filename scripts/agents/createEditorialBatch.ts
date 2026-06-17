@@ -1,4 +1,5 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { isSuitablePrimarySource } from "./createEditorialDraft";
@@ -43,6 +44,7 @@ export type CreateEditorialBatchOptions = {
   fetchImpl?: typeof fetch;
   sourceFetchImpl?: typeof fetch;
   queuePath?: string;
+  fallbackToQueue?: boolean;
 };
 
 export type BatchCandidateResult = {
@@ -76,6 +78,19 @@ export type BatchCandidateResult = {
   missingFacts?: string[];
   entityAnalysis?: CandidateEntityAnalysis;
   sourceDiagnostics?: string[];
+  publishabilityScore?: number;
+  finalStatus?:
+    | "source-gate-rejected"
+    | "entity-needs-resolution"
+    | "insufficient-verified-facts"
+    | "duplicate"
+    | "opinion-only"
+    | "image-gate-rejected"
+    | "ai-not-started"
+    | "ai-request-failed"
+    | "ai-response-invalid"
+    | "draft-quality-rejected"
+    | "draft-complete";
 };
 
 type DedupedCandidate = {
@@ -94,6 +109,13 @@ export type EditorialBatchResult = {
   researchStubs: number;
   skippedDuplicates: number;
   rejectedCandidates: number;
+  queueCandidateCount: number;
+  queueGeneratedAt: string;
+  queuePath: string;
+  queueHash: string;
+  aiCallsAttempted: number;
+  aiCallsSuccessful: number;
+  aiCallsFailed: number;
   results: BatchCandidateResult[];
   reportPath: string;
   rejectedReportPath?: string;
@@ -352,30 +374,34 @@ export function selectBatchCandidates(input: {
   maxArticles: number;
   articleType?: BatchArticleType;
   publishedSlugs?: Set<string>;
+  evaluateFullQueue?: boolean;
+  fallbackToQueue?: boolean;
 }): EditorialCandidate[] {
   const articleType = input.articleType ?? "news-overview";
   const unpublishedCandidates = input.queue.candidates.filter(
     (candidate) => !input.publishedSlugs?.has(candidateDraftSlug(candidate, articleType))
   );
+  const rankedEntries = unpublishedCandidates
+    .filter((candidate) =>
+      candidate.sourceType !== "steam-top-seller" || hasConcreteNewsEvent(candidate)
+    )
+    .map((candidate) => ({
+      candidate,
+      interestScore: runReaderInterestCheck(candidate).score,
+      priority: autoTopPriority(candidate)
+    }))
+    .sort((left, right) =>
+      right.priority - left.priority ||
+      right.interestScore - left.interestScore ||
+      right.candidate.score - left.candidate.score ||
+      left.candidate.id.localeCompare(right.candidate.id)
+    );
+  const autoRanked = rankedEntries.map((entry) => entry.candidate);
+  const summaryRanked = rankedEntries
+    .filter((entry) => entry.interestScore >= 60)
+    .map((entry) => entry.candidate);
   if (input.selectionMode === "auto-top") {
-    const selected = unpublishedCandidates
-      .filter((candidate) =>
-        candidate.sourceType !== "steam-top-seller" || hasConcreteNewsEvent(candidate)
-      )
-      .map((candidate) => ({
-        candidate,
-        interestScore: runReaderInterestCheck(candidate).score,
-        priority: autoTopPriority(candidate)
-      }))
-      .filter((entry) => entry.interestScore >= 60)
-      .sort((left, right) =>
-        right.priority - left.priority ||
-        right.interestScore - left.interestScore ||
-        right.candidate.score - left.candidate.score ||
-        left.candidate.id.localeCompare(right.candidate.id)
-      )
-      .slice(0, input.maxArticles)
-      .map((entry) => entry.candidate);
+    const selected = input.evaluateFullQueue ? autoRanked : summaryRanked.slice(0, input.maxArticles);
     if (!selected.length) {
       throw new Error(
         `Keine geeigneten Kandidaten für auto-top in ${displayQueuePath(input.queuePath, input.rootDirectory)} gefunden.`
@@ -385,9 +411,12 @@ export function selectBatchCandidates(input: {
   }
 
   const candidateIds = [...new Set((input.candidateIds ?? []).map((id) => id.trim()).filter(Boolean))];
+  if (!candidateIds.length && input.fallbackToQueue !== false) {
+    return input.evaluateFullQueue ? autoRanked : summaryRanked.slice(0, input.maxArticles);
+  }
   if (!candidateIds.length) throw new Error("Im Auswahlmodus manual ist mindestens eine Candidate ID erforderlich.");
   if (candidateIds.length > MAX_BATCH_ARTICLES) throw new Error("Maximal 5 Candidate IDs sind zulässig.");
-  return candidateIds.slice(0, input.maxArticles).map((id) => {
+  const manualCandidates = candidateIds.slice(0, input.maxArticles).map((id) => {
     const candidate = unpublishedCandidates.find((entry) => entry.id === id);
     if (!candidate) {
       const publishedCandidate = input.queue.candidates.find((entry) => entry.id === id);
@@ -401,6 +430,12 @@ export function selectBatchCandidates(input: {
     }
     return candidate;
   });
+  if (!input.evaluateFullQueue || input.fallbackToQueue === false) return manualCandidates;
+  const manualSet = new Set(manualCandidates.map((candidate) => candidate.id));
+  return [
+    ...manualCandidates,
+    ...autoRanked.filter((candidate) => !manualSet.has(candidate.id))
+  ];
 }
 
 function sourceLabel(source: string): string {
@@ -762,6 +797,59 @@ function sourceGateDetails(candidate: EditorialCandidate, entry: EnrichedCandida
   };
 }
 
+function publishabilityScore(input: {
+  candidate: EditorialCandidate;
+  entry: EnrichedCandidateSources;
+  readerInterest: EditorialReviewResult;
+  gateDetails: ReturnType<typeof sourceGateDetails>;
+  duplicate?: boolean;
+}): number {
+  const analysis = input.entry.entityAnalysis;
+  const verifiedSources = input.entry.sources.filter((source) => source.verified).length;
+  const concreteFacts = input.gateDetails.concreteFacts.length;
+  const hasEvent = hasConcreteEvent(input.candidate);
+  const hasImage = Boolean(input.candidate.imageCandidateUrl || input.candidate.imagePath || "/images/categories/news-default.svg");
+  const opinionOnly = analysis?.topicType === "opinion/community-topic" && concreteFacts < 2;
+  const topSellerOnly = input.candidate.sourceType === "steam-top-seller" && !hasEvent;
+  return [
+    input.readerInterest.score,
+    analysis && !analysis.needsResolution && analysis.entityType !== "unknown" ? 25 : -40,
+    analysis && analysis.topicType !== "unknown" ? 15 : -10,
+    verifiedSources > 0 ? 35 : -45,
+    concreteFacts >= 2 ? 45 : concreteFacts * 12 - 35,
+    hasEvent ? 20 : -20,
+    hasImage ? 10 : -25,
+    input.duplicate ? -100 : 0,
+    opinionOnly ? -60 : 0,
+    topSellerOnly ? -60 : 0,
+    Math.min(10, Math.max(0, input.candidate.score))
+  ].reduce((sum, value) => sum + value, 0);
+}
+
+function finalStatusFor(input: {
+  candidate: EditorialCandidate;
+  entry: EnrichedCandidateSources;
+  gateDetails?: ReturnType<typeof sourceGateDetails>;
+  duplicate?: boolean;
+  complete?: boolean;
+  scaffold?: boolean;
+  aiInvoked?: boolean;
+  aiErrorCode?: string;
+  reviews?: Record<string, EditorialReviewResult>;
+}): BatchCandidateResult["finalStatus"] {
+  if (input.complete) return "draft-complete";
+  if (input.duplicate) return "duplicate";
+  const analysis = input.entry.entityAnalysis;
+  if (analysis?.needsResolution) return "entity-needs-resolution";
+  if (analysis?.topicType === "opinion/community-topic" && concreteEventFacts(input.entry).length < 2) return "opinion-only";
+  if (input.gateDetails && input.gateDetails.concreteFacts.length < 2) return "insufficient-verified-facts";
+  if (input.gateDetails && !input.gateDetails.passed) return "source-gate-rejected";
+  if (input.aiErrorCode) return input.aiErrorCode === "invalid_response" ? "ai-response-invalid" : "ai-request-failed";
+  if (!input.aiInvoked || input.scaffold) return "ai-not-started";
+  if (input.reviews && !fullGatePassed(input.reviews)) return "draft-quality-rejected";
+  return "source-gate-rejected";
+}
+
 function reportMarkdown(result: EditorialBatchResult): string {
   const complete = result.results.filter((entry) => entry.status === "draft");
   const researchStubs = result.results.filter((entry) => entry.status === "needs-source-review");
@@ -834,6 +922,8 @@ function reportMarkdown(result: EditorialBatchResult): string {
 - **Gesuchte offizielle Quellen:** ${entry.searchedOfficialSources.join(", ") || "keine automatische Quelle pruefbar"}
 - **Gefundene Primaerquellen:** ${entry.foundPrimarySourceUrls.join(", ") || "keine"}
 - **Verifizierte Fakten:** ${entry.verifiedFacts.join("; ") || "keine"}
+- **Publishability-Score:** ${entry.publishabilityScore ?? 0}
+- **Finaler Status:** ${entry.finalStatus ?? entry.status}
 - **Entscheidung:** ${entry.decisionReason}
 - **KI-Aufruf:** ${entry.aiInvoked ? "gestartet" : "nicht gestartet"} (${entry.aiResult})
 - **Leserinteresse-Score:** ${entry.readerInterest.score}
@@ -858,10 +948,17 @@ function reportMarkdown(result: EditorialBatchResult): string {
     return `### ${entry.title}
 
 - **Score:** ${entry.readerInterest.score}
+- **Bereinigter Titel:** ${entry.entityAnalysis?.cleanedTitle ?? entry.title}
+- **Entity:** ${entry.entityAnalysis?.mainEntity ?? "keine sichere Entitaet"}
+- **Entity-Typ:** ${entry.entityAnalysis?.entityType ?? "unknown"}
+- **Thementyp:** ${entry.entityAnalysis?.topicType ?? "unknown"}
+- **Publishability-Score:** ${entry.publishabilityScore ?? 0}
+- **Finaler Status:** ${entry.finalStatus ?? entry.status}
 - **Radarquelle:** ${entry.radarSourceName} (${entry.radarSourceUrl})
 - **Gesuchte offizielle Quellen:** ${entry.searchedOfficialSources.join(", ") || "keine automatische Quelle pruefbar"}
 - **Gefundene Primaerquellen:** ${entry.foundPrimarySourceUrls.join(", ") || "keine"}
 - **Verifizierte Primaerquellen:** ${entry.verifiedPrimarySourceUrls.join(", ") || "keine"}
+- **Konkrete Fakten:** ${entry.verifiedFacts.join("; ") || "keine"}
 - **KI-Aufruf:** ${entry.aiInvoked ? "gestartet" : "nicht gestartet"} (${entry.aiResult})
 - **Entscheidung:** ${entry.decisionReason}
 - **Ablehnungsgrund:** ${reasons.join("; ") || entry.recommendation}
@@ -871,6 +968,16 @@ function reportMarkdown(result: EditorialBatchResult): string {
 
 - **Workflow Run ID:** ${result.branchName.split("/").at(-1)}
 - **Branch:** ${result.branchName}
+- **Queue-Dateipfad:** ${result.queuePath}
+- **Queue-Erstellungszeit:** ${result.queueGeneratedAt}
+- **Queue-Hash:** ${result.queueHash}
+- **Queue-Kandidaten gesamt:** ${result.queueCandidateCount}
+- **Verwendete Candidate IDs:** ${result.results.map((entry) => entry.candidateId).join(", ") || "keine"}
+- **KI-Aufrufe versucht:** ${result.aiCallsAttempted}
+- **KI-Aufrufe erfolgreich:** ${result.aiCallsSuccessful}
+- **KI-Aufrufe fehlgeschlagen:** ${result.aiCallsFailed}
+- **API-Key vorhanden:** ${result.ai.enabled ? "ja" : "nein oder KI deaktiviert"}
+- **KI-Status:** ${result.ai.reason}${result.ai.errorCode ? ` (${result.ai.errorCode})` : ""}
 - **Geprüfte Kandidaten:** ${result.checkedCandidates}
 - **Vollständige Drafts:** ${result.completeDrafts}
 - **Recherche-Stubs:** ${result.researchStubs}
@@ -973,6 +1080,8 @@ export async function createEditorialBatch(
     options.queuePath ?? DEFAULT_EDITORIAL_QUEUE_PATH,
     rootDirectory
   );
+  const queueRaw = await readFile(queuePath, "utf8");
+  const queueHash = createHash("sha256").update(queueRaw).digest("hex").slice(0, 16);
   const publishedSlugs = await loadPublishedArticleSlugs(rootDirectory);
   const selectedCandidates = selectBatchCandidates({
     queue,
@@ -982,12 +1091,14 @@ export async function createEditorialBatch(
     candidateIds: options.candidateIds,
     maxArticles,
     articleType: options.articleTypeDefault,
-    publishedSlugs
+    publishedSlugs,
+    evaluateFullQueue: true,
+    fallbackToQueue: options.fallbackToQueue ?? true
   });
   const timestamp = options.generatedAt ?? new Date().toISOString();
   const reportDate = timestamp.slice(0, 10);
   const runId = options.environment?.GITHUB_RUN_ID || process.env.GITHUB_RUN_ID || Date.now().toString();
-  const branchName = `editorial-batch/${runId}`;
+  const branchName = `editorial-batch/${reportDate}-${runId}`;
   const enriched = await Promise.all(selectedCandidates.map((candidate, index) =>
     enrichCandidateSources(
       candidate,
@@ -1016,11 +1127,21 @@ export async function createEditorialBatch(
     const details = sourceGateDetailsMap.get(candidate.id)!;
     return [candidate.id, details.reason] as const;
   }));
+  const publishabilityMap = new Map(candidates.map((candidate) => {
+    const entry = enrichmentMap.get(candidate.id)!;
+    const readerInterest = interestMap.get(candidate.id)!;
+    const gateDetails = sourceGateDetailsMap.get(candidate.id)!;
+    return [candidate.id, publishabilityScore({ candidate, entry, readerInterest, gateDetails })] as const;
+  }));
 
   const aiInputs = candidates
     .filter((candidate) =>
       (interestMap.get(candidate.id)?.score ?? 0) >= 60 &&
       sourceGateMap.get(candidate.id)
+    )
+    .sort((left, right) =>
+      (publishabilityMap.get(right.id) ?? 0) - (publishabilityMap.get(left.id) ?? 0) ||
+      left.id.localeCompare(right.id)
     )
     .map((candidate) => ({
       candidate,
@@ -1031,21 +1152,30 @@ export async function createEditorialBatch(
       verifiedFacts: enrichmentMap.get(candidate.id)!.verifiedFacts,
       editorialNote: options.editorialNote
     }));
+  const aiEnvironment = {
+    ...(options.environment ?? process.env),
+    AI_EDITORIAL_MAX_ARTICLES: String(Math.max(
+      Number.parseInt((options.environment ?? process.env).AI_EDITORIAL_MAX_ARTICLES ?? "0", 10) || 0,
+      aiInputs.length,
+      maxArticles
+    ))
+  };
   const aiResult = await prepareEditorialAiDrafts(
     aiInputs,
-    options.environment ?? process.env,
+    aiEnvironment,
     options.fetchImpl ?? fetch
   );
   const readerEditResult = await prepareReaderEditedDrafts(
     aiResult.drafts,
     aiInputs,
-    options.environment ?? process.env,
+    aiEnvironment,
     options.fetchImpl ?? fetch
   );
   const aiDraftMap = new Map(readerEditResult.drafts.map((draft) => [draft.candidateId, draft]));
   const aiRequestedIds = new Set(aiInputs.map((input) => input.candidate.id));
   const aiWasInvoked = Boolean(aiResult.attempts);
   const results: BatchCandidateResult[] = [];
+  let completedDraftsWritten = 0;
 
   for (const duplicate of duplicateEntries) {
     const candidate = duplicate.entry.candidate;
@@ -1079,7 +1209,15 @@ export async function createEditorialBatch(
       decisionReason: `Duplicate uebersprungen: zusammengefuehrt mit ${duplicate.duplicateOf}. ${duplicate.duplicateReason ?? ""}`.trim(),
       recommendation: "Keinen zweiten Draft fuer denselben Zielslug oder dieselbe offizielle Quelle erzeugen.",
       entityAnalysis: duplicate.entry.entityAnalysis,
-      sourceDiagnostics: duplicate.entry.sourceDiagnostics
+      sourceDiagnostics: duplicate.entry.sourceDiagnostics,
+      publishabilityScore: publishabilityScore({
+        candidate,
+        entry: duplicate.entry,
+        readerInterest,
+        gateDetails: sourceGateDetails(candidate, duplicate.entry),
+        duplicate: true
+      }),
+      finalStatus: "duplicate"
     });
   }
 
@@ -1128,7 +1266,9 @@ export async function createEditorialBatch(
           ? ["Mindestens zwei konkrete, spielrelevante Fakten zum Anlass fehlen."]
           : [],
         entityAnalysis: enrichment.entityAnalysis,
-        sourceDiagnostics: enrichment.sourceDiagnostics
+        sourceDiagnostics: enrichment.sourceDiagnostics,
+        publishabilityScore: publishabilityMap.get(candidate.id),
+        finalStatus: finalStatusFor({ candidate, entry: enrichment, gateDetails })
       });
       continue;
     }
@@ -1163,7 +1303,9 @@ export async function createEditorialBatch(
           ? ["Mindestens zwei konkrete, spielrelevante Fakten zum Anlass fehlen."]
           : [],
         entityAnalysis: enrichment.entityAnalysis,
-        sourceDiagnostics: enrichment.sourceDiagnostics
+        sourceDiagnostics: enrichment.sourceDiagnostics,
+        publishabilityScore: publishabilityMap.get(candidate.id),
+        finalStatus: finalStatusFor({ candidate, entry: enrichment, gateDetails })
       });
       continue;
     }
@@ -1178,7 +1320,8 @@ export async function createEditorialBatch(
       readerInterestScore: readerInterest.score
     });
     const reviews = runReviews(built.reviewInput);
-    const complete = built.status === "draft" && fullGatePassed(reviews);
+    const fullGateComplete = built.status === "draft" && fullGatePassed(reviews);
+    const complete = fullGateComplete && completedDraftsWritten < maxArticles;
     const scaffold = built.status === "needs-source-review";
     const status = complete ? "draft" : scaffold ? "needs-source-review" : "rejected";
     let filePath: string | undefined;
@@ -1188,6 +1331,7 @@ export async function createEditorialBatch(
       await mkdir(dirname(filePath), { recursive: true });
       await writeFile(filePath, built.markdown, "utf8");
     }
+    if (complete) completedDraftsWritten += 1;
 
     results.push({
       candidateId: candidate.id,
@@ -1237,10 +1381,22 @@ export async function createEditorialBatch(
           : "Qualitätsfehler beheben, bevor ein Draft gespeichert wird.",
       missingFacts: complete ? [] : [
         ...Object.values(reviews).flatMap((review) => review.requiredFixes),
-        ...(aiDraftMap.has(candidate.id) ? [] : ["Gepruefter KI-Entwurf fehlt."])
+        ...(aiDraftMap.has(candidate.id) ? [] : ["Gepruefter KI-Entwurf fehlt."]),
+        ...(fullGateComplete && !complete ? ["Maximale Anzahl vollstaendiger Drafts in diesem Batch erreicht."] : [])
       ],
       entityAnalysis: enrichment.entityAnalysis,
-      sourceDiagnostics: enrichment.sourceDiagnostics
+      sourceDiagnostics: enrichment.sourceDiagnostics,
+      publishabilityScore: publishabilityMap.get(candidate.id),
+      finalStatus: finalStatusFor({
+        candidate,
+        entry: enrichment,
+        gateDetails,
+        complete,
+        scaffold,
+        aiInvoked,
+        aiErrorCode: aiResult.errorCode,
+        reviews
+      })
     });
   }
 
@@ -1265,6 +1421,13 @@ export async function createEditorialBatch(
     researchStubs: researchStubs.length,
     skippedDuplicates: skippedDuplicates.length,
     rejectedCandidates: rejected.length + researchStubs.length,
+    queueCandidateCount: queue.candidates.length,
+    queueGeneratedAt: queue.generatedAt,
+    queuePath: displayQueuePath(queuePath, rootDirectory),
+    queueHash,
+    aiCallsAttempted: aiResult.attempts ?? 0,
+    aiCallsSuccessful: aiDraftMap.size,
+    aiCallsFailed: Math.max(0, (aiResult.attempts ?? 0) - (aiResult.drafts.length ? 1 : 0)),
     results,
     reportPath,
     rejectedReportPath,
@@ -1296,7 +1459,8 @@ if (executedDirectly) {
     editorialNote = "",
     maxInput = "5",
     queuePath = DEFAULT_EDITORIAL_QUEUE_PATH,
-    selectionMode = "manual"
+    selectionMode = "manual",
+    fallbackToQueue = "true"
   ] = process.argv.slice(2);
   const result = await createEditorialBatch({
     candidateIds: candidateInput.split(","),
@@ -1305,7 +1469,8 @@ if (executedDirectly) {
     primarySourceGroups: parseSourceGroups(sourceInput),
     editorialNote,
     maxArticles: Number.parseInt(maxInput, 10),
-    queuePath
+    queuePath,
+    fallbackToQueue: fallbackToQueue !== "false"
   });
   console.log(JSON.stringify(result, null, 2));
 
@@ -1319,6 +1484,14 @@ if (executedDirectly) {
       researchStubs: result.researchStubs,
       skippedDuplicates: result.skippedDuplicates,
       rejectedCandidates: result.rejectedCandidates,
+      queueCandidateCount: result.queueCandidateCount,
+      queueGeneratedAt: result.queueGeneratedAt,
+      queuePath: result.queuePath,
+      queueHash: result.queueHash,
+      aiCallsAttempted: result.aiCallsAttempted,
+      aiCallsSuccessful: result.aiCallsSuccessful,
+      aiCallsFailed: result.aiCallsFailed,
+      aiStatus: result.ai.reason,
       reportDate: result.reportDate,
       publicationReady: result.completeDrafts > 0,
       articlePaths: result.results
