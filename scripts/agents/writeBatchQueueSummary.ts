@@ -86,6 +86,7 @@ export async function prepareBatchQueue(input: {
   candidateIds?: string[];
   maxArticles?: number;
   articleType?: "news-overview" | "release-check" | "free-promotion" | "guide";
+  fallbackToQueue?: boolean;
 } = {}): Promise<{ selectedCandidateIds: string[]; queuePath: string; generatedAt: string; candidateCount: number }> {
   const rootDirectory = input.rootDirectory ?? process.cwd();
   const summaryPath = input.summaryPath ?? process.env.GITHUB_STEP_SUMMARY;
@@ -102,12 +103,13 @@ export async function prepareBatchQueue(input: {
     candidateIds: input.candidateIds,
     maxArticles,
     articleType: input.articleType,
-    publishedSlugs
+    publishedSlugs,
+    fallbackToQueue: input.fallbackToQueue
   });
   const selectedCandidateIds = selected.map((candidate) => candidate.id);
   await writeFile(summaryPath, renderBatchQueueSummary(loaded.queue, selectedCandidateIds, selectionMode), {
     encoding: "utf8",
-    flag: "a"
+    flag: "w"
   });
   if (input.outputPath?.trim()) {
     await writeFile(
@@ -137,7 +139,8 @@ if (executedDirectly) {
     candidateInput = "",
     maxInput = "5",
     queuePath = DEFAULT_EDITORIAL_QUEUE_PATH,
-    articleType = "news-overview"
+    articleType = "news-overview",
+    fallbackToQueue = "true"
   ] = process.argv.slice(2);
   await prepareBatchQueue({
     selectionMode: selectionMode as BatchSelectionMode,
@@ -145,6 +148,7 @@ if (executedDirectly) {
     maxArticles: Number.parseInt(maxInput, 10),
     queuePath,
     articleType: articleType as "news-overview" | "release-check" | "free-promotion" | "guide",
+    fallbackToQueue: fallbackToQueue !== "false",
     outputPath: process.env.GITHUB_OUTPUT
   });
 }

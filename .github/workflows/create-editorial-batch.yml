@@ -16,6 +16,14 @@ on:
         required: false
         default: ""
         type: string
+      fallback_to_queue:
+        description: "Nach manuellen Candidate IDs auf die uebrige Queue zurueckfallen"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
       article_type_default:
         description: "Standardtyp: news-overview, release-check, free-promotion oder guide"
         required: true
@@ -27,17 +35,17 @@ on:
           - free-promotion
           - guide
       primary_source_urls:
-        description: "Optionale offizielle Primärquellen, kandidatenweise mit Semikolon trennen"
+        description: "Optionale offizielle PrimÃ¤rquellen, kandidatenweise mit Semikolon trennen"
         required: false
         type: string
       editorial_note:
-        description: "Allgemeine redaktionelle Notiz für den Lauf"
+        description: "Allgemeine redaktionelle Notiz fÃ¼r den Lauf"
         required: false
         type: string
       max_articles:
         description: "Maximal erzeugte Artikel"
         required: true
-        default: "5"
+        default: "2"
         type: string
 
 permissions:
@@ -63,7 +71,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Abhängigkeiten installieren
+      - name: AbhÃ¤ngigkeiten installieren
         run: npm ci
 
       - name: Frische Tagesqueue erzeugen
@@ -79,19 +87,22 @@ jobs:
 
       - name: Queue validieren und Batch-Auswahl vorbereiten
         id: queue
-        run: npm run editorial:batch-summary -- "$SELECTION_MODE" "$CANDIDATE_IDS" "$MAX_ARTICLES" "$QUEUE_PATH" "$ARTICLE_TYPE_DEFAULT"
+        run: npm run editorial:batch-summary -- "$SELECTION_MODE" "$CANDIDATE_IDS" "$MAX_ARTICLES" "$QUEUE_PATH" "$ARTICLE_TYPE_DEFAULT" "$FALLBACK_TO_QUEUE"
         env:
           SELECTION_MODE: ${{ inputs.selection_mode }}
           CANDIDATE_IDS: ${{ inputs.candidate_ids }}
           MAX_ARTICLES: ${{ inputs.max_articles }}
           ARTICLE_TYPE_DEFAULT: ${{ inputs.article_type_default }}
+          FALLBACK_TO_QUEUE: ${{ inputs.fallback_to_queue }}
 
-      - name: Batch-Entwürfe erzeugen
+      - name: Batch-EntwÃ¼rfe erzeugen
         id: batch
-        run: npm run editorial:create-batch -- "$SELECTED_CANDIDATE_IDS" "$ARTICLE_TYPE_DEFAULT" "$PRIMARY_SOURCE_URLS" "$EDITORIAL_NOTE" "$MAX_ARTICLES" "$QUEUE_PATH" "manual"
+        run: npm run editorial:create-batch -- "$CANDIDATE_IDS" "$ARTICLE_TYPE_DEFAULT" "$PRIMARY_SOURCE_URLS" "$EDITORIAL_NOTE" "$MAX_ARTICLES" "$QUEUE_PATH" "$SELECTION_MODE" "$FALLBACK_TO_QUEUE"
         env:
           GITHUB_RUN_ID: ${{ github.run_id }}
-          SELECTED_CANDIDATE_IDS: ${{ steps.queue.outputs.selectedCandidateIds }}
+          SELECTION_MODE: ${{ inputs.selection_mode }}
+          CANDIDATE_IDS: ${{ inputs.candidate_ids }}
+          FALLBACK_TO_QUEUE: ${{ inputs.fallback_to_queue }}
           ARTICLE_TYPE_DEFAULT: ${{ inputs.article_type_default }}
           PRIMARY_SOURCE_URLS: ${{ inputs.primary_source_urls }}
           EDITORIAL_NOTE: ${{ inputs.editorial_note }}
@@ -103,13 +114,13 @@ jobs:
           AI_EDITORIAL_FAIL_WITHOUT_QUOTA: ${{ vars.AI_EDITORIAL_FAIL_WITHOUT_QUOTA || 'true' }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-      - name: Tests ausführen
+      - name: Tests ausfÃ¼hren
         run: npm test
 
-      - name: Produktions-Build prüfen
+      - name: Produktions-Build prÃ¼fen
         run: npm run build
 
-      - name: Veröffentlichungsfähigkeit zusammenfassen
+      - name: VerÃ¶ffentlichungsfÃ¤higkeit zusammenfassen
         if: always()
         env:
           COMPLETE_DRAFTS: ${{ steps.batch.outputs.completeDrafts }}
@@ -117,29 +128,45 @@ jobs:
           ARTICLE_PATHS: ${{ steps.batch.outputs.articlePaths }}
           HERO_IMAGE_STATUSES: ${{ steps.batch.outputs.heroImageStatuses }}
           MANUAL_REVIEW_POINTS: ${{ steps.batch.outputs.manualReviewPoints }}
+          QUEUE_HASH: ${{ steps.batch.outputs.queueHash }}
+          QUEUE_GENERATED_AT: ${{ steps.batch.outputs.queueGeneratedAt }}
+          QUEUE_CANDIDATE_COUNT: ${{ steps.batch.outputs.queueCandidateCount }}
+          AI_CALLS_ATTEMPTED: ${{ steps.batch.outputs.aiCallsAttempted }}
+          AI_CALLS_SUCCESSFUL: ${{ steps.batch.outputs.aiCallsSuccessful }}
+          AI_CALLS_FAILED: ${{ steps.batch.outputs.aiCallsFailed }}
+          AI_STATUS: ${{ steps.batch.outputs.aiStatus }}
         run: |
           {
             echo "## Editorial Batch"
             echo
-            echo "- Vollständige Entwürfe: ${COMPLETE_DRAFTS:-0}"
+            echo "- VollstÃ¤ndige EntwÃ¼rfe: ${COMPLETE_DRAFTS:-0}"
             echo "- Abgelehnte Kandidaten: ${REJECTED_CANDIDATES:-0}"
+            echo "- Queue-Kandidaten gesamt: ${QUEUE_CANDIDATE_COUNT:-0}"
+            echo "- Queue-Erstellungszeit: ${QUEUE_GENERATED_AT:-unbekannt}"
+            echo "- Queue-Hash: ${QUEUE_HASH:-unbekannt}"
+            echo "- KI-Aufrufe versucht: ${AI_CALLS_ATTEMPTED:-0}"
+            echo "- KI-Aufrufe erfolgreich: ${AI_CALLS_SUCCESSFUL:-0}"
+            echo "- KI-Aufrufe fehlgeschlagen: ${AI_CALLS_FAILED:-0}"
+            echo "- KI-Status: ${AI_STATUS:-nicht ausgewertet}"
             echo "- Artikelpfade: ${ARTICLE_PATHS:-keine}"
-            echo "- Hero-Bildstatus: ${HERO_IMAGE_STATUSES:-keine vollständigen Entwürfe}"
-            echo "- Manuelle Prüfpunkte: ${MANUAL_REVIEW_POINTS:-keine}"
-            echo "- Artifact: nur für technische Diagnose erforderlich"
+            echo "- Hero-Bildstatus: ${HERO_IMAGE_STATUSES:-keine vollstÃ¤ndigen EntwÃ¼rfe}"
+            echo "- Manuelle PrÃ¼fpunkte: ${MANUAL_REVIEW_POINTS:-keine}"
+            echo "- Artifact: nur fÃ¼r technische Diagnose erforderlich"
             echo
             if [ "${COMPLETE_DRAFTS:-0}" = "0" ]; then
-              echo "## Batch nicht veröffentlichungsfähig"
+              echo "## Batch nicht verÃ¶ffentlichungsfÃ¤hig"
               echo
-              echo "Keine vollständigen Artikel erzeugt. KI-Verarbeitung fehlgeschlagen."
-              echo "Die Gerüste dienen ausschließlich der Diagnose und dürfen nicht veröffentlicht werden."
+              echo "Keine vollstaendigen Artikel erzeugt. Details stehen im Batch-Report."
+              echo "Die GerÃ¼ste dienen ausschlieÃŸlich der Diagnose und dÃ¼rfen nicht verÃ¶ffentlicht werden."
             else
-              echo "Im Normalbetrieb genügt der Pull Request."
+              echo "Im Normalbetrieb genÃ¼gt der Pull Request."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Branch und Commit erstellen
         if: steps.batch.outputs.completeDrafts != '0'
+        env:
+          BRANCH_NAME: ${{ steps.batch.outputs.branchName }}
         run: |
           if git ls-remote --exit-code --heads origin "$BRANCH_NAME"; then
             echo "Branch existiert bereits: $BRANCH_NAME" >&2
@@ -162,6 +189,7 @@ jobs:
         if: steps.batch.outputs.completeDrafts != '0'
         env:
           GH_TOKEN: ${{ github.token }}
+          BRANCH_NAME: ${{ steps.batch.outputs.branchName }}
           REPORT_PATH: ${{ steps.batch.outputs.reportPath }}
           REPORT_DATE: ${{ steps.batch.outputs.reportDate }}
           COMPLETE_DRAFTS: ${{ steps.batch.outputs.completeDrafts }}
@@ -171,7 +199,7 @@ jobs:
           PR_URL=$(gh pr create \
             --base main \
             --head "$BRANCH_NAME" \
-            --title "Editorial Batch: $REPORT_DATE · $COMPLETE_DRAFTS vollständige Entwürfe" \
+            --title "Editorial Batch: $REPORT_DATE Â· $COMPLETE_DRAFTS vollstÃ¤ndige EntwÃ¼rfe" \
             --body-file "$REPORT_PATH")
           {
             echo

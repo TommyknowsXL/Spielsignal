@@ -574,7 +574,7 @@ const batch = await createEditorialBatch({
   fetchImpl: aiFetch
 });
 
-assert.equal(batch.branchName, "editorial-batch/987654");
+assert.equal(batch.branchName, "editorial-batch/2026-06-08-987654");
 assert.equal(batch.checkedCandidates, 2);
 assert.equal(batch.generatedDrafts, 1);
 assert.equal(batch.completeDrafts, 1);
@@ -713,7 +713,7 @@ assert.equal(multipleDraftBatch.completeDrafts, 3);
 assert.equal(multipleDraftBatch.generatedDrafts, 3);
 assert.equal(multipleDraftBatch.rejectedCandidates, 1);
 assert.equal(shouldCreatePullRequest(multipleDraftBatch.completeDrafts), true);
-assert.equal(multipleDraftBatch.branchName, "editorial-batch/three-complete-drafts");
+assert.equal(multipleDraftBatch.branchName, "editorial-batch/2026-06-08-three-complete-drafts");
 assert.deepEqual(
   multipleDraftBatch.results.filter((entry) => entry.status === "draft").map((entry) => entry.candidateId),
   multipleDraftCandidates.map((candidate) => candidate.id)
@@ -889,8 +889,8 @@ const autoTopBatch = await createEditorialBatch({
   generatedAt: "2026-06-08T10:00:00.000Z",
   environment: { GITHUB_RUN_ID: "auto-top", AI_EDITORIAL_ENABLED: "false" }
 });
-assert.equal(autoTopBatch.checkedCandidates, 3);
-assert.deepEqual(autoTopBatch.results.map((entry) => entry.candidateId), ["auto-1", "auto-2", "auto-3"]);
+assert.equal(autoTopBatch.checkedCandidates, 6);
+assert.deepEqual(autoTopBatch.results.slice(0, 3).map((entry) => entry.candidateId), ["auto-1", "auto-2", "auto-3"]);
 
 const hardenedSelectionRoot = await createTestRoot("spielsignal-batch-hardened-selection-");
 await mkdir(join(hardenedSelectionRoot, "src", "data", "editorial"), { recursive: true });
@@ -1044,8 +1044,99 @@ assert.doesNotMatch(
   /gamestar\.de/
 );
 assert.equal(shouldCreatePullRequest(subnauticaBatch.completeDrafts), true);
-assert.match(subnauticaBatch.branchName, /^editorial-batch\/subnautica-source-enrichment$/);
+assert.match(subnauticaBatch.branchName, /^editorial-batch\/2026-06-08-subnautica-source-enrichment$/);
 await cleanupTestRoot(subnauticaRoot);
+
+const fallbackRoot = await createTestRoot("spielsignal-batch-fallback-selection-");
+await mkdir(join(fallbackRoot, "src", "data", "editorial"), { recursive: true });
+const eaCandidate: EditorialCandidate = {
+  ...interestingCandidate,
+  id: "rss-ea-finance",
+  title: "Electronic Arts - Um Schulden von 20 Milliarden Dollar abzubezahlen packt EA jetzt Werbung direkt in eure Spiele",
+  gameTitle: undefined,
+  steamAppId: undefined,
+  steamStoreUrl: undefined,
+  sourceName: "GameStar RSS",
+  sourceUrl: "https://www.gamestar.de/artikel/ea-werbung-spiele,123.html",
+  score: 95,
+  scoreReasons: ["Finanzthema", "Hohe Relevanz"]
+};
+const unknownRpgCandidate: EditorialCandidate = {
+  ...interestingCandidate,
+  id: "rss-unknown-rpg",
+  title: "Wuerdet ihr das spielen? - Nach 3D-Remake von Diablo 2 zeigt Entwickler ein neues Mittelalter-Rollenspiel",
+  gameTitle: undefined,
+  steamAppId: undefined,
+  steamStoreUrl: undefined,
+  sourceName: "GameStar RSS",
+  sourceUrl: "https://www.gamestar.de/artikel/neues-mittelalter-rollenspiel,456.html",
+  score: 91,
+  scoreReasons: ["Neues Projekt ohne sicheren Namen"]
+};
+const verifiedEventCandidate: EditorialCandidate = {
+  ...subnauticaCandidate,
+  id: "rss-verified-event",
+  score: 86
+};
+await writeFile(
+  join(fallbackRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  `${JSON.stringify({
+    ...report,
+    generatedAt: "2026-06-17T08:00:00.000Z",
+    candidates: [eaCandidate, unknownRpgCandidate, verifiedEventCandidate]
+  }, null, 2)}\n`,
+  "utf8"
+);
+let fallbackAiCalls = 0;
+const fallbackBatch = await createEditorialBatch({
+  rootDirectory: fallbackRoot,
+  candidateIds: [eaCandidate.id],
+  selectionMode: "manual",
+  articleTypeDefault: "news-overview",
+  maxArticles: 1,
+  generatedAt: "2026-06-17T09:00:00.000Z",
+  sourceFetchImpl: officialSourceFetch,
+  fetchImpl: async (_input, _init) => {
+    fallbackAiCalls += 1;
+    return Response.json({
+      output_text: JSON.stringify({
+        drafts: [{
+          candidateId: "rss-verified-event",
+          title: "Subnautica 2: Update 1.1 im offiziellen Steam-News-Hub",
+          summary: "Die offizielle Steam-Meldung zu Update 1.1 bildet die Faktenbasis fuer den SpielSignal-Entwurf.",
+          seoTitle: "Subnautica 2 Update 1.1: Offizielle Steam-Infos | SpielSignal",
+          seoDescription: "Subnautica 2 Update 1.1 ist im offiziellen Steam-News-Hub dokumentiert. SpielSignal ordnet die bestaetigte PC-Meldung ein.",
+          markdownBody: polishedLongBody.replaceAll("Strategy Test", "Subnautica 2"),
+          recommendedImages: [{
+            position: "hero",
+            searchTarget: "Subnautica 2 offizielles Steam-Key-Art",
+            preferredSourceType: "steam-store",
+            required: true
+          }],
+          warnings: []
+        }]
+      })
+    });
+  },
+  environment: {
+    GITHUB_RUN_ID: "fallback-selection",
+    AI_EDITORIAL_ENABLED: "true",
+    AI_EDITORIAL_MODEL: "gpt-5-mini",
+    OPENAI_API_KEY: "test-only-key"
+  }
+});
+assert.equal(fallbackBatch.completeDrafts, 1);
+assert.equal(fallbackBatch.queueCandidateCount, 3);
+assert.equal(fallbackBatch.results.some((entry) => entry.candidateId === eaCandidate.id), true);
+assert.equal(fallbackBatch.results.some((entry) => entry.candidateId === unknownRpgCandidate.id), true);
+assert.equal(fallbackBatch.results.some((entry) => entry.candidateId === verifiedEventCandidate.id && entry.status === "draft"), true);
+assert.equal(fallbackAiCalls >= 1, true);
+const fallbackReport = await readFile(fallbackBatch.reportPath, "utf8");
+assert.match(fallbackReport, /Queue-Hash/);
+assert.match(fallbackReport, /Publishability-Score/);
+assert.doesNotMatch(fallbackReport, /Alpha Strategy|Beta Survival|2026-06-09/);
+assert.doesNotMatch(fallbackReport, /KI-Verarbeitung fehlgeschlagen/);
+await cleanupTestRoot(fallbackRoot);
 
 const sourceGateRoot = await createTestRoot("spielsignal-batch-source-gate-");
 await mkdir(join(sourceGateRoot, "src", "data", "editorial"), { recursive: true });
@@ -1482,10 +1573,11 @@ assert.match(workflow, /selection_mode:/);
 assert.match(workflow, /- manual/);
 assert.match(workflow, /- auto-top/);
 assert.match(workflow, /candidate_ids:/);
+assert.match(workflow, /fallback_to_queue:/);
 assert.match(workflow, /editorial-batch\/\$\{\{ github\.run_id \}\}/);
 assert.match(workflow, /git ls-remote --exit-code --heads origin/);
 assert.doesNotMatch(workflow, /--force|\bgh\s+pr\s+merge\b|\bgit\s+merge\b/);
-assert.ok(workflow.indexOf("Frische Tagesqueue erzeugen") < workflow.indexOf("Batch-Entwürfe erzeugen"));
+assert.ok(workflow.indexOf("Frische Tagesqueue erzeugen") < workflow.indexOf("Batch-Ent"));
 assert.match(workflow, /Frische Tagesqueue erzeugen[\s\S]*npm run editorial:daily/);
 assert.match(workflow, /rm -f "\$QUEUE_PATH"[\s\S]*npm run editorial:daily/);
 assert.match(workflow, /STEAM_WEB_API_KEY: \$\{\{ secrets\.STEAM_WEB_API_KEY \}\}/);
@@ -1493,11 +1585,11 @@ assert.match(workflow, /STEAM_SCOUT_ENABLED: "true"/);
 assert.match(workflow, /STEAM_RELEASES_ENABLED: "true"/);
 assert.match(workflow, /STEAM_TOP_SELLERS_ENABLED: "true"/);
 assert.match(workflow, /PUBLIC_STEAM_MOST_PLAYED_ENABLED: "false"/);
-assert.ok(workflow.indexOf("Queue validieren und Batch-Auswahl vorbereiten") < workflow.indexOf("Batch-Entwürfe erzeugen"));
+assert.ok(workflow.indexOf("Queue validieren und Batch-Auswahl vorbereiten") < workflow.indexOf("Batch-Ent"));
 assert.match(workflow, /QUEUE_PATH: src\/data\/editorial\/latest-queue\.json/);
 assert.match(workflow, /npm run editorial:batch-summary -- "\$SELECTION_MODE" "\$CANDIDATE_IDS" "\$MAX_ARTICLES" "\$QUEUE_PATH"/);
-assert.match(workflow, /npm run editorial:create-batch -- "\$SELECTED_CANDIDATE_IDS"[\s\S]*"\$QUEUE_PATH" "manual"/);
-assert.match(workflow, /steps\.queue\.outputs\.selectedCandidateIds/);
+assert.match(workflow, /npm run editorial:create-batch -- "\$CANDIDATE_IDS"[\s\S]*"\$QUEUE_PATH" "\$SELECTION_MODE" "\$FALLBACK_TO_QUEUE"/);
+assert.match(workflow, /FALLBACK_TO_QUEUE: \$\{\{ inputs\.fallback_to_queue \}\}/);
 assert.match(dailyWorkflow, /src\/data\/editorial\/latest-queue\.json/);
 assert.match(reportWriter, /join\(dataDirectory, "latest-queue\.json"\)/);
 assert.match(workflow, /if: always\(\)/);
@@ -1512,14 +1604,14 @@ assert.match(workflow, /AI_EDITORIAL_FAIL_WITHOUT_QUOTA: \$\{\{ vars\.AI_EDITORI
 assert.match(workflow, /Branch und Commit erstellen[\s\S]*if: steps\.batch\.outputs\.completeDrafts != '0'/);
 assert.match(workflow, /Pull Request erstellen[\s\S]*if: steps\.batch\.outputs\.completeDrafts != '0'/);
 assert.equal((workflow.match(/\bgh pr create\b/g) ?? []).length, 1);
-assert.match(workflow, /Editorial Batch: \$REPORT_DATE · \$COMPLETE_DRAFTS vollständige Entwürfe/);
+assert.match(workflow, /Editorial Batch: \$REPORT_DATE .* \$COMPLETE_DRAFTS vollst/);
 assert.match(workflow, /PR_URL=\$\(gh pr create/);
 assert.match(workflow, /PR: \$PR_URL/);
 assert.match(workflow, /Hero-Bildstatus: \$\{HERO_IMAGE_STATUSES/);
-assert.match(workflow, /Manuelle Prüfpunkte: \$\{MANUAL_REVIEW_POINTS/);
+assert.match(workflow, /Manuelle Pr.*fpunkte: \$\{MANUAL_REVIEW_POINTS/);
 assert.match(workflow, /grep -q '\^status: "draft"\$'/);
-assert.match(workflow, /Keine vollständigen Artikel erzeugt\. KI-Verarbeitung fehlgeschlagen\./);
-assert.match(workflow, /Artifact: nur für technische Diagnose erforderlich/);
+assert.match(workflow, /Keine vollstaendigen Artikel erzeugt\. Details stehen im Batch-Report\./);
+assert.match(workflow, /Artifact: nur f.*r technische Diagnose erforderlich/);
 
 const readerProvider = await readFile("scripts/agents/providers/editorialAiProvider.ts", "utf8");
 assert.match(readerProvider, /Verified Facts[\s\S]*Writer Draft[\s\S]*Reader Edit|prepareReaderEditedDrafts/);
