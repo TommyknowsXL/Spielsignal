@@ -4,20 +4,20 @@ on:
   workflow_dispatch:
     inputs:
       selection_mode:
-        description: "manual oder auto-top"
+        description: "manual (Candidate IDs Pflicht) oder automatic (frische Queue)"
         required: true
         default: "manual"
         type: choice
         options:
           - manual
-          - auto-top
+          - automatic
       candidate_ids:
         description: "Nur bei manual: Candidate IDs, durch Komma getrennt"
         required: false
         default: ""
         type: string
       fallback_to_queue:
-        description: "Nach manuellen Candidate IDs auf die uebrige Queue zurueckfallen"
+        description: "Nur automatic: Queue-Fallback aktivieren"
         required: true
         default: "true"
         type: choice
@@ -74,11 +74,28 @@ jobs:
       - name: Abhängigkeiten installieren
         run: npm ci
 
+      - name: Workflow-Eingaben validieren
+        run: |
+          IDS_WITHOUT_SEPARATORS=$(printf '%s' "$CANDIDATE_IDS" | tr -d '[:space:],')
+          if [ "$SELECTION_MODE" = "manual" ] && [ -z "$IDS_WITHOUT_SEPARATORS" ]; then
+            echo "::error::selection_mode=manual benoetigt mindestens eine Candidate ID. Nutze selection_mode=automatic fuer Queue-Auswahl ohne IDs."
+            exit 1
+          fi
+          if [ "$SELECTION_MODE" = "automatic" ] && [ "$FALLBACK_TO_QUEUE" != "true" ]; then
+            echo "::error::selection_mode=automatic benoetigt fallback_to_queue=true, damit die frische Queue vollstaendig geprueft wird."
+            exit 1
+          fi
+        env:
+          SELECTION_MODE: ${{ inputs.selection_mode }}
+          CANDIDATE_IDS: ${{ inputs.candidate_ids }}
+          FALLBACK_TO_QUEUE: ${{ inputs.fallback_to_queue }}
+
       - name: Frische Tagesqueue erzeugen
         run: |
           rm -f "$QUEUE_PATH"
           npm run editorial:daily
         env:
+          GITHUB_STEP_SUMMARY: ${{ runner.temp }}/spielsignal-daily-summary.md
           STEAM_WEB_API_KEY: ${{ secrets.STEAM_WEB_API_KEY }}
           STEAM_SCOUT_ENABLED: "true"
           STEAM_RELEASES_ENABLED: "true"
@@ -89,6 +106,7 @@ jobs:
         id: queue
         run: npm run editorial:batch-summary -- "$SELECTION_MODE" "$CANDIDATE_IDS" "$MAX_ARTICLES" "$QUEUE_PATH" "$ARTICLE_TYPE_DEFAULT" "$FALLBACK_TO_QUEUE"
         env:
+          GITHUB_STEP_SUMMARY: ${{ runner.temp }}/spielsignal-batch-selection-summary.md
           SELECTION_MODE: ${{ inputs.selection_mode }}
           CANDIDATE_IDS: ${{ inputs.candidate_ids }}
           MAX_ARTICLES: ${{ inputs.max_articles }}
@@ -116,6 +134,8 @@ jobs:
 
       - name: Tests ausführen
         run: npm test
+        env:
+          GITHUB_STEP_SUMMARY: ${{ runner.temp }}/spielsignal-test-summary.md
 
       - name: Produktions-Build prüfen
         run: npm run build
@@ -135,10 +155,29 @@ jobs:
           AI_CALLS_SUCCESSFUL: ${{ steps.batch.outputs.aiCallsSuccessful }}
           AI_CALLS_FAILED: ${{ steps.batch.outputs.aiCallsFailed }}
           AI_STATUS: ${{ steps.batch.outputs.aiStatus }}
+          SELECTION_MODE: ${{ inputs.selection_mode }}
+          CANDIDATE_IDS: ${{ inputs.candidate_ids }}
+          FALLBACK_TO_QUEUE: ${{ inputs.fallback_to_queue }}
+          SECONDARY_ARTICLES_CHECKED: ${{ steps.batch.outputs.secondaryArticlesChecked }}
+          SECONDARY_ARTICLES_READ: ${{ steps.batch.outputs.secondaryArticlesRead }}
+          SECONDARY_SEARCH_STARTED_CANDIDATES: ${{ steps.batch.outputs.secondarySearchStartedCandidates }}
+          SECONDARY_SOURCE_REVIEW_DRAFTS: ${{ steps.batch.outputs.secondarySourceReviewDrafts }}
+          FINAL_STATUS_COUNTS: ${{ steps.batch.outputs.finalStatusCounts }}
         run: |
           {
+            if [ -s "$RUNNER_TEMP/spielsignal-daily-summary.md" ]; then
+              cat "$RUNNER_TEMP/spielsignal-daily-summary.md"
+              echo
+            fi
+            if [ -s "$RUNNER_TEMP/spielsignal-batch-selection-summary.md" ]; then
+              cat "$RUNNER_TEMP/spielsignal-batch-selection-summary.md"
+              echo
+            fi
             echo "## Editorial Batch"
             echo
+            echo "- Auswahlmodus: ${SELECTION_MODE:-manual}"
+            echo "- Manuelle Candidate IDs: ${CANDIDATE_IDS:-keine}"
+            echo "- Fallback aktiviert: ${FALLBACK_TO_QUEUE:-false}"
             echo "- Vollständige Entwürfe: ${COMPLETE_DRAFTS:-0}"
             echo "- Abgelehnte Kandidaten: ${REJECTED_CANDIDATES:-0}"
             echo "- Queue-Kandidaten gesamt: ${QUEUE_CANDIDATE_COUNT:-0}"
@@ -148,6 +187,10 @@ jobs:
             echo "- KI-Aufrufe erfolgreich: ${AI_CALLS_SUCCESSFUL:-0}"
             echo "- KI-Aufrufe fehlgeschlagen: ${AI_CALLS_FAILED:-0}"
             echo "- KI-Status: ${AI_STATUS:-nicht ausgewertet}"
+            echo "- Secondary-Source-Suche ausgeführt: ${SECONDARY_SEARCH_STARTED_CANDIDATES:-0} Kandidaten"
+            echo "- Gelesene Fachartikel: ${SECONDARY_ARTICLES_READ:-0} von ${SECONDARY_ARTICLES_CHECKED:-0}"
+            echo "- Secondary-Source-Review: ${SECONDARY_SOURCE_REVIEW_DRAFTS:-0}"
+            echo "- Ablehnungen nach finalem Status: ${FINAL_STATUS_COUNTS:-keine}"
             echo "- Artikelpfade: ${ARTICLE_PATHS:-keine}"
             echo "- Hero-Bildstatus: ${HERO_IMAGE_STATUSES:-keine vollständigen Entwürfe}"
             echo "- Manuelle Prüfpunkte: ${MANUAL_REVIEW_POINTS:-keine}"
@@ -161,7 +204,7 @@ jobs:
             else
               echo "Im Normalbetrieb genügt der Pull Request."
             fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          } > "$GITHUB_STEP_SUMMARY"
 
       - name: Branch und Commit erstellen
         if: steps.batch.outputs.completeDrafts != '0'

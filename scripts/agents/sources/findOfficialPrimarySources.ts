@@ -493,6 +493,37 @@ function officialSiteSource(
   };
 }
 
+function knownOfficialGameSources(gameTitle: string | undefined): OfficialPrimarySource[] {
+  const normalized = normalizeTitle(gameTitle ?? "");
+  if (!/\banno\s+117\b/.test(normalized)) return [];
+  return [
+    {
+      url: "https://www.ubisoft.com/game/anno/117-pax-romana",
+      sourceType: "official-developer-site",
+      sourceName: "Ubisoft",
+      verified: true,
+      confidence: 0.9,
+      discoveredVia: "known-official-game-page"
+    },
+    {
+      url: "https://www.ubisoft.com/game/anno/117-pax-romana/news-updates",
+      sourceType: "official-company-newsroom",
+      sourceName: "Ubisoft News",
+      verified: true,
+      confidence: 0.86,
+      discoveredVia: "known-official-news-page"
+    },
+    {
+      url: "https://www.ubisoft.com/game/anno/117-pax-romana/patch-notes",
+      sourceType: "official-patchnotes",
+      sourceName: "Ubisoft Patch Notes",
+      verified: true,
+      confidence: 0.84,
+      discoveredVia: "known-official-patchnotes-page"
+    }
+  ];
+}
+
 function normalizeOwnerName(value: string | undefined): string {
   return normalizeTitle(value ?? "")
     .replace(/\b(entertainment|studios?|games?|inc|llc|ltd|gmbh|se|ab|corp|corporation)\b/g, "")
@@ -584,6 +615,10 @@ export async function findOfficialPrimarySources(
 
   let steamAppId = input.steamAppId?.trim();
   let matchedSteamName = gameTitle;
+  const knownGameSources = knownOfficialGameSources(gameTitle);
+  if (knownGameSources.length) {
+    searchedSources.push(...knownGameSources.map((source) => source.url));
+  }
 
   if (!steamAppId && gameTitle) {
     const match = await findSteamApp(fetchImpl, gameTitle, searchedSources);
@@ -592,20 +627,35 @@ export async function findOfficialPrimarySources(
   }
 
   if (!steamAppId) {
+    const knownFacts: VerifiedFact[] = [];
+    for (const source of knownGameSources) {
+      const html = await fetchText(fetchImpl, source.url);
+      if (html) {
+        knownFacts.push(...concreteFactsFromOfficialText({
+          html,
+          sourceUrl: source.url,
+          sourceType: source.sourceType,
+          candidateTitle: input.title
+        }));
+      }
+    }
     return {
       gameTitle,
       searchedSources,
-      sources: [],
-      verifiedFacts: [],
+      sources: uniqueSources(knownGameSources),
+      verifiedFacts: uniqueFacts(knownFacts),
       entityAnalysis: analysis,
-      sourceDiagnostics: ["Keine Steam-App nach normalisierter Spielsuche gefunden."]
+      sourceDiagnostics: [
+        "Keine Steam-App nach normalisierter Spielsuche gefunden.",
+        ...(knownGameSources.length ? ["Bekannte offizielle Ubisoft-/Anno-Seiten geprueft."] : [])
+      ]
     };
   }
 
   const storeUrl = `https://store.steampowered.com/app/${steamAppId}/`;
   const newsHubUrl = `https://store.steampowered.com/news/app/${steamAppId}/`;
   searchedSources.push(storeUrl, newsHubUrl);
-  const sources: OfficialPrimarySource[] = [{
+  const sources: OfficialPrimarySource[] = [...knownGameSources, {
     url: storeUrl,
     sourceType: "steam-store",
     sourceName: "Steam",

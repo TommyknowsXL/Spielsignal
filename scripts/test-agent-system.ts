@@ -54,6 +54,10 @@ import {
   writeGitHubSummary
 } from "./agents/reportWriter";
 
+const inheritedStepSummary = process.env.GITHUB_STEP_SUMMARY;
+const isolatedStepSummaryRoot = await mkdtemp(join(tmpdir(), "spielsignal-agent-summary-"));
+process.env.GITHUB_STEP_SUMMARY = join(isolatedStepSummaryRoot, "github-step-summary.md");
+
 const baseCandidate: EditorialCandidate = {
   id: "candidate-1",
   createdAt: "2026-06-06T10:00:00.000Z",
@@ -771,6 +775,13 @@ assert.equal(
   hardwareQueue.filter((candidate) => candidate.category === "Hardware").length,
   2
 );
+
+await readFile(process.env.GITHUB_STEP_SUMMARY!, "utf8").catch(() => "");
+if (inheritedStepSummary) {
+  process.env.GITHUB_STEP_SUMMARY = inheritedStepSummary;
+} else {
+  delete process.env.GITHUB_STEP_SUMMARY;
+}
 
 console.log(
   "Agenten-Tests erfolgreich: sichere Basis, Top-10, Berichte, Teil-Ausfall und keine automatische Veröffentlichung."

@@ -34,7 +34,7 @@ const MAX_AVAILABLE_CANDIDATE_IDS = 20;
 export const DEFAULT_EDITORIAL_QUEUE_PATH = "src/data/editorial/latest-queue.json";
 const ARTICLE_TYPES = ["news-overview", "release-check", "free-promotion", "guide"] as const;
 type BatchArticleType = (typeof ARTICLE_TYPES)[number];
-export type BatchSelectionMode = "manual" | "auto-top";
+export type BatchSelectionMode = "manual" | "automatic" | "auto-top";
 
 export type CreateEditorialBatchOptions = {
   candidateIds?: string[];
@@ -131,6 +131,7 @@ export type EditorialBatchResult = {
   queueHash: string;
   secondaryArticlesChecked: number;
   secondaryArticlesRead: number;
+  secondarySearchStartedCandidates: number;
   secondarySourceReviewDrafts: number;
   aiCallsAttempted: number;
   aiCallsSuccessful: number;
@@ -427,7 +428,7 @@ export function selectBatchCandidates(input: {
   const summaryRanked = rankedEntries
     .filter((entry) => entry.interestScore >= 60)
     .map((entry) => entry.candidate);
-  if (input.selectionMode === "auto-top") {
+  if (input.selectionMode === "automatic" || input.selectionMode === "auto-top") {
     const selected = input.evaluateFullQueue ? autoRanked : summaryRanked.slice(0, input.maxArticles);
     if (!selected.length) {
       throw new Error(
@@ -438,10 +439,7 @@ export function selectBatchCandidates(input: {
   }
 
   const candidateIds = [...new Set((input.candidateIds ?? []).map((id) => id.trim()).filter(Boolean))];
-  if (!candidateIds.length && input.fallbackToQueue !== false) {
-    return input.evaluateFullQueue ? autoRanked : summaryRanked.slice(0, input.maxArticles);
-  }
-  if (!candidateIds.length) throw new Error("Im Auswahlmodus manual ist mindestens eine Candidate ID erforderlich.");
+  if (!candidateIds.length) throw new Error("selection_mode=manual benoetigt mindestens eine Candidate ID. Nutze selection_mode=automatic fuer Queue-Auswahl ohne IDs.");
   if (candidateIds.length > MAX_BATCH_ARTICLES) throw new Error("Maximal 5 Candidate IDs sind zulässig.");
   const manualCandidates = candidateIds.slice(0, input.maxArticles).map((id) => {
     const candidate = unpublishedCandidates.find((entry) => entry.id === id);
@@ -609,6 +607,7 @@ function contentBlocksFor(body: string): Array<Record<string, unknown>> {
 function emptySecondaryReview(): SecondarySourceReview {
   const media = supportedGamingMedia();
   return {
+    searchStarted: false,
     searchedGermanMedia: media.german,
     searchedEnglishMedia: media.english,
     articlesChecked: 0,
@@ -1152,8 +1151,14 @@ function reportMarkdown(result: EditorialBatchResult): string {
 - **Akzeptierte Primaerquellen:** ${entry.verifiedPrimarySourceUrls.join(", ") || "keine"}
 - **Abgelehnte Quellen / Diagnose:** ${entry.sourceDiagnostics?.join("; ") || "keine"}
 - **Extrahierte Fakten:** ${entry.verifiedFacts.join("; ") || "keine"}
+- **Secondary-Source-Suche gestartet:** ${entry.secondarySourceReview?.searchStarted ? "ja" : "nein"}
+- **Gepruefte Fachmedien:** ${[
+        ...(entry.secondarySourceReview?.searchedGermanMedia ?? []),
+        ...(entry.secondarySourceReview?.searchedEnglishMedia ?? [])
+      ].join(", ") || "keine"}
 - **Gefundene deutsche Fachmedien:** ${entry.secondarySourceReview?.articles.filter((article) => article.language === "de").map((article) => article.sourceName).join(", ") || "keine"}
 - **Gefundene englische Fachmedien:** ${entry.secondarySourceReview?.articles.filter((article) => article.language === "en").map((article) => article.sourceName).join(", ") || "keine"}
+- **Gefundene Fachartikel:** ${entry.secondarySourceReview?.articles.map((article) => `${article.sourceName}: ${article.url}`).join(", ") || "keine"}
 - **Volltext gelesen:** ${(entry.secondarySourceReview?.fullTextReadCount ?? 0) > 0 ? "ja" : "nein"}
 - **Lesefehler:** ${entry.secondarySourceReview?.readErrors.join("; ") || "keine"}
 - **Fakten aus Fachmedien:** ${entry.secondarySourceReview?.facts.map((fact) => `${fact.sourceName}: ${fact.statement}`).join("; ") || "keine"}
@@ -1163,6 +1168,7 @@ function reportMarkdown(result: EditorialBatchResult): string {
 - **Unabhaengige Sekundaerquellen:** ${entry.secondarySourceReview?.independentEstablishedSources ?? 0}
 - **Primaerquelle vorhanden:** ${entry.verifiedPrimarySources > 0 ? "ja" : "nein"}
 - **Sekundaerquellen-Fallback verwendet:** ${entry.secondarySourceFallbackUsed ? "ja" : "nein"}
+- **Secondary-Fallback bestanden:** ${entry.secondarySourceReview?.fallbackEligible ? "ja" : "nein"}
 - **Draft-Status:** ${entry.status}
 - **Publishability-Score:** ${entry.publishabilityScore ?? 0}
 - **KI-Status:** ${entry.aiInvoked ? "gestartet" : "nicht gestartet"} (${entry.aiResult})
@@ -1353,7 +1359,7 @@ export async function createEditorialBatch(
   const rootDirectory = options.rootDirectory ?? process.cwd();
   const maxArticles = Math.max(1, Math.min(MAX_BATCH_ARTICLES, options.maxArticles ?? MAX_BATCH_ARTICLES));
   const selectionMode = options.selectionMode ?? "manual";
-  if (!["manual", "auto-top"].includes(selectionMode)) {
+  if (!["manual", "automatic", "auto-top"].includes(selectionMode)) {
     throw new Error(`Nicht unterstützter Auswahlmodus: ${selectionMode}`);
   }
   if (!ARTICLE_TYPES.includes(options.articleTypeDefault)) {
@@ -1776,6 +1782,9 @@ export async function createEditorialBatch(
     sum + (entry.secondarySourceReview?.articlesChecked ?? 0), 0);
   const secondaryArticlesRead = results.reduce((sum, entry) =>
     sum + (entry.secondarySourceReview?.fullTextReadCount ?? 0), 0);
+  const secondarySearchStartedCandidates = results.filter((entry) =>
+    entry.secondarySourceReview?.searchStarted
+  ).length;
   const secondarySourceReviewDrafts = results.filter((entry) => entry.status === "secondary-source-review").length;
   const rejectedReportPath = rejected.length
     ? join(reportDirectory, `${reportDate}-${runId}-rejected.md`)
@@ -1802,6 +1811,7 @@ export async function createEditorialBatch(
     queueHash,
     secondaryArticlesChecked,
     secondaryArticlesRead,
+    secondarySearchStartedCandidates,
     secondarySourceReviewDrafts,
     aiCallsAttempted: aiResult.attempts ?? 0,
     aiCallsSuccessful: aiDraftMap.size,
@@ -1864,7 +1874,13 @@ if (executedDirectly) {
       rejectedCandidates: result.rejectedCandidates,
       secondaryArticlesChecked: result.secondaryArticlesChecked,
       secondaryArticlesRead: result.secondaryArticlesRead,
+      secondarySearchStartedCandidates: result.secondarySearchStartedCandidates,
       secondarySourceReviewDrafts: result.secondarySourceReviewDrafts,
+      finalStatusCounts: Object.entries(result.results.reduce<Record<string, number>>((counts, entry) => {
+        const status = entry.finalStatus ?? entry.status;
+        counts[status] = (counts[status] ?? 0) + 1;
+        return counts;
+      }, {})).map(([status, count]) => `${status}:${count}`).join(", "),
       queueCandidateCount: result.queueCandidateCount,
       queueGeneratedAt: result.queueGeneratedAt,
       queuePath: result.queuePath,
