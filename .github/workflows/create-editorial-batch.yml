@@ -35,11 +35,11 @@ on:
           - free-promotion
           - guide
       primary_source_urls:
-        description: "Optionale offizielle PrimÃ¤rquellen, kandidatenweise mit Semikolon trennen"
+        description: "Optionale offizielle Primärquellen, kandidatenweise mit Semikolon trennen"
         required: false
         type: string
       editorial_note:
-        description: "Allgemeine redaktionelle Notiz fÃ¼r den Lauf"
+        description: "Allgemeine redaktionelle Notiz für den Lauf"
         required: false
         type: string
       max_articles:
@@ -71,7 +71,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: AbhÃ¤ngigkeiten installieren
+      - name: Abhängigkeiten installieren
         run: npm ci
 
       - name: Frische Tagesqueue erzeugen
@@ -95,7 +95,7 @@ jobs:
           ARTICLE_TYPE_DEFAULT: ${{ inputs.article_type_default }}
           FALLBACK_TO_QUEUE: ${{ inputs.fallback_to_queue }}
 
-      - name: Batch-EntwÃ¼rfe erzeugen
+      - name: Batch-Entwürfe erzeugen
         id: batch
         run: npm run editorial:create-batch -- "$CANDIDATE_IDS" "$ARTICLE_TYPE_DEFAULT" "$PRIMARY_SOURCE_URLS" "$EDITORIAL_NOTE" "$MAX_ARTICLES" "$QUEUE_PATH" "$SELECTION_MODE" "$FALLBACK_TO_QUEUE"
         env:
@@ -114,13 +114,13 @@ jobs:
           AI_EDITORIAL_FAIL_WITHOUT_QUOTA: ${{ vars.AI_EDITORIAL_FAIL_WITHOUT_QUOTA || 'true' }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-      - name: Tests ausfÃ¼hren
+      - name: Tests ausführen
         run: npm test
 
-      - name: Produktions-Build prÃ¼fen
+      - name: Produktions-Build prüfen
         run: npm run build
 
-      - name: VerÃ¶ffentlichungsfÃ¤higkeit zusammenfassen
+      - name: Veröffentlichungsfähigkeit zusammenfassen
         if: always()
         env:
           COMPLETE_DRAFTS: ${{ steps.batch.outputs.completeDrafts }}
@@ -139,7 +139,7 @@ jobs:
           {
             echo "## Editorial Batch"
             echo
-            echo "- VollstÃ¤ndige EntwÃ¼rfe: ${COMPLETE_DRAFTS:-0}"
+            echo "- Vollständige Entwürfe: ${COMPLETE_DRAFTS:-0}"
             echo "- Abgelehnte Kandidaten: ${REJECTED_CANDIDATES:-0}"
             echo "- Queue-Kandidaten gesamt: ${QUEUE_CANDIDATE_COUNT:-0}"
             echo "- Queue-Erstellungszeit: ${QUEUE_GENERATED_AT:-unbekannt}"
@@ -149,17 +149,17 @@ jobs:
             echo "- KI-Aufrufe fehlgeschlagen: ${AI_CALLS_FAILED:-0}"
             echo "- KI-Status: ${AI_STATUS:-nicht ausgewertet}"
             echo "- Artikelpfade: ${ARTICLE_PATHS:-keine}"
-            echo "- Hero-Bildstatus: ${HERO_IMAGE_STATUSES:-keine vollstÃ¤ndigen EntwÃ¼rfe}"
-            echo "- Manuelle PrÃ¼fpunkte: ${MANUAL_REVIEW_POINTS:-keine}"
-            echo "- Artifact: nur fÃ¼r technische Diagnose erforderlich"
+            echo "- Hero-Bildstatus: ${HERO_IMAGE_STATUSES:-keine vollständigen Entwürfe}"
+            echo "- Manuelle Prüfpunkte: ${MANUAL_REVIEW_POINTS:-keine}"
+            echo "- Artifact: nur für technische Diagnose erforderlich"
             echo
             if [ "${COMPLETE_DRAFTS:-0}" = "0" ]; then
-              echo "## Batch nicht verÃ¶ffentlichungsfÃ¤hig"
+              echo "## Batch nicht veröffentlichungsfähig"
               echo
               echo "Keine vollstaendigen Artikel erzeugt. Details stehen im Batch-Report."
-              echo "Die GerÃ¼ste dienen ausschlieÃŸlich der Diagnose und dÃ¼rfen nicht verÃ¶ffentlicht werden."
+              echo "Die Gerüste dienen ausschließlich der Diagnose und dürfen nicht veröffentlicht werden."
             else
-              echo "Im Normalbetrieb genÃ¼gt der Pull Request."
+              echo "Im Normalbetrieb genügt der Pull Request."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -199,7 +199,7 @@ jobs:
           PR_URL=$(gh pr create \
             --base main \
             --head "$BRANCH_NAME" \
-            --title "Editorial Batch: $REPORT_DATE Â· $COMPLETE_DRAFTS vollstÃ¤ndige EntwÃ¼rfe" \
+            --title "Editorial Batch: $REPORT_DATE · $COMPLETE_DRAFTS vollständige Entwürfe" \
             --body-file "$REPORT_PATH")
           {
             echo
