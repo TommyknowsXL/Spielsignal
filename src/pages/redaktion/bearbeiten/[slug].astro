@@ -13,6 +13,7 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props as { entry: CollectionEntry<"drafts"> };
 const data = entry.data;
+const secondarySources = data.secondarySources ?? [];
 const action = Astro.url.searchParams.get("action");
 const draftPath = `src/content/drafts/${entry.id}`;
 const articlePath = `src/content/articles/${entry.id}`;
@@ -89,7 +90,7 @@ const patchHint = action === "approve"
         {data.status === "secondary-source-review" ? (
           <div class="editorial-security-note">
             <strong>Keine erreichbare Primaerquelle:</strong> Dieser Draft darf nicht freigegeben werden.
-            Verwendete Sekundaerquellen: {data.secondarySources.join(", ") || "keine"}. Manuelle Pruefung zwingend.
+            Verwendete Sekundaerquellen: {secondarySources.join(", ") || "keine"}. Manuelle Pruefung zwingend.
           </div>
         ) : null}
         <dl>

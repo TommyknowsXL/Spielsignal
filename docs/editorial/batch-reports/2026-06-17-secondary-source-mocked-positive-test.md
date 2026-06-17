@@ -1,7 +1,12 @@
 # SpielSignal Editorial Batch
 
-- **Workflow Run ID:** 2026-06-17-secondary-positive-dry-run
-- **Branch:** editorial-batch/2026-06-17-secondary-positive-dry-run
+## Simulation Hinweis
+
+Dieser Bericht ist ein gemockter Positivtest. Frostline Tactics, Mock PC Gamer und Mock Eurogamer sind Testdaten; es wurden keine realen Fachartikel von Mock PC Gamer oder Mock Eurogamer abgerufen.
+
+
+- **Workflow Run ID:** 2026-06-17-secondary-source-mocked-positive-test
+- **Branch:** editorial-batch/2026-06-17-secondary-source-mocked-positive-test
 - **Queue-Dateipfad:** .cache/secondary-source-dry-run-queue.json
 - **Queue-Erstellungszeit:** 2026-06-17T09:05:00.000Z
 - **Queue-Hash:** bca1b2ce1e164ca7
@@ -11,20 +16,20 @@
 - **KI-Aufrufe erfolgreich:** 0
 - **KI-Aufrufe fehlgeschlagen:** 0
 - **API-Key vorhanden:** nein oder KI deaktiviert
-- **KI-Status:** Optionale KI-Unterstützung ist deaktiviert.
+- **KI-Status:** Optionale KI-Unterstuetzung ist deaktiviert.
 - **Gepruefte Fachartikel:** 2
 - **Vollstaendig gelesene Fachartikel:** 2
 - **Sekundaerquellen-Review-Drafts:** 1
-- **Geprüfte Kandidaten:** 1
-- **Übersprungene Kandidaten:** 0
+- **Gepruefte Kandidaten:** 1
+- **Uebersprungene Kandidaten:** 0
 - **Duplikate:** 0
 - **Kandidaten ohne Nachrichtenanlass:** 0
 - **Kandidaten mit Entity-Fehler:** 0
 - **Kandidaten mit Source-Fehler:** 0
 - **Kandidaten mit Faktenmangel:** 0
-- **Vollständige Drafts:** 0
+- **Vollstaendige Drafts:** 0
 - **Recherche-Stubs:** 0
-- **Übersprungene Duplikate:** 0
+- **Uebersprungene Duplikate:** 0
 - **Abgelehnte Kandidaten:** 0
 
 ## Finalstatus-Bilanz
@@ -33,7 +38,7 @@
 
 - **secondary-source-review:** 1
 
-## Vollständige Kandidatenbilanz
+## Vollstaendige Kandidatenbilanz
 
 ### rss-frostline-secondary-review
 
@@ -44,15 +49,15 @@
 - **Thementyp:** game-update
 - **Suchbegriffe:** Frostline Tactics, Frostline Tactics Steam, Frostline Tactics patch notes, Frostline Tactics official
 - **Gepruefte Domains/Quellen:** search-term:Frostline Tactics, search-term:Frostline Tactics Steam, search-term:Frostline Tactics patch notes, search-term:Frostline Tactics official, source-group:steam-store, source-group:steam-appdetails, source-group:steam-news, source-group:developer-site, source-group:publisher-site, source-group:patchnotes, source-group:official-trailer, source-group:official-social, stage-a:Frostline Tactics Update 1.2 bringt Demo und Steam-Termin, stage-a:Frostline Tactics, stage-a:Frostline Tactics game-update, stage-b:Frostline Tactics official, stage-b:Frostline Tactics news, stage-b:Frostline Tactics update, stage-b:Frostline Tactics patch notes, stage-b:Frostline Tactics release, stage-b:Frostline Tactics investor relations, stage-b:Frostline Tactics press release, stage-b:Frostline Tactics game-update, stage-c:steam-store|steam-appdetails|steam-news|developer-site|publisher-site|patchnotes|official-trailer|official-social, https://store.steampowered.com/api/storesearch/?term=Frostline+Tactics&l=german&cc=DE
-- **Gefundene URLs:** https://www.eurogamer.net/frostline-update-12
+- **Gefundene URLs:** Mock PC Gamer: mock://pcgamer/frostline-update-12, Mock Eurogamer: mock://eurogamer/frostline-update-12
 - **Akzeptierte Primaerquellen:** keine
 - **Abgelehnte Quellen / Diagnose:** Keine Steam-App nach normalisierter Spielsuche gefunden.; Mindestens zwei unabhaengige etablierte Fachmedien bestaetigen denselben Kernfakt; keine erreichbare Primaerquelle wird behauptet.
 - **Extrahierte Fakten:** keine
 - **Gefundene deutsche Fachmedien:** keine
-- **Gefundene englische Fachmedien:** PC Gamer, Eurogamer
+- **Gefundene englische Fachmedien:** Mock PC Gamer, Mock Eurogamer
 - **Volltext gelesen:** ja
 - **Lesefehler:** keine
-- **Fakten aus Fachmedien:** PC Gamer: Frostline Tactics update 1.2 will launch on PC and Steam on July 24 with a playable demo and balance changes.; Eurogamer: Frostline Tactics update 1.2 will launch on PC and Steam on July 24 with a playable demo and balance changes.
+- **Fakten aus Fachmedien:** Mock PC Gamer: Frostline Tactics update 1.2 will launch on PC and Steam on July 24 with a playable demo and balance changes.; Mock Eurogamer: Frostline Tactics update 1.2 will launch on PC and Steam on July 24 with a playable demo and balance changes.
 - **Verfolgte Originalquellen:** keine
 - **Uebereinstimmungen:** Frostline Tactics update 1.2 will launch on PC and Steam on July 24 with a playable demo and balance changes.; Frostline Tactics update 1.2 will launch on PC and Steam on July 24 with a playable demo and balance changes.
 - **Widersprueche:** keine
@@ -68,7 +73,7 @@
 
 ## Eindeutige Draft-Dateien
 
-- src/content/drafts/frostline-tactics-news-overview.md
+- scripts/fixtures/editorial/secondary-source-review/frostline-tactics-news-overview.md
 
 ## Deduplizierung
 
@@ -99,17 +104,17 @@ Keine Steam-News-Hub-Quelle bewertet.
 
 ### rss-frostline-secondary-review
 
-- **Radarquelle:** PC Gamer RSS (https://www.pcgamer.com/frostline-update-12/)
-- **Sekundärquellen:** https://www.pcgamer.com/frostline-update-12/
-- **Verifizierte Primärquellen:** keine
+- **Radarquelle:** Mock PC Gamer RSS (mock://pcgamer/frostline-update-12)
+- **Sekundaerquellen:** Mock PC Gamer: mock://pcgamer/frostline-update-12, Mock Eurogamer: mock://eurogamer/frostline-update-12
+- **Verifizierte Primaerquellen:** keine
 - **Eigene redaktionelle Einordnung:** nicht erzeugt, weil Gate nicht veroeffentlichungsreif war
 
 
-## Fertige Entwürfe
+## Fertige Entwuerfe
 
-Keine vollständigen Entwürfe.
+Keine vollstaendigen Entwuerfe.
 
-> **Keine vollständigen Artikel erzeugt. Gerüste dienen ausschließlich der Diagnose und erzeugen keinen Pull Request.**
+> **Keine vollstaendigen Artikel erzeugt. Gerueste dienen ausschliesslich der Diagnose und erzeugen keinen Pull Request.**
 
 
 ## Recherche-Stubs / Needs Source Review
@@ -125,12 +130,12 @@ Keine Recherche-Stubs.
 
 Keine abgelehnten Themen.
 
-## Vor Merge prüfen
+## Vor Merge pruefen
 
-- [ ] Ist die Überschrift interessant?
-- [ ] Ist der Text leserfreundlich?
-- [ ] Stimmen die Fakten?
-- [ ] Ist das Bild passend?
-- [ ] Sind die Quellen sauber?
-- [ ] Keine internen Angaben sichtbar?
-- [ ] Veröffentlichen oder überarbeiten?
+- [ ] Ist die Ueberschrift interessant
+- [ ] Ist der Text leserfreundlich
+- [ ] Stimmen die Fakten
+- [ ] Ist das Bild passend
+- [ ] Sind die Quellen sauber
+- [ ] Keine internen Angaben sichtbar
+- [ ] Veroeffentlichen oder ueberarbeiten

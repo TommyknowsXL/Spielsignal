@@ -1110,7 +1110,7 @@ function reportMarkdown(result: EditorialBatchResult): string {
   const sourceRoleDetails = result.results.map((entry) => `### ${entry.candidateId}
 
 - **Radarquelle:** ${entry.radarSourceName} (${entry.radarSourceUrl})
-- **Sekundärquellen:** ${entry.radarSourceUrl}
+- **Sekundaerquellen:** ${entry.secondarySourceReview?.articles.map((article) => `${article.sourceName}: ${article.url}`).join(", ") || entry.radarSourceUrl}
 - **Verifizierte Primärquellen:** ${entry.verifiedPrimarySourceUrls.join(", ") || "keine"}
 - **Eigene redaktionelle Einordnung:** ${entry.status === "draft" ? "im Draft vorhanden und manuell zu pruefen" : "nicht erzeugt, weil Gate nicht veroeffentlichungsreif war"}
 `).join("\n");
@@ -1134,7 +1134,12 @@ function reportMarkdown(result: EditorialBatchResult): string {
   const allCandidateDetails = result.results
     .slice()
     .sort((left, right) => left.candidateId.localeCompare(right.candidateId))
-    .map((entry) => `### ${entry.candidateId}
+    .map((entry) => {
+      const foundUrls = [...new Set([
+        ...entry.foundPrimarySourceUrls,
+        ...(entry.secondarySourceReview?.articles.map((article) => `${article.sourceName}: ${article.url}`) ?? [])
+      ])];
+      return `### ${entry.candidateId}
 
 - **Originaltitel:** ${entry.title}
 - **Bereinigter Titel:** ${entry.entityAnalysis?.cleanedTitle ?? entry.title}
@@ -1143,7 +1148,7 @@ function reportMarkdown(result: EditorialBatchResult): string {
 - **Thementyp:** ${entry.entityAnalysis?.topicType ?? "unknown"}
 - **Suchbegriffe:** ${entry.entityAnalysis?.searchTerms.join(", ") || "keine"}
 - **Gepruefte Domains/Quellen:** ${entry.searchedOfficialSources.join(", ") || "keine"}
-- **Gefundene URLs:** ${entry.foundPrimarySourceUrls.join(", ") || "keine"}
+- **Gefundene URLs:** ${foundUrls.join(", ") || "keine"}
 - **Akzeptierte Primaerquellen:** ${entry.verifiedPrimarySourceUrls.join(", ") || "keine"}
 - **Abgelehnte Quellen / Diagnose:** ${entry.sourceDiagnostics?.join("; ") || "keine"}
 - **Extrahierte Fakten:** ${entry.verifiedFacts.join("; ") || "keine"}
@@ -1163,7 +1168,8 @@ function reportMarkdown(result: EditorialBatchResult): string {
 - **KI-Status:** ${entry.aiInvoked ? "gestartet" : "nicht gestartet"} (${entry.aiResult})
 - **Finaler Status:** ${entry.finalStatus ?? entry.status}
 - **Finaler Ablehnungsgrund:** ${entry.status === "draft" ? "keiner" : entry.decisionReason}
-`)
+`;
+    })
     .join("\n");
   const completeDetails = complete.map((entry) => {
     const openPoints = [

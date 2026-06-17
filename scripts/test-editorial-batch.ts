@@ -1637,7 +1637,7 @@ assert.match(readerProvider, /keinen Quellenabschnitt/);
 const previewRoute = await readFile("src/pages/redaktion/vorschau/[slug].astro", "utf8");
 assert.match(previewRoute, /process\.env\.VERCEL_ENV !== "preview"/);
 assert.match(previewRoute, /robots="noindex, nofollow"/);
-assert.match(previewRoute, /ENTWURF · NICHT VERÖFFENTLICHT/);
+assert.match(previewRoute, /ENTWURF - NICHT VEROEFFENTLICHT/);
 assert.doesNotMatch(previewRoute, /getCollection\("articles"/);
 
 assert.match(previewRoute, /secondary-source-review/);
@@ -1762,12 +1762,20 @@ assert.equal(secondaryBatch.results[0].status, "secondary-source-review");
 assert.equal(secondaryBatch.results[0].secondarySourceFallbackUsed, true);
 assert.equal(secondaryBatch.results[0].aiInvoked, false);
 const secondaryDraft = await readFile(secondaryBatch.results[0].filePath!, "utf8");
+const secondaryReport = await readFile(secondaryBatch.reportPath, "utf8");
 assert.match(secondaryDraft, /^status: "secondary-source-review"$/m);
 assert.match(secondaryDraft, /Keine erreichbare Primaerquelle/);
 assert.match(secondaryDraft, /secondarySources:/);
+assert.match(secondaryDraft, /https:\/\/www\.pcgamer\.com\/test-quest-update\//);
+assert.match(secondaryDraft, /https:\/\/www\.eurogamer\.net\/test-quest-update/);
 assert.match(secondaryDraft, /Test Quest update 1\.1 will launch on PC and Steam on July 20 with a new demo/);
 assert.doesNotMatch(secondaryDraft, /^title: "Test Quest bekommt Update 1\.1"$/m);
+assert.match(secondaryReport, /Gefundene URLs:[\s\S]*PC Gamer: https:\/\/www\.pcgamer\.com\/test-quest-update\//);
+assert.match(secondaryReport, /Gefundene URLs:[\s\S]*Eurogamer: https:\/\/www\.eurogamer\.net\/test-quest-update/);
+assert.match(secondaryReport, /Sekundaerquellen:[\s\S]*PC Gamer: https:\/\/www\.pcgamer\.com\/test-quest-update\//);
+assert.match(secondaryReport, /Sekundaerquellen:[\s\S]*Eurogamer: https:\/\/www\.eurogamer\.net\/test-quest-update/);
 await cleanupTestRoot(secondaryRoot);
+await assert.rejects(readFile("src/content/drafts/frostline-tactics-news-overview.md", "utf8"));
 const subnauticaEditorialDraft = await readFile(
   "src/content/drafts/subnautica-2-news-overview.md",
   "utf8"

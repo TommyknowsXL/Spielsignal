@@ -87,10 +87,10 @@ const qualityStatus = (draft: typeof drafts[number]) => {
             {qualityStatus(draft)}
             {draft.data.status === "secondary-source-review" ? (
               <small>
-                Sekundaerquellen: {draft.data.secondarySources.join(", ") || "keine"}
-                {" | "}Bestaetigte Kernfakten: {draft.data.secondarySourceFacts.filter((fact) => fact.corroborated && !fact.contradicted).map((fact) => fact.statement).join(" / ") || "keine"}
-                {" | "}Unbestaetigt: {draft.data.secondarySourceFacts.filter((fact) => !fact.corroborated || fact.isRumor).map((fact) => fact.statement).join(" / ") || "keine"}
-                {" | "}Widersprueche: {draft.data.secondarySourceWarnings.filter((warning) => /widerspruch/i.test(warning)).join(" / ") || "keine"}
+                Sekundaerquellen: {(draft.data.secondarySources ?? []).join(", ") || "keine"}
+                {" | "}Bestaetigte Kernfakten: {(draft.data.secondarySourceFacts ?? []).filter((fact) => fact.corroborated && !fact.contradicted).map((fact) => fact.statement).join(" / ") || "keine"}
+                {" | "}Unbestaetigt: {(draft.data.secondarySourceFacts ?? []).filter((fact) => !fact.corroborated || fact.isRumor).map((fact) => fact.statement).join(" / ") || "keine"}
+                {" | "}Widersprueche: {(draft.data.secondarySourceWarnings ?? []).filter((warning) => /widerspruch/i.test(warning)).join(" / ") || "keine"}
               </small>
             ) : null}
           </span>
