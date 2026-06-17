@@ -16,6 +16,9 @@ export async function getStaticPaths() {
 const { entry } = Astro.props as { entry: CollectionEntry<"drafts"> };
 const { Content } = await render(entry);
 const data = entry.data;
+const secondarySources = data.secondarySources ?? [];
+const secondarySourceFacts = data.secondarySourceFacts ?? [];
+const secondarySourceWarnings = data.secondarySourceWarnings ?? [];
 const formattedDate = data.createdAt.toLocaleDateString("de-DE", {
   day: "2-digit",
   month: "long",
@@ -32,6 +35,7 @@ const sourceLabel = (source: string) => {
   if (host.includes("steampowered.com")) {
     return source.includes("/news/") ? "Offizielle Steam-News" : "Offizielle Steam-Store-Seite";
   }
+  if (secondarySources.includes(source)) return `Sekundaerquelle: ${host}`;
   return `Offizielle Quelle: ${host}`;
 };
 ---
@@ -43,7 +47,12 @@ const sourceLabel = (source: string) => {
   type="article"
   robots="noindex, nofollow"
 >
-  <div class="draft-preview-banner" role="status">ENTWURF · NICHT VERÖFFENTLICHT</div>
+  <div class="draft-preview-banner" role="status">ENTWURF - NICHT VEROEFFENTLICHT</div>
+  {data.status === "secondary-source-review" ? (
+    <div class="draft-preview-banner draft-preview-banner--warning" role="alert">
+      Keine erreichbare Primaerquelle - Sekundaerquellen-Review - manuelle Pruefung zwingend
+    </div>
+  ) : null}
   <header class="article-header container">
     <nav class="breadcrumbs" aria-label="Brotkrumen">
       <a href="/redaktion/">Redaktion</a><span>/</span><span>Vorschau</span>
@@ -53,8 +62,8 @@ const sourceLabel = (source: string) => {
     <p class="article-deck">{data.summary}</p>
     <div class="meta article-meta">
       <time datetime={data.createdAt.toISOString()}>{formattedDate}</time>
-      <span>Â·</span><span>{data.author}</span>
-      <span>Â·</span><span>{readingMinutes} Min. Lesezeit</span>
+      <span> - </span><span>{data.author}</span>
+      <span> - </span><span>{readingMinutes} Min. Lesezeit</span>
     </div>
   </header>
 
@@ -83,8 +92,11 @@ const sourceLabel = (source: string) => {
       </div>
       <section class="sources-box">
         <p class="eyebrow">Quellen</p>
+        {data.status === "secondary-source-review" ? (
+          <p>Dieser Draft nutzt Sekundaerquellen und behauptet keine offizielle Bestaetigung.</p>
+        ) : null}
         <ul>
-          {data.primarySources.map((source) => (
+          {[...data.primarySources, ...secondarySources].map((source) => (
             <li>
               <a class="text-link" href={source} target="_blank" rel="noopener noreferrer">
                 {sourceLabel(source)}
@@ -103,6 +115,19 @@ const sourceLabel = (source: string) => {
           <div><dt>SEO-Titel</dt><dd>{data.seoTitle}</dd></div>
           <div><dt>SEO-Beschreibung</dt><dd>{data.seoDescription}</dd></div>
         </dl>
+        {data.status === "secondary-source-review" ? (
+          <>
+            <h2>Sekundaerquellen-Pruefung</h2>
+            <ul>
+              <li>Keine erreichbare Primaerquelle.</li>
+              <li>Verwendete Sekundaerquellen: {secondarySources.join(", ") || "keine"}</li>
+              <li>Bestaetigte Kernfakten: {secondarySourceFacts.filter((fact) => fact.corroborated && !fact.contradicted).map((fact) => fact.statement).join(" / ") || "keine"}</li>
+              <li>Unbestaetigte Angaben: {secondarySourceFacts.filter((fact) => !fact.corroborated || fact.isRumor).map((fact) => fact.statement).join(" / ") || "keine"}</li>
+              <li>Widersprueche: {secondarySourceWarnings.filter((warning) => /widerspruch/i.test(warning)).join(" / ") || "keine"}</li>
+              <li>Manuelle Pruefung zwingend; keine automatische Freigabe.</li>
+            </ul>
+          </>
+        ) : null}
         {data.editorialNotes?.length ? (
           <>
             <h2>Interne Hinweise</h2>

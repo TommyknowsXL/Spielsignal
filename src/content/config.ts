@@ -127,8 +127,25 @@ export const articleSchema = articleFields
 export const draftSchema = articleFields
   .omit({ status: true, primarySources: true })
   .extend({
-    status: z.enum(["draft", "review", "ready-for-review", "needs-source-review", "approved", "rejected"]),
-    primarySources: z.array(z.string().url()).default([])
+    status: z.enum(["draft", "review", "ready-for-review", "needs-source-review", "secondary-source-review", "approved", "rejected"]),
+    primarySources: z.array(z.string().url()).default([]),
+    secondarySources: z.array(z.string().url()).default([]),
+    secondarySourceFacts: z.array(z.object({
+      normalizedFact: z.string(),
+      statement: z.string(),
+      sourceUrl: z.string().url(),
+      sourceName: z.string(),
+      sourceKind: z.literal("secondary"),
+      publishedAt: z.string().optional(),
+      confidence: z.enum(["high", "medium", "low", "unverified"]),
+      corroborated: z.boolean(),
+      officiallyConfirmed: z.boolean(),
+      contradicted: z.boolean(),
+      evidenceNote: z.string(),
+      isRumor: z.boolean(),
+      isOpinion: z.boolean()
+    })).default([]),
+    secondarySourceWarnings: z.array(z.string()).default([])
   })
   .refine((entry) => entry.articleType !== "test" || Boolean(entry.playedMinutes), {
     message: "Ein Test benötigt eine dokumentierte Spielzeit größer als 0.",

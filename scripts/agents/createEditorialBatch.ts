@@ -14,6 +14,11 @@ import {
   type OfficialPrimarySource,
   type VerifiedFact
 } from "./sources/findOfficialPrimarySources";
+import {
+  reviewSecondarySources,
+  supportedGamingMedia,
+  type SecondarySourceReview
+} from "./sources/findSecondarySources";
 import { runFactCheck } from "./review/factCheck";
 import { runImageCheck } from "./review/imageCheck";
 import { runOriginalityCheck } from "./review/originalityCheck";
@@ -62,6 +67,8 @@ export type BatchCandidateResult = {
   foundPrimarySources: number;
   verifiedPrimarySources: number;
   verifiedFacts: string[];
+  secondarySourceReview?: SecondarySourceReview;
+  secondarySourceFallbackUsed?: boolean;
   steamAppId?: string;
   heroImageStatus: string;
   sourceGatePassed: boolean;
@@ -69,7 +76,7 @@ export type BatchCandidateResult = {
   aiResult: string;
   readerEditResult: string;
   imageSource: string;
-  status: "draft" | "needs-source-review" | "rejected";
+  status: "draft" | "needs-source-review" | "secondary-source-review" | "rejected";
   filePath?: string;
   articlePath?: string;
   previewPath?: string;
@@ -80,17 +87,22 @@ export type BatchCandidateResult = {
   sourceDiagnostics?: string[];
   publishabilityScore?: number;
   finalStatus?:
+    | "draft-complete"
     | "source-gate-rejected"
     | "entity-needs-resolution"
     | "insufficient-verified-facts"
     | "duplicate"
     | "opinion-only"
+    | "steam-ranking-without-news"
+    | "secondary-source-review"
+    | "secondary-source-rejected"
     | "image-gate-rejected"
+    | "skipped-after-target-reached"
+    | "technical-error"
     | "ai-not-started"
     | "ai-request-failed"
     | "ai-response-invalid"
-    | "draft-quality-rejected"
-    | "draft-complete";
+    | "draft-quality-rejected";
 };
 
 type DedupedCandidate = {
@@ -109,10 +121,17 @@ export type EditorialBatchResult = {
   researchStubs: number;
   skippedDuplicates: number;
   rejectedCandidates: number;
+  noNewsEventCandidates: number;
+  entityErrorCandidates: number;
+  sourceErrorCandidates: number;
+  insufficientFactCandidates: number;
   queueCandidateCount: number;
   queueGeneratedAt: string;
   queuePath: string;
   queueHash: string;
+  secondaryArticlesChecked: number;
+  secondaryArticlesRead: number;
+  secondarySourceReviewDrafts: number;
   aiCallsAttempted: number;
   aiCallsSuccessful: number;
   aiCallsFailed: number;
@@ -157,6 +176,7 @@ type EnrichedCandidateSources = {
   searchedSources: string[];
   sources: OfficialPrimarySource[];
   verifiedFacts: VerifiedFact[];
+  secondaryReview: SecondarySourceReview;
   entityAnalysis?: CandidateEntityAnalysis;
   sourceDiagnostics: string[];
 };
@@ -204,6 +224,10 @@ async function enrichCandidateSources(
     steamAppId: candidate.steamAppId,
     sourceUrl: candidate.sourceUrl,
     entityAnalysis
+  }, { fetchImpl });
+  const secondaryReview = await reviewSecondarySources({
+    candidateTitle: candidate.title,
+    sourceUrls: [candidate.sourceUrl, ...supplied]
   }, { fetchImpl });
   const manualSources = suppliedOfficialSources(supplied, false);
   const nonRssSource = candidate.sourceType !== "rss-news"
@@ -255,6 +279,7 @@ async function enrichCandidateSources(
     searchedSources: discovered.searchedSources,
     sources,
     verifiedFacts: [...discovered.verifiedFacts, ...fallbackFacts],
+    secondaryReview,
     entityAnalysis: discovered.entityAnalysis ?? entityAnalysis,
     sourceDiagnostics: discovered.sourceDiagnostics
   };
@@ -381,10 +406,12 @@ export function selectBatchCandidates(input: {
   const unpublishedCandidates = input.queue.candidates.filter(
     (candidate) => !input.publishedSlugs?.has(candidateDraftSlug(candidate, articleType))
   );
-  const rankedEntries = unpublishedCandidates
-    .filter((candidate) =>
+  const rankableCandidates = input.evaluateFullQueue
+    ? unpublishedCandidates
+    : unpublishedCandidates.filter((candidate) =>
       candidate.sourceType !== "steam-top-seller" || hasConcreteNewsEvent(candidate)
-    )
+    );
+  const rankedEntries = rankableCandidates
     .map((candidate) => ({
       candidate,
       interestScore: runReaderInterestCheck(candidate).score,
@@ -579,6 +606,26 @@ function contentBlocksFor(body: string): Array<Record<string, unknown>> {
   return blocks;
 }
 
+function emptySecondaryReview(): SecondarySourceReview {
+  const media = supportedGamingMedia();
+  return {
+    searchedGermanMedia: media.german,
+    searchedEnglishMedia: media.english,
+    articlesChecked: 0,
+    fullTextReadCount: 0,
+    readErrors: [],
+    articles: [],
+    facts: [],
+    corroboratedFacts: [],
+    unconfirmedFacts: [],
+    contradictions: [],
+    followedOriginalSources: [],
+    independentEstablishedSources: 0,
+    fallbackEligible: false,
+    fallbackReason: "Sekundaerquellen-Pruefung nicht ausgefuehrt."
+  };
+}
+
 function buildDraft(input: {
   candidate: EditorialCandidate;
   articleType: BatchArticleType;
@@ -670,6 +717,109 @@ ${sourceLines}
     hasOfficialFallbackImage: heroImage.startsWith("/images/")
   };
   return { markdown, reviewInput, status };
+}
+
+function buildSecondarySourceReviewDraft(input: {
+  candidate: EditorialCandidate;
+  articleType: BatchArticleType;
+  timestamp: string;
+  review: SecondarySourceReview;
+  editorialNote?: string;
+  readerInterestScore: number;
+}): {
+  markdown: string;
+  reviewInput: DraftReviewInput;
+  status: "secondary-source-review";
+} {
+  const candidate = input.candidate;
+  const title = `${candidate.gameTitle ?? candidate.title}: Sekundaerquellen-Pruefung`;
+  const summary = "Keine erreichbare Primaerquelle: Dieser Entwurf basiert nur auf abgeglichenen Fachmedien und verlangt zwingend manuelle Pruefung.";
+  const slug = candidateDraftSlug(candidate, input.articleType);
+  const fallbackImage = candidate.imagePath || "/images/categories/news-default.svg";
+  const secondarySources = input.review.articles.filter((article) => article.fullTextRead).map((article) => article.url);
+  const confirmedFacts = input.review.corroboratedFacts.map((fact) => fact.statement);
+  const unconfirmedFacts = input.review.unconfirmedFacts.map((fact) => fact.statement);
+  const body = [
+    "## Keine erreichbare Primaerquelle",
+    "Dieser Draft ist nicht freigabefaehig. Er darf nur als Arbeitsgrundlage in der Redaktion verwendet werden, weil keine belastbare offizielle Primaerquelle erreicht wurde.",
+    "## Bestaetigte Kernfakten aus Fachmedien",
+    ...(confirmedFacts.length ? confirmedFacts.slice(0, 6).map((fact) => `- ${fact}`) : ["- Keine belastbar uebereinstimmenden Kernfakten."]),
+    "## Unbestaetigte Angaben",
+    ...(unconfirmedFacts.length ? unconfirmedFacts.slice(0, 6).map((fact) => `- ${fact}`) : ["- Keine weiteren unbestaetigten Angaben dokumentiert."]),
+    "## Widersprueche",
+    ...(input.review.contradictions.length ? input.review.contradictions.map((item) => `- ${item}`) : ["- Keine Widersprueche in den gelesenen Volltexten erkannt."]),
+    "## Eigene Einordnung",
+    "Die Redaktion muss die Lage neu pruefen, Originalquellen nachrecherchieren und unsichere Aussagen klar kennzeichnen. Keine Aussage darf als offiziell bestaetigt formuliert werden."
+  ].join("\n\n");
+  const contentBlocks = contentBlocksFor(body);
+  const notes = [
+    ...(input.editorialNote?.trim() ? [input.editorialNote.trim()] : []),
+    "secondary-source-review: Keine erreichbare Primaerquelle.",
+    "Manuelle Pruefung zwingend; keine automatische Freigabe.",
+    `Unabhaengige etablierte Sekundaerquellen: ${input.review.independentEstablishedSources}.`,
+    `Fallback-Grund: ${input.review.fallbackReason}.`,
+    ...(input.readerInterestScore < 75 ? ["Leserinteresse 60 bis 74: redaktionell pruefen."] : []),
+    ...candidate.openChecks
+  ];
+  const sourceLines = secondarySources.map((source) => `- [${sourceLabel(source)}](${source})`).join("\n");
+  const markdown = normalizeEditorialDashes(`---
+title: ${JSON.stringify(title)}
+slug: ${JSON.stringify(slug)}
+articleType: ${JSON.stringify(input.articleType)}
+status: "secondary-source-review"
+createdAt: ${JSON.stringify(input.timestamp)}
+updatedAt: ${JSON.stringify(input.timestamp)}
+author: "SpielSignal-Redaktion"
+${candidate.gameTitle ? `gameTitle: ${JSON.stringify(candidate.gameTitle)}\n` : ""}${candidate.steamAppId ? `steamAppId: ${JSON.stringify(candidate.steamAppId)}\n` : ""}tags: []
+summary: ${JSON.stringify(summary)}
+seoTitle: ${JSON.stringify(`${title} | SpielSignal`)}
+seoDescription: ${JSON.stringify(summary)}
+heroImage: ${JSON.stringify(fallbackImage)}
+heroImageAlt: ${JSON.stringify(`Platzhalterbild zu ${title}`)}
+heroImageSourceName: "SpielSignal"
+heroImageSourceType: "spielsignal-fallback"
+imageRightsStatus: "fallback"
+contentBlocks: ${JSON.stringify(contentBlocks)}
+externalTipSources: ${JSON.stringify(candidate.sourceType === "rss-news" ? [candidate.sourceUrl] : [])}
+primarySources: []
+secondarySources: ${JSON.stringify(secondarySources)}
+secondarySourceFacts: ${JSON.stringify(input.review.facts)}
+secondarySourceWarnings: ${JSON.stringify([
+    "Keine erreichbare Primaerquelle",
+    ...input.review.readErrors,
+    ...input.review.contradictions
+  ])}
+editorialNotes: ${JSON.stringify(notes)}
+---
+
+> **Keine erreichbare Primaerquelle. Dieser Draft ist nur eine Sekundaerquellen-Pruefung und kann nicht automatisch freigegeben werden.**
+
+${body}
+
+## Quellen
+
+${sourceLines || "- Keine vollstaendig gelesenen Sekundaerquellen."}
+`);
+  const readerText = normalizeEditorialDashes(`${body}\n\n## Quellen\n\n${sourceLines}`);
+  const reviewInput: DraftReviewInput = {
+    candidateId: candidate.id,
+    title,
+    articleType: input.articleType,
+    markdown,
+    readerText,
+    primarySources: [],
+    externalTipSources: candidate.sourceType === "rss-news" ? [candidate.sourceUrl] : [],
+    imageStatus: "fallback",
+    imageSourceType: "spielsignal-fallback",
+    heroImage: fallbackImage,
+    slug,
+    seoTitle: `${title} | SpielSignal`,
+    seoDescription: summary,
+    summary,
+    wordCount: readerText.trim().split(/\s+/).length,
+    hasOfficialFallbackImage: true
+  };
+  return { markdown, reviewInput, status: "secondary-source-review" };
 }
 
 function runReviews(input: DraftReviewInput): Record<string, EditorialReviewResult> {
@@ -840,6 +990,7 @@ function finalStatusFor(input: {
   if (input.complete) return "draft-complete";
   if (input.duplicate) return "duplicate";
   const analysis = input.entry.entityAnalysis;
+  if (input.candidate.sourceType === "steam-top-seller" && !hasConcreteEvent(input.candidate)) return "steam-ranking-without-news";
   if (analysis?.needsResolution) return "entity-needs-resolution";
   if (analysis?.topicType === "opinion/community-topic" && concreteEventFacts(input.entry).length < 2) return "opinion-only";
   if (input.gateDetails && input.gateDetails.concreteFacts.length < 2) return "insufficient-verified-facts";
@@ -850,12 +1001,72 @@ function finalStatusFor(input: {
   return "source-gate-rejected";
 }
 
+function skippedQueueCandidateResult(input: {
+  candidate: EditorialCandidate;
+  articleType: BatchArticleType;
+  reason: string;
+  finalStatus: NonNullable<BatchCandidateResult["finalStatus"]>;
+}): BatchCandidateResult {
+  const readerInterest = runReaderInterestCheck(input.candidate);
+  const entityAnalysis = analyzeEditorialCandidate(input.candidate);
+  return {
+    candidateId: input.candidate.id,
+    title: input.candidate.title,
+    articleType: input.articleType,
+    radarSourceName: input.candidate.sourceName,
+    radarSourceUrl: input.candidate.sourceUrl,
+    readerInterest,
+    reviews: {},
+    searchedOfficialSources: entityAnalysis.searchTerms.map((term) => `search-term:${term}`),
+    primarySources: [],
+    foundPrimarySourceUrls: [],
+    verifiedPrimarySourceUrls: [],
+    foundPrimarySources: 0,
+    verifiedPrimarySources: 0,
+    verifiedFacts: [],
+    steamAppId: input.candidate.steamAppId,
+    heroImageStatus: input.candidate.imageCandidateUrl ? "Bildkandidat vorhanden, nicht geprueft" : "Hero-Bild nicht geprueft",
+    sourceGatePassed: false,
+    aiInvoked: false,
+    aiResult: "Nicht aufgerufen: Kandidat wurde vor der KI-Stufe bilanziert.",
+    readerEditResult: "Nicht aufgerufen.",
+    imageSource: input.candidate.imageSourcePageUrl ?? input.candidate.imagePath ?? "Kein Bild",
+    status: "rejected",
+    decisionReason: input.reason,
+    recommendation: "Im Report sichtbar halten und bei Bedarf separat recherchieren.",
+    missingFacts: ["Keine vollstaendige Enrichment-Pruefung dokumentiert."],
+    entityAnalysis,
+    secondarySourceReview: emptySecondaryReview(),
+    secondarySourceFallbackUsed: false,
+    sourceDiagnostics: [input.reason],
+    publishabilityScore: publishabilityScore({
+      candidate: input.candidate,
+      entry: {
+        candidate: input.candidate,
+        searchedSources: [],
+        sources: [],
+        verifiedFacts: [],
+        secondaryReview: emptySecondaryReview(),
+        entityAnalysis,
+        sourceDiagnostics: [input.reason]
+      },
+      readerInterest,
+      gateDetails: {
+        passed: false,
+        reason: input.reason,
+        concreteFacts: []
+      }
+    }),
+    finalStatus: input.finalStatus
+  };
+}
+
 function reportMarkdown(result: EditorialBatchResult): string {
   const complete = result.results.filter((entry) => entry.status === "draft");
   const researchStubs = result.results.filter((entry) => entry.status === "needs-source-review");
   const rejected = result.results.filter((entry) => entry.status === "rejected");
   const uniqueDraftFiles = [...new Set(result.results.flatMap((entry) =>
-    entry.status === "draft" && entry.filePath ? [relative(process.cwd(), entry.filePath).replace(/\\/g, "/")] : []
+    entry.filePath ? [relative(process.cwd(), entry.filePath).replace(/\\/g, "/")] : []
   ))];
   const duplicateDetails = result.results
     .filter((entry) => /Duplicate uebersprungen/i.test(entry.decisionReason))
@@ -899,13 +1110,67 @@ function reportMarkdown(result: EditorialBatchResult): string {
   const sourceRoleDetails = result.results.map((entry) => `### ${entry.candidateId}
 
 - **Radarquelle:** ${entry.radarSourceName} (${entry.radarSourceUrl})
-- **Sekundärquellen:** ${entry.radarSourceUrl}
+- **Sekundaerquellen:** ${entry.secondarySourceReview?.articles.map((article) => `${article.sourceName}: ${article.url}`).join(", ") || entry.radarSourceUrl}
 - **Verifizierte Primärquellen:** ${entry.verifiedPrimarySourceUrls.join(", ") || "keine"}
 - **Eigene redaktionelle Einordnung:** ${entry.status === "draft" ? "im Draft vorhanden und manuell zu pruefen" : "nicht erzeugt, weil Gate nicht veroeffentlichungsreif war"}
 `).join("\n");
   const zeroDraftReasons = result.completeDrafts === 0
     ? result.results.map((entry) => `- ${entry.candidateId}: ${entry.decisionReason}`).join("\n")
     : "";
+  const statusCounts = result.results.reduce<Record<string, number>>((counts, entry) => {
+    const status = entry.finalStatus ?? entry.status;
+    counts[status] = (counts[status] ?? 0) + 1;
+    return counts;
+  }, {});
+  const statusCountTotal = Object.values(statusCounts).reduce((sum, value) => sum + value, 0);
+  const statusCountDetails = Object.entries(statusCounts)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([status, count]) => `- **${status}:** ${count}`)
+    .join("\n");
+  const secondaryArticlesChecked = result.results.reduce((sum, entry) =>
+    sum + (entry.secondarySourceReview?.articlesChecked ?? 0), 0);
+  const secondaryArticlesRead = result.results.reduce((sum, entry) =>
+    sum + (entry.secondarySourceReview?.fullTextReadCount ?? 0), 0);
+  const allCandidateDetails = result.results
+    .slice()
+    .sort((left, right) => left.candidateId.localeCompare(right.candidateId))
+    .map((entry) => {
+      const foundUrls = [...new Set([
+        ...entry.foundPrimarySourceUrls,
+        ...(entry.secondarySourceReview?.articles.map((article) => `${article.sourceName}: ${article.url}`) ?? [])
+      ])];
+      return `### ${entry.candidateId}
+
+- **Originaltitel:** ${entry.title}
+- **Bereinigter Titel:** ${entry.entityAnalysis?.cleanedTitle ?? entry.title}
+- **Entity:** ${entry.entityAnalysis?.mainEntity ?? "keine sichere Entitaet"}
+- **Entity-Typ:** ${entry.entityAnalysis?.entityType ?? "unknown"}
+- **Thementyp:** ${entry.entityAnalysis?.topicType ?? "unknown"}
+- **Suchbegriffe:** ${entry.entityAnalysis?.searchTerms.join(", ") || "keine"}
+- **Gepruefte Domains/Quellen:** ${entry.searchedOfficialSources.join(", ") || "keine"}
+- **Gefundene URLs:** ${foundUrls.join(", ") || "keine"}
+- **Akzeptierte Primaerquellen:** ${entry.verifiedPrimarySourceUrls.join(", ") || "keine"}
+- **Abgelehnte Quellen / Diagnose:** ${entry.sourceDiagnostics?.join("; ") || "keine"}
+- **Extrahierte Fakten:** ${entry.verifiedFacts.join("; ") || "keine"}
+- **Gefundene deutsche Fachmedien:** ${entry.secondarySourceReview?.articles.filter((article) => article.language === "de").map((article) => article.sourceName).join(", ") || "keine"}
+- **Gefundene englische Fachmedien:** ${entry.secondarySourceReview?.articles.filter((article) => article.language === "en").map((article) => article.sourceName).join(", ") || "keine"}
+- **Volltext gelesen:** ${(entry.secondarySourceReview?.fullTextReadCount ?? 0) > 0 ? "ja" : "nein"}
+- **Lesefehler:** ${entry.secondarySourceReview?.readErrors.join("; ") || "keine"}
+- **Fakten aus Fachmedien:** ${entry.secondarySourceReview?.facts.map((fact) => `${fact.sourceName}: ${fact.statement}`).join("; ") || "keine"}
+- **Verfolgte Originalquellen:** ${entry.secondarySourceReview?.followedOriginalSources.join(", ") || "keine"}
+- **Uebereinstimmungen:** ${entry.secondarySourceReview?.corroboratedFacts.map((fact) => fact.statement).join("; ") || "keine"}
+- **Widersprueche:** ${entry.secondarySourceReview?.contradictions.join("; ") || "keine"}
+- **Unabhaengige Sekundaerquellen:** ${entry.secondarySourceReview?.independentEstablishedSources ?? 0}
+- **Primaerquelle vorhanden:** ${entry.verifiedPrimarySources > 0 ? "ja" : "nein"}
+- **Sekundaerquellen-Fallback verwendet:** ${entry.secondarySourceFallbackUsed ? "ja" : "nein"}
+- **Draft-Status:** ${entry.status}
+- **Publishability-Score:** ${entry.publishabilityScore ?? 0}
+- **KI-Status:** ${entry.aiInvoked ? "gestartet" : "nicht gestartet"} (${entry.aiResult})
+- **Finaler Status:** ${entry.finalStatus ?? entry.status}
+- **Finaler Ablehnungsgrund:** ${entry.status === "draft" ? "keiner" : entry.decisionReason}
+`;
+    })
+    .join("\n");
   const completeDetails = complete.map((entry) => {
     const openPoints = [
       ...entry.readerInterest.warnings,
@@ -978,11 +1243,30 @@ function reportMarkdown(result: EditorialBatchResult): string {
 - **KI-Aufrufe fehlgeschlagen:** ${result.aiCallsFailed}
 - **API-Key vorhanden:** ${result.ai.enabled ? "ja" : "nein oder KI deaktiviert"}
 - **KI-Status:** ${result.ai.reason}${result.ai.errorCode ? ` (${result.ai.errorCode})` : ""}
+- **Gepruefte Fachartikel:** ${secondaryArticlesChecked}
+- **Vollstaendig gelesene Fachartikel:** ${secondaryArticlesRead}
+- **Sekundaerquellen-Review-Drafts:** ${result.secondarySourceReviewDrafts}
 - **Geprüfte Kandidaten:** ${result.checkedCandidates}
+- **Übersprungene Kandidaten:** ${result.results.filter((entry) => entry.finalStatus === "skipped-after-target-reached").length}
+- **Duplikate:** ${result.skippedDuplicates}
+- **Kandidaten ohne Nachrichtenanlass:** ${result.noNewsEventCandidates}
+- **Kandidaten mit Entity-Fehler:** ${result.entityErrorCandidates}
+- **Kandidaten mit Source-Fehler:** ${result.sourceErrorCandidates}
+- **Kandidaten mit Faktenmangel:** ${result.insufficientFactCandidates}
 - **Vollständige Drafts:** ${result.completeDrafts}
 - **Recherche-Stubs:** ${result.researchStubs}
 - **Übersprungene Duplikate:** ${result.skippedDuplicates}
 - **Abgelehnte Kandidaten:** ${result.rejectedCandidates}
+
+## Finalstatus-Bilanz
+
+- **Statussumme:** ${statusCountTotal} von ${result.queueCandidateCount}
+
+${statusCountDetails || "Keine Statuswerte dokumentiert."}
+
+## Vollständige Kandidatenbilanz
+
+${allCandidateDetails || "Keine Kandidaten bilanziert."}
 
 ## Eindeutige Draft-Dateien
 
@@ -1198,6 +1482,8 @@ export async function createEditorialBatch(
       foundPrimarySources: duplicate.entry.sources.length,
       verifiedPrimarySources: duplicate.entry.sources.filter((source) => source.verified).length,
       verifiedFacts: duplicate.entry.verifiedFacts.map((fact) => fact.statement),
+      secondarySourceReview: duplicate.entry.secondaryReview,
+      secondarySourceFallbackUsed: false,
       steamAppId: candidate.steamAppId,
       heroImageStatus: candidate.imageCandidateUrl ? "Offizieller Steam-Bildkandidat, manuelle Pruefung erforderlich" : "Hero-Bild nur Fallback",
       sourceGatePassed: false,
@@ -1252,6 +1538,8 @@ export async function createEditorialBatch(
         foundPrimarySources: enrichment.sources.length,
         verifiedPrimarySources: enrichment.sources.filter((source) => source.verified).length,
         verifiedFacts: enrichment.verifiedFacts.map((fact) => fact.statement),
+        secondarySourceReview: enrichment.secondaryReview,
+        secondarySourceFallbackUsed: false,
         steamAppId: candidate.steamAppId,
         heroImageStatus,
         sourceGatePassed,
@@ -1274,6 +1562,62 @@ export async function createEditorialBatch(
     }
 
     if (!sourceGatePassed) {
+      if (enrichment.secondaryReview.fallbackEligible) {
+        const built = buildSecondarySourceReviewDraft({
+          candidate,
+          articleType: options.articleTypeDefault,
+          timestamp,
+          review: enrichment.secondaryReview,
+          editorialNote: options.editorialNote,
+          readerInterestScore: readerInterest.score
+        });
+        const filePath = join(rootDirectory, "src", "content", "drafts", `${built.reviewInput.slug}.md`);
+        await mkdir(dirname(filePath), { recursive: true });
+        await writeFile(filePath, built.markdown, "utf8");
+        results.push({
+          candidateId: candidate.id,
+          title: built.reviewInput.title,
+          articleType: options.articleTypeDefault,
+          radarSourceName: candidate.sourceName,
+          radarSourceUrl: candidate.sourceUrl,
+          readerInterest,
+          reviews: {},
+          searchedOfficialSources: enrichment.searchedSources,
+          primarySources,
+          foundPrimarySourceUrls: enrichment.sources.map((source) => source.url),
+          verifiedPrimarySourceUrls: primarySources,
+          foundPrimarySources: enrichment.sources.length,
+          verifiedPrimarySources: enrichment.sources.filter((source) => source.verified).length,
+          verifiedFacts: enrichment.verifiedFacts.map((fact) => fact.statement),
+          secondarySourceReview: enrichment.secondaryReview,
+          secondarySourceFallbackUsed: true,
+          steamAppId: candidate.steamAppId,
+          heroImageStatus,
+          sourceGatePassed: false,
+          aiInvoked: false,
+          aiResult: "Nicht aufgerufen: Sekundaerquellen-Fallback erzeugt nur manuellen Review-Draft.",
+          readerEditResult: "Nicht aufgerufen.",
+          imageSource: candidate.imageSourcePageUrl ?? built.reviewInput.heroImage,
+          status: "secondary-source-review",
+          filePath,
+          previewPath: `/redaktion/vorschau/${built.reviewInput.slug}/`,
+          decisionReason: `Sekundaerquellen-Fallback genutzt. ${sourceDecisionReason}`,
+          recommendation: "Manuelle Pruefung zwingend: Primaerquelle nachrecherchieren, keine automatische Freigabe.",
+          missingFacts: [
+            "Keine erreichbare Primaerquelle.",
+            ...enrichment.secondaryReview.unconfirmedFacts.map((fact) => `Unbestaetigt: ${fact.statement}`),
+            ...enrichment.secondaryReview.contradictions.map((item) => `Widerspruch: ${item}`)
+          ],
+          entityAnalysis: enrichment.entityAnalysis,
+          sourceDiagnostics: [
+            ...enrichment.sourceDiagnostics,
+            enrichment.secondaryReview.fallbackReason
+          ],
+          publishabilityScore: publishabilityMap.get(candidate.id),
+          finalStatus: "secondary-source-review"
+        });
+        continue;
+      }
       results.push({
         candidateId: candidate.id,
         title: candidate.title,
@@ -1289,6 +1633,8 @@ export async function createEditorialBatch(
         foundPrimarySources: enrichment.sources.length,
         verifiedPrimarySources: enrichment.sources.filter((source) => source.verified).length,
         verifiedFacts: enrichment.verifiedFacts.map((fact) => fact.statement),
+        secondarySourceReview: enrichment.secondaryReview,
+        secondarySourceFallbackUsed: false,
         steamAppId: candidate.steamAppId,
         heroImageStatus,
         sourceGatePassed,
@@ -1348,6 +1694,8 @@ export async function createEditorialBatch(
       foundPrimarySources: enrichment.sources.length,
       verifiedPrimarySources: enrichment.sources.filter((source) => source.verified).length,
       verifiedFacts: enrichment.verifiedFacts.map((fact) => fact.statement),
+      secondarySourceReview: enrichment.secondaryReview,
+      secondarySourceFallbackUsed: false,
       steamAppId: candidate.steamAppId,
       heroImageStatus,
       sourceGatePassed,
@@ -1400,12 +1748,35 @@ export async function createEditorialBatch(
     });
   }
 
+  const resultIds = new Set(results.map((entry) => entry.candidateId));
+  for (const candidate of queue.candidates) {
+    if (resultIds.has(candidate.id)) continue;
+    const published = publishedSlugs.has(candidateDraftSlug(candidate, options.articleTypeDefault));
+    results.push(skippedQueueCandidateResult({
+      candidate,
+      articleType: options.articleTypeDefault,
+      finalStatus: published ? "duplicate" : "skipped-after-target-reached",
+      reason: published
+        ? "Duplicate uebersprungen: Zielslug ist bereits als veroeffentlichter Artikel vorhanden."
+        : "skipped-after-target-reached: Kandidat war in der Queue, wurde aber nicht fuer die aktive Batch-Verarbeitung ausgewaehlt."
+    }));
+  }
+
   const reportDirectory = join(rootDirectory, "docs", "editorial", "batch-reports");
   await mkdir(reportDirectory, { recursive: true });
   const reportPath = join(reportDirectory, `${reportDate}-${runId}.md`);
   const rejected = results.filter((entry) => entry.status === "rejected");
   const researchStubs = results.filter((entry) => entry.status === "needs-source-review");
   const skippedDuplicates = results.filter((entry) => /Duplicate uebersprungen/i.test(entry.decisionReason));
+  const noNewsEventCandidates = results.filter((entry) => entry.finalStatus === "steam-ranking-without-news").length;
+  const entityErrorCandidates = results.filter((entry) => entry.finalStatus === "entity-needs-resolution").length;
+  const sourceErrorCandidates = results.filter((entry) => entry.finalStatus === "source-gate-rejected").length;
+  const insufficientFactCandidates = results.filter((entry) => entry.finalStatus === "insufficient-verified-facts").length;
+  const secondaryArticlesChecked = results.reduce((sum, entry) =>
+    sum + (entry.secondarySourceReview?.articlesChecked ?? 0), 0);
+  const secondaryArticlesRead = results.reduce((sum, entry) =>
+    sum + (entry.secondarySourceReview?.fullTextReadCount ?? 0), 0);
+  const secondarySourceReviewDrafts = results.filter((entry) => entry.status === "secondary-source-review").length;
   const rejectedReportPath = rejected.length
     ? join(reportDirectory, `${reportDate}-${runId}-rejected.md`)
     : undefined;
@@ -1421,10 +1792,17 @@ export async function createEditorialBatch(
     researchStubs: researchStubs.length,
     skippedDuplicates: skippedDuplicates.length,
     rejectedCandidates: rejected.length + researchStubs.length,
+    noNewsEventCandidates,
+    entityErrorCandidates,
+    sourceErrorCandidates,
+    insufficientFactCandidates,
     queueCandidateCount: queue.candidates.length,
     queueGeneratedAt: queue.generatedAt,
     queuePath: displayQueuePath(queuePath, rootDirectory),
     queueHash,
+    secondaryArticlesChecked,
+    secondaryArticlesRead,
+    secondarySourceReviewDrafts,
     aiCallsAttempted: aiResult.attempts ?? 0,
     aiCallsSuccessful: aiDraftMap.size,
     aiCallsFailed: Math.max(0, (aiResult.attempts ?? 0) - (aiResult.drafts.length ? 1 : 0)),
@@ -1484,6 +1862,9 @@ if (executedDirectly) {
       researchStubs: result.researchStubs,
       skippedDuplicates: result.skippedDuplicates,
       rejectedCandidates: result.rejectedCandidates,
+      secondaryArticlesChecked: result.secondaryArticlesChecked,
+      secondaryArticlesRead: result.secondaryArticlesRead,
+      secondarySourceReviewDrafts: result.secondarySourceReviewDrafts,
       queueCandidateCount: result.queueCandidateCount,
       queueGeneratedAt: result.queueGeneratedAt,
       queuePath: result.queuePath,
