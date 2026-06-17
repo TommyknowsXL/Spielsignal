@@ -1,0 +1,115 @@
+---
+import { getCollection, type CollectionEntry } from "astro:content";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+
+export async function getStaticPaths() {
+  if (process.env.VERCEL_ENV !== "preview") return [];
+  const drafts = await getCollection("drafts");
+  return drafts.map((entry) => ({
+    params: { slug: entry.data.slug },
+    props: { entry }
+  }));
+}
+
+const { entry } = Astro.props as { entry: CollectionEntry<"drafts"> };
+const data = entry.data;
+const action = Astro.url.searchParams.get("action");
+const draftPath = `src/content/drafts/${entry.id}`;
+const articlePath = `src/content/articles/${entry.id}`;
+const tags = data.tags.join(", ");
+const sources = data.primarySources.join("\n");
+const notes = data.editorialNotes?.join("\n") ?? "";
+const body = data.contentBlocks?.map((block) => {
+  if (block.type === "paragraph") return block.text;
+  if (block.type === "heading") return `${"#".repeat(block.level)} ${block.text}`;
+  if (block.type === "list") return block.items.map((item) => `- ${item}`).join("\n");
+  if (block.type === "ad") return `[WERBUNG:${block.slot}]`;
+  return `[BILD:${block.imageUrl}] ${block.alt}`;
+}).join("\n\n") ?? entry.body;
+const approvalCommand = [
+  "git switch -c redaktion/approve-" + data.slug,
+  `# Status im Draft auf approved setzen und Datei nach ${articlePath} uebernehmen`,
+  `# Artikelstatus dort auf published setzen, Tests/Build laufen lassen, Pull Request gegen main erstellen`
+].join("\n");
+const rejectCommand = [
+  "git switch -c redaktion/reject-" + data.slug,
+  `# Status in ${draftPath} auf rejected setzen und Ablehnungsgrund in editorialNotes dokumentieren`,
+  "# Pull Request gegen main erstellen; es wird keine Artikeldatei erzeugt"
+].join("\n");
+const patchHint = action === "approve"
+  ? approvalCommand
+  : action === "reject"
+    ? rejectCommand
+    : `# Aenderungen in ${draftPath} uebernehmen, committen und als Pull Request pruefen lassen`;
+---
+
+<BaseLayout
+  title={`Draft bearbeiten: ${data.title}`}
+  description="Interne SpielSignal-Bearbeitungsansicht fuer Drafts."
+  robots="noindex, nofollow"
+>
+  <section class="editorial-workspace container">
+    <div class="editorial-workspace__header">
+      <div>
+        <p class="eyebrow">Interne Redaktion</p>
+        <h1>Draft bearbeiten</h1>
+        <p>
+          Diese MVP-Ansicht schreibt nicht direkt aus dem Browser ins Repository. Aenderungen werden als
+          nachvollziehbarer GitHub-/PR-Workflow vorbereitet.
+        </p>
+      </div>
+      <a class="secondary-button" href="/redaktion/">Zurueck</a>
+    </div>
+
+    <div class="editorial-edit-grid">
+      <form class="editorial-edit-form" data-editorial-form>
+        <label>Titel<input name="title" value={data.title} /></label>
+        <label>Summary<textarea name="summary" rows="4">{data.summary}</textarea></label>
+        <label>SEO-Titel<input name="seoTitle" value={data.seoTitle} /></label>
+        <label>SEO-Beschreibung<textarea name="seoDescription" rows="3">{data.seoDescription}</textarea></label>
+        <label>Tags<input name="tags" value={tags} /></label>
+        <label>Quellen<textarea name="sources" rows="5">{sources}</textarea></label>
+        <label>Interne Notizen<textarea name="notes" rows="5">{notes}</textarea></label>
+        <label>Hero-Bild/Fallback<input name="heroImage" value={data.heroImage} /></label>
+        <label>Artikeltext / Content Blocks<textarea name="body" rows="16">{body}</textarea></label>
+        <button type="button" class="primary-button" data-generate-patch>Patch-Hinweis aktualisieren</button>
+      </form>
+
+      <aside class="editorial-workflow-panel">
+        <h2>{action === "approve" ? "Freigeben" : action === "reject" ? "Ablehnen" : "Speichern per PR"}</h2>
+        <p>
+          Freigeben veroeffentlicht nicht direkt auf main. Ablehnen erzeugt keinen Artikel. Beides muss
+          ueber Branch, Commit, Tests und Pull Request laufen.
+        </p>
+        <dl>
+          <div><dt>Draft-Datei</dt><dd><code>{draftPath}</code></dd></div>
+          <div><dt>Ziel bei Freigabe</dt><dd><code>{articlePath}</code></dd></div>
+          <div><dt>Aktueller Status</dt><dd>{data.status}</dd></div>
+          <div><dt>Bildfreigabe</dt><dd>{data.imageRightsStatus}</dd></div>
+        </dl>
+        <textarea readonly rows="10" data-patch-output>{patchHint}</textarea>
+        <p class="editorial-form-note">
+          Keine automatische Bildfreigabe, kein Main-Merge und keine Veroeffentlichung ohne PR-Merge.
+        </p>
+      </aside>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>("[data-editorial-form]");
+  const output = document.querySelector<HTMLTextAreaElement>("[data-patch-output]");
+  document.querySelector("[data-generate-patch]")?.addEventListener("click", () => {
+    if (!form || !output) return;
+    const data = new FormData(form);
+    output.value = [
+      "# Redaktionspatch vorbereiten",
+      `title: ${JSON.stringify(String(data.get("title") ?? ""))}`,
+      `summary: ${JSON.stringify(String(data.get("summary") ?? ""))}`,
+      `seoTitle: ${JSON.stringify(String(data.get("seoTitle") ?? ""))}`,
+      `seoDescription: ${JSON.stringify(String(data.get("seoDescription") ?? ""))}`,
+      `tags: ${JSON.stringify(String(data.get("tags") ?? "").split(",").map((tag) => tag.trim()).filter(Boolean))}`,
+      "# Quellen, Notizen, Bild und Content Blocks anschliessend im Draft pruefen und als Pull Request einreichen."
+    ].join("\n");
+  });
+</script>
