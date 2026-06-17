@@ -16,6 +16,10 @@ import {
 import {
   findOfficialPrimarySources
 } from "./agents/sources/findOfficialPrimarySources";
+import {
+  reviewSecondarySources,
+  supportedGamingMedia
+} from "./agents/sources/findSecondarySources";
 import { runFactCheck } from "./agents/review/factCheck";
 import { runReaderInterestCheck } from "./agents/review/readerInterestCheck";
 import { runTechnicalCheck } from "./agents/review/technicalCheck";
@@ -941,7 +945,11 @@ const hardenedSelection = await createEditorialBatch({
   generatedAt: "2026-06-08T10:00:00.000Z",
   environment: { GITHUB_RUN_ID: "hardened-selection", AI_EDITORIAL_ENABLED: "false" }
 });
-assert.deepEqual(hardenedSelection.results.map((entry) => entry.candidateId), ["rss-subnautica-update"]);
+assert.deepEqual(hardenedSelection.results.map((entry) => entry.candidateId), [
+  "rss-subnautica-update",
+  "steam-counter-strike",
+  "steam-gothic"
+]);
 assert.match(
   hardenedSelection.results[0].primarySources.join(" "),
   /store\.steampowered\.com\/app\/1962700/
@@ -952,6 +960,14 @@ assert.doesNotMatch(
 );
 assert.equal(hardenedSelection.results[0].status, "rejected");
 assert.match(hardenedSelection.results[0].decisionReason, /Nicht genug verifizierte Fakten/);
+assert.equal(
+  hardenedSelection.results.find((entry) => entry.candidateId === "steam-counter-strike")?.finalStatus,
+  "steam-ranking-without-news"
+);
+assert.equal(
+  hardenedSelection.results.find((entry) => entry.candidateId === "steam-gothic")?.finalStatus,
+  "duplicate"
+);
 await cleanupTestRoot(hardenedSelectionRoot);
 
 const subnauticaRoot = await createTestRoot("spielsignal-batch-subnautica-");
@@ -1624,6 +1640,134 @@ assert.match(previewRoute, /robots="noindex, nofollow"/);
 assert.match(previewRoute, /ENTWURF · NICHT VERÖFFENTLICHT/);
 assert.doesNotMatch(previewRoute, /getCollection\("articles"/);
 
+assert.match(previewRoute, /secondary-source-review/);
+
+const secondaryMedia = supportedGamingMedia();
+assert.ok(secondaryMedia.german.includes("GameStar"));
+assert.ok(secondaryMedia.german.includes("PC Games"));
+assert.ok(secondaryMedia.german.includes("MeinMMO"));
+assert.ok(secondaryMedia.english.includes("PC Gamer"));
+assert.ok(secondaryMedia.english.includes("Eurogamer"));
+assert.ok(secondaryMedia.english.includes("IGN"));
+
+const longArticleParagraph = "Test Quest update 1.1 will launch on PC and Steam on July 20 with a new demo. ".repeat(10);
+const secondaryFetch = async (input: string | URL | Request) => {
+  const url = String(input);
+  if (url.includes("gamestar.de")) {
+    return new Response(`
+      <html><head>
+        <meta property="og:title" content="Test Quest bekommt Update 1.1">
+        <meta name="author" content="GameStar Test">
+        <meta property="article:published_time" content="2026-06-16T10:00:00Z">
+      </head><body><article>
+        <h1>Test Quest bekommt Update 1.1</h1>
+        <p>${longArticleParagraph}</p>
+        <a href="https://www.testquest.example/news/update-1-1">Official patch notes</a>
+      </article></body></html>`, { status: 200, headers: { "content-type": "text/html" } });
+  }
+  if (url.includes("agency-a") || url.includes("agency-b")) {
+    return new Response(`<html><head><meta name="copyright" content="Reuters"></head><body><article><p>${longArticleParagraph}</p></article></body></html>`, { status: 200, headers: { "content-type": "text/html" } });
+  }
+  if (url.includes("pcgamer.com")) {
+    return new Response(`<html><head><meta property="article:published_time" content="2026-06-16T11:00:00Z"></head><body><article><p>${longArticleParagraph}</p></article></body></html>`, { status: 200, headers: { "content-type": "text/html" } });
+  }
+  if (url.includes("eurogamer.net")) {
+    return new Response(`<html><head><meta property="article:published_time" content="2026-06-16T12:00:00Z"></head><body><article><p>${longArticleParagraph}</p></article></body></html>`, { status: 200, headers: { "content-type": "text/html" } });
+  }
+  if (url.includes("gamespot.com")) {
+    return new Response(`<html><body><article><p>Opinion: Test Quest update 1.1 might be a bad idea for PC players. ${"This is opinion text. ".repeat(40)}</p></article></body></html>`, { status: 200, headers: { "content-type": "text/html" } });
+  }
+  if (url.includes("ign.com/rumor")) {
+    return new Response(`<html><body><article><p>Rumor: Test Quest update 1.1 will launch on PC and Steam on July 20 with a new demo. ${"This remains unconfirmed. ".repeat(40)}</p></article></body></html>`, { status: 200, headers: { "content-type": "text/html" } });
+  }
+  return new Response("", { status: 404 });
+};
+
+const secondaryReview = await reviewSecondarySources({
+  candidateTitle: "Test Quest Update 1.1",
+  sourceUrls: [
+    "https://www.gamestar.de/artikel/test-quest-update,1.html",
+    "https://www.pcgamer.com/test-quest-update/",
+    "https://www.eurogamer.net/test-quest-update"
+  ]
+}, { fetchImpl: secondaryFetch as typeof fetch });
+assert.equal(secondaryReview.fullTextReadCount, 3);
+assert.equal(secondaryReview.fallbackEligible, true);
+assert.ok(secondaryReview.followedOriginalSources.includes("https://www.testquest.example/news/update-1-1"));
+assert.ok(secondaryReview.corroboratedFacts.length >= 1);
+
+const oneSecondaryReview = await reviewSecondarySources({
+  candidateTitle: "Test Quest Update 1.1",
+  sourceUrls: ["https://www.pcgamer.com/test-quest-update/"]
+}, { fetchImpl: secondaryFetch as typeof fetch });
+assert.equal(oneSecondaryReview.fallbackEligible, false);
+
+const agencyReview = await reviewSecondarySources({
+  candidateTitle: "Test Quest Update 1.1",
+  sourceUrls: [
+    "https://www.pcgamer.com/agency-a",
+    "https://www.eurogamer.net/agency-b"
+  ]
+}, { fetchImpl: secondaryFetch as typeof fetch });
+assert.equal(agencyReview.fallbackEligible, false);
+
+const opinionReview = await reviewSecondarySources({
+  candidateTitle: "Test Quest Update 1.1",
+  sourceUrls: ["https://www.gamespot.com/test-opinion/"]
+}, { fetchImpl: secondaryFetch as typeof fetch });
+assert.equal(opinionReview.corroboratedFacts.length, 0);
+
+const rumorReview = await reviewSecondarySources({
+  candidateTitle: "Test Quest Update 1.1",
+  sourceUrls: ["https://www.ign.com/rumor/test-quest"]
+}, { fetchImpl: secondaryFetch as typeof fetch });
+assert.equal(rumorReview.facts.some((fact) => fact.isRumor && fact.confidence === "unverified"), true);
+
+const secondaryRoot = await createTestRoot("spielsignal-secondary-review-");
+await mkdir(join(secondaryRoot, "src", "data", "editorial"), { recursive: true });
+const secondaryCandidate: EditorialCandidate = {
+  ...interestingCandidate,
+  id: "rss-secondary-review",
+  title: "Test Quest Update 1.1 startet mit neuer Demo",
+  gameTitle: "Test Quest",
+  steamAppId: undefined,
+  steamStoreUrl: undefined,
+  sourceName: "GameStar RSS",
+  sourceUrl: "https://www.gamestar.de/artikel/test-quest-update,1.html",
+  scoreReasons: ["Aktuelle Meldung", "Klarer PC-Gaming-Bezug", "Update"]
+};
+await writeFile(
+  join(secondaryRoot, DEFAULT_EDITORIAL_QUEUE_PATH),
+  `${JSON.stringify({ ...report, candidates: [secondaryCandidate] }, null, 2)}\n`,
+  "utf8"
+);
+const secondaryBatch = await createEditorialBatch({
+  rootDirectory: secondaryRoot,
+  selectionMode: "manual",
+  candidateIds: ["rss-secondary-review"],
+  articleTypeDefault: "news-overview",
+  primarySourceGroups: [[
+    "https://www.pcgamer.com/test-quest-update/",
+    "https://www.eurogamer.net/test-quest-update"
+  ]],
+  maxArticles: 1,
+  generatedAt: "2026-06-16T13:00:00.000Z",
+  environment: { GITHUB_RUN_ID: "secondary-review", AI_EDITORIAL_ENABLED: "false" },
+  fetchImpl: secondaryFetch as typeof fetch,
+  sourceFetchImpl: secondaryFetch as typeof fetch
+});
+assert.equal(secondaryBatch.completeDrafts, 0);
+assert.equal(secondaryBatch.secondarySourceReviewDrafts, 1);
+assert.equal(secondaryBatch.results[0].status, "secondary-source-review");
+assert.equal(secondaryBatch.results[0].secondarySourceFallbackUsed, true);
+assert.equal(secondaryBatch.results[0].aiInvoked, false);
+const secondaryDraft = await readFile(secondaryBatch.results[0].filePath!, "utf8");
+assert.match(secondaryDraft, /^status: "secondary-source-review"$/m);
+assert.match(secondaryDraft, /Keine erreichbare Primaerquelle/);
+assert.match(secondaryDraft, /secondarySources:/);
+assert.match(secondaryDraft, /Test Quest update 1\.1 will launch on PC and Steam on July 20 with a new demo/);
+assert.doesNotMatch(secondaryDraft, /^title: "Test Quest bekommt Update 1\.1"$/m);
+await cleanupTestRoot(secondaryRoot);
 const subnauticaEditorialDraft = await readFile(
   "src/content/drafts/subnautica-2-news-overview.md",
   "utf8"

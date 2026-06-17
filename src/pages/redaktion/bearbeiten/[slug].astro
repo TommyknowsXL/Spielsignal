@@ -31,13 +31,18 @@ const approvalCommand = [
   `# Status im Draft auf approved setzen und Datei nach ${articlePath} uebernehmen`,
   `# Artikelstatus dort auf published setzen, Tests/Build laufen lassen, Pull Request gegen main erstellen`
 ].join("\n");
+const secondaryReviewBlock = [
+  "# Freigabe gesperrt: secondary-source-review",
+  "# Erst erreichbare Primaerquelle nachtragen oder Draft ablehnen.",
+  "# Keine automatische Freigabe und kein Verschieben nach src/content/articles/."
+].join("\n");
 const rejectCommand = [
   "git switch -c redaktion/reject-" + data.slug,
   `# Status in ${draftPath} auf rejected setzen und Ablehnungsgrund in editorialNotes dokumentieren`,
   "# Pull Request gegen main erstellen; es wird keine Artikeldatei erzeugt"
 ].join("\n");
 const patchHint = action === "approve"
-  ? approvalCommand
+  ? data.status === "secondary-source-review" ? secondaryReviewBlock : approvalCommand
   : action === "reject"
     ? rejectCommand
     : `# Aenderungen in ${draftPath} uebernehmen, committen und als Pull Request pruefen lassen`;
@@ -81,6 +86,12 @@ const patchHint = action === "approve"
           Freigeben veroeffentlicht nicht direkt auf main. Ablehnen erzeugt keinen Artikel. Beides muss
           ueber Branch, Commit, Tests und Pull Request laufen.
         </p>
+        {data.status === "secondary-source-review" ? (
+          <div class="editorial-security-note">
+            <strong>Keine erreichbare Primaerquelle:</strong> Dieser Draft darf nicht freigegeben werden.
+            Verwendete Sekundaerquellen: {data.secondarySources.join(", ") || "keine"}. Manuelle Pruefung zwingend.
+          </div>
+        ) : null}
         <dl>
           <div><dt>Draft-Datei</dt><dd><code>{draftPath}</code></dd></div>
           <div><dt>Ziel bei Freigabe</dt><dd><code>{articlePath}</code></dd></div>

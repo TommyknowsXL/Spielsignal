@@ -32,6 +32,7 @@ const sourceLabel = (source: string) => {
   if (host.includes("steampowered.com")) {
     return source.includes("/news/") ? "Offizielle Steam-News" : "Offizielle Steam-Store-Seite";
   }
+  if (data.secondarySources.includes(source)) return `Sekundaerquelle: ${host}`;
   return `Offizielle Quelle: ${host}`;
 };
 ---
@@ -44,6 +45,11 @@ const sourceLabel = (source: string) => {
   robots="noindex, nofollow"
 >
   <div class="draft-preview-banner" role="status">ENTWURF · NICHT VERÖFFENTLICHT</div>
+  {data.status === "secondary-source-review" ? (
+    <div class="draft-preview-banner draft-preview-banner--warning" role="alert">
+      Keine erreichbare Primaerquelle - Sekundaerquellen-Review - manuelle Pruefung zwingend
+    </div>
+  ) : null}
   <header class="article-header container">
     <nav class="breadcrumbs" aria-label="Brotkrumen">
       <a href="/redaktion/">Redaktion</a><span>/</span><span>Vorschau</span>
@@ -83,8 +89,11 @@ const sourceLabel = (source: string) => {
       </div>
       <section class="sources-box">
         <p class="eyebrow">Quellen</p>
+        {data.status === "secondary-source-review" ? (
+          <p>Dieser Draft nutzt Sekundaerquellen und behauptet keine offizielle Bestaetigung.</p>
+        ) : null}
         <ul>
-          {data.primarySources.map((source) => (
+          {[...data.primarySources, ...data.secondarySources].map((source) => (
             <li>
               <a class="text-link" href={source} target="_blank" rel="noopener noreferrer">
                 {sourceLabel(source)}
@@ -103,6 +112,19 @@ const sourceLabel = (source: string) => {
           <div><dt>SEO-Titel</dt><dd>{data.seoTitle}</dd></div>
           <div><dt>SEO-Beschreibung</dt><dd>{data.seoDescription}</dd></div>
         </dl>
+        {data.status === "secondary-source-review" ? (
+          <>
+            <h2>Sekundaerquellen-Pruefung</h2>
+            <ul>
+              <li>Keine erreichbare Primaerquelle.</li>
+              <li>Verwendete Sekundaerquellen: {data.secondarySources.join(", ") || "keine"}</li>
+              <li>Bestaetigte Kernfakten: {data.secondarySourceFacts.filter((fact) => fact.corroborated && !fact.contradicted).map((fact) => fact.statement).join(" / ") || "keine"}</li>
+              <li>Unbestaetigte Angaben: {data.secondarySourceFacts.filter((fact) => !fact.corroborated || fact.isRumor).map((fact) => fact.statement).join(" / ") || "keine"}</li>
+              <li>Widersprueche: {data.secondarySourceWarnings.filter((warning) => /widerspruch/i.test(warning)).join(" / ") || "keine"}</li>
+              <li>Manuelle Pruefung zwingend; keine automatische Freigabe.</li>
+            </ul>
+          </>
+        ) : null}
         {data.editorialNotes?.length ? (
           <>
             <h2>Interne Hinweise</h2>

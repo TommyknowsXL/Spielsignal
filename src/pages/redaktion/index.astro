@@ -14,6 +14,7 @@ const formatDate = (date: Date) => date.toLocaleDateString("de-DE", {
 
 const statusLabel = (status: string) => {
   if (status === "needs-source-review") return "Recherche-Stub";
+  if (status === "secondary-source-review") return "Sekundaerquellen-Pruefung";
   if (status === "ready-for-review" || status === "review") return "Pruefbereit";
   if (status === "approved") return "Freigegeben";
   if (status === "rejected") return "Abgelehnt";
@@ -21,6 +22,7 @@ const statusLabel = (status: string) => {
 };
 
 const qualityStatus = (draft: typeof drafts[number]) => {
+  if (draft.data.status === "secondary-source-review") return "Keine erreichbare Primaerquelle - manuelle Pruefung zwingend";
   if (draft.data.status === "needs-source-review") return "Quellenpruefung offen";
   if (draft.data.primarySources.length < 1) return "Primaerquelle fehlt";
   if (draft.data.imageRightsStatus !== "approved") return "Bildfreigabe offen";
@@ -81,11 +83,25 @@ const qualityStatus = (draft: typeof drafts[number]) => {
           <span>{draft.data.articleType}</span>
           <span>{draft.data.primarySources.length}</span>
           <span>{draft.data.imageRightsStatus}</span>
-          <span>{qualityStatus(draft)}</span>
+          <span>
+            {qualityStatus(draft)}
+            {draft.data.status === "secondary-source-review" ? (
+              <small>
+                Sekundaerquellen: {draft.data.secondarySources.join(", ") || "keine"}
+                {" | "}Bestaetigte Kernfakten: {draft.data.secondarySourceFacts.filter((fact) => fact.corroborated && !fact.contradicted).map((fact) => fact.statement).join(" / ") || "keine"}
+                {" | "}Unbestaetigt: {draft.data.secondarySourceFacts.filter((fact) => !fact.corroborated || fact.isRumor).map((fact) => fact.statement).join(" / ") || "keine"}
+                {" | "}Widersprueche: {draft.data.secondarySourceWarnings.filter((warning) => /widerspruch/i.test(warning)).join(" / ") || "keine"}
+              </small>
+            ) : null}
+          </span>
           <nav aria-label={`Aktionen fuer ${draft.data.title}`} class="editorial-actions">
             <a href={`/redaktion/vorschau/${draft.data.slug}/`}>Vorschau</a>
             <a href={`/redaktion/bearbeiten/${draft.data.slug}/`}>Bearbeiten</a>
-            <a href={`/redaktion/bearbeiten/${draft.data.slug}/?action=approve`}>Freigeben</a>
+            {draft.data.status !== "secondary-source-review" ? (
+              <a href={`/redaktion/bearbeiten/${draft.data.slug}/?action=approve`}>Freigeben</a>
+            ) : (
+              <span>Freigabe gesperrt</span>
+            )}
             <a href={`/redaktion/bearbeiten/${draft.data.slug}/?action=reject`}>Ablehnen</a>
           </nav>
         </article>
