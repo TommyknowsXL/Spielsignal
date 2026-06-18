@@ -37,6 +37,7 @@ export type SecondaryArticleRead = {
 };
 
 export type SecondarySourceReview = {
+  searchStarted: boolean;
   searchedGermanMedia: string[];
   searchedEnglishMedia: string[];
   articlesChecked: number;
@@ -96,6 +97,13 @@ export const KNOWN_ENGLISH_GAMING_SITES: KnownGamingSite[] = [
 ];
 
 const ALL_KNOWN_SITES = [...KNOWN_GERMAN_GAMING_SITES, ...KNOWN_ENGLISH_GAMING_SITES];
+const DISCOVERY_SITES = [
+  KNOWN_GERMAN_GAMING_SITES.find((site) => site.name === "PC Games")!,
+  KNOWN_GERMAN_GAMING_SITES.find((site) => site.name === "Eurogamer.de")!,
+  KNOWN_ENGLISH_GAMING_SITES.find((site) => site.name === "PC Gamer")!,
+  KNOWN_ENGLISH_GAMING_SITES.find((site) => site.name === "Eurogamer")!,
+  KNOWN_ENGLISH_GAMING_SITES.find((site) => site.name === "IGN")!
+];
 const RUMOR_WORDS = /\b(geruecht|gerücht|rumor|rumour|angeblich|reportedly|laut insider|unconfirmed|nicht bestaetigt|nicht bestätigt)\b/i;
 const OPINION_WORDS = /\b(meinung|kolumne|opinion|commentary|warum|ich finde|we think|hands-on|preview)\b/i;
 const FACT_SIGNAL = /\b(update|patch|release|launch|demo|trailer|dlc|expansion|erweiterung|game pass|steam|pc|preis|price|date|datum|termin|juni|juli|july|version|available|verfuegbar|verfügbar|angekuendigt|angekündigt|confirmed|bestaetigt|bestätigt)\b/i;
@@ -259,6 +267,75 @@ async function fetchArticle(fetchImpl: typeof fetch, url: string): Promise<{ htm
   }
 }
 
+function normalizeUrlKey(value: string): string {
+  try {
+    const url = new URL(value);
+    url.hash = "";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return value.trim().replace(/\/$/, "");
+  }
+}
+
+function isLikelyArticleUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    if (!siteForUrl(url.toString())) return false;
+    if (/\/(tag|tags|search|suche|category|categories|author|authors)\b/i.test(url.pathname)) return false;
+    return url.pathname.split("/").filter(Boolean).length >= 1;
+  } catch {
+    return false;
+  }
+}
+
+function decodeSearchResultUrl(value: string): string | undefined {
+  try {
+    const parsed = new URL(value, "https://www.bing.com/");
+    const target = parsed.searchParams.get("q") ?? parsed.searchParams.get("u") ?? parsed.searchParams.get("url");
+    return target ? new URL(target).toString() : parsed.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function extractDiscoveryLinks(html: string): string[] {
+  return [...html.matchAll(/href\s*=\s*["']([^"']+)["']/gi)]
+    .flatMap((match) => {
+      const decoded = decodeHtml(match[1]);
+      const direct = decodeSearchResultUrl(decoded);
+      return direct ? [direct] : [];
+    })
+    .filter(isLikelyArticleUrl);
+}
+
+async function discoverSecondaryArticleUrls(input: {
+  candidateTitle: string;
+  existingUrls: string[];
+  fetchImpl: typeof fetch;
+}): Promise<string[]> {
+  const seen = new Set(input.existingUrls.map(normalizeUrlKey));
+  const discovered: string[] = [];
+  for (const site of DISCOVERY_SITES) {
+    if (discovered.length >= 5) break;
+    if (input.existingUrls.some((url) => siteForUrl(url)?.name === site.name)) continue;
+    const domain = site.domains[0];
+    const query = encodeURIComponent(`${input.candidateTitle} site:${domain}`);
+    const searchUrl = `https://www.bing.com/search?q=${query}`;
+    const fetched = await fetchArticle(input.fetchImpl, searchUrl);
+    if (!fetched.html) continue;
+    for (const url of extractDiscoveryLinks(fetched.html)) {
+      const matchedSite = siteForUrl(url);
+      if (!matchedSite || matchedSite.name !== site.name) continue;
+      const key = normalizeUrlKey(url);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      discovered.push(url);
+      break;
+    }
+  }
+  return discovered;
+}
+
 export function supportedGamingMedia(): { german: string[]; english: string[] } {
   return {
     german: KNOWN_GERMAN_GAMING_SITES.map((site) => site.name),
@@ -274,7 +351,13 @@ export async function reviewSecondarySources(
   options: { fetchImpl?: typeof fetch } = {}
 ): Promise<SecondarySourceReview> {
   const fetchImpl = options.fetchImpl ?? fetch;
-  const urls = [...new Set(input.sourceUrls)].filter((url) => siteForUrl(url)?.tier === 2);
+  const seededUrls = [...new Set(input.sourceUrls)].filter((url) => siteForUrl(url)?.tier === 2);
+  const discoveredUrls = await discoverSecondaryArticleUrls({
+    candidateTitle: input.candidateTitle,
+    existingUrls: seededUrls,
+    fetchImpl
+  });
+  const urls = [...new Set([...seededUrls, ...discoveredUrls])];
   const articles: SecondaryArticleRead[] = [];
   for (const url of urls.slice(0, 8)) {
     const site = siteForUrl(url)!;
@@ -367,6 +450,7 @@ export async function reviewSecondarySources(
     .map((fact) => `${fact.sourceName}: ${fact.statement}`);
   const fallbackEligible = independentKeys.size >= 2 && corroboratedFacts.length >= 1 && contradictions.length === 0 && !sharedAgencyOnly;
   return {
+    searchStarted: true,
     searchedGermanMedia: KNOWN_GERMAN_GAMING_SITES.map((site) => site.name),
     searchedEnglishMedia: KNOWN_ENGLISH_GAMING_SITES.map((site) => site.name),
     articlesChecked: articles.length,

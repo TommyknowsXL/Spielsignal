@@ -862,9 +862,19 @@ await assert.rejects(
     return true;
   }
 );
+await assert.rejects(
+  () => createEditorialBatch({
+    rootDirectory: invalidIdRoot,
+    candidateIds: [],
+    selectionMode: "manual",
+    fallbackToQueue: true,
+    articleTypeDefault: "news-overview"
+  }),
+  /selection_mode=manual benoetigt mindestens eine Candidate ID/
+);
 await cleanupTestRoot(invalidIdRoot);
 
-const autoTopRoot = await createTestRoot("spielsignal-batch-auto-top-");
+const autoTopRoot = await createTestRoot("spielsignal-batch-automatic-");
 await mkdir(join(autoTopRoot, "src", "data", "editorial"), { recursive: true });
 const autoCandidates = Array.from({ length: 6 }, (_, index) => ({
   ...interestingCandidate,
@@ -887,11 +897,11 @@ await writeFile(
 const autoTopBatch = await createEditorialBatch({
   rootDirectory: autoTopRoot,
   queuePath: DEFAULT_EDITORIAL_QUEUE_PATH,
-  selectionMode: "auto-top",
+  selectionMode: "automatic",
   articleTypeDefault: "news-overview",
   maxArticles: 3,
   generatedAt: "2026-06-08T10:00:00.000Z",
-  environment: { GITHUB_RUN_ID: "auto-top", AI_EDITORIAL_ENABLED: "false" }
+  environment: { GITHUB_RUN_ID: "automatic", AI_EDITORIAL_ENABLED: "false" }
 });
 assert.equal(autoTopBatch.checkedCandidates, 6);
 assert.deepEqual(autoTopBatch.results.slice(0, 3).map((entry) => entry.candidateId), ["auto-1", "auto-2", "auto-3"]);
@@ -939,7 +949,7 @@ await writeFile(
 );
 const hardenedSelection = await createEditorialBatch({
   rootDirectory: hardenedSelectionRoot,
-  selectionMode: "auto-top",
+  selectionMode: "automatic",
   articleTypeDefault: "news-overview",
   maxArticles: 3,
   generatedAt: "2026-06-08T10:00:00.000Z",
@@ -1471,14 +1481,14 @@ const outputPath = join(autoTopRoot, "output.txt");
 const preparedAutoTop = await prepareBatchQueue({
   rootDirectory: autoTopRoot,
   queuePath: DEFAULT_EDITORIAL_QUEUE_PATH,
-  selectionMode: "auto-top",
+  selectionMode: "automatic",
   maxArticles: 3,
   summaryPath,
   outputPath
 });
-assert.deepEqual(preparedAutoTop.selectedCandidateIds, ["auto-1", "auto-2", "auto-3"]);
+assert.deepEqual(preparedAutoTop.selectedCandidateIds, ["auto-1", "auto-2", "auto-3", "auto-4", "auto-5", "auto-6"]);
 assert.match(await readFile(summaryPath, "utf8"), /Automatisch ausgewählte Kandidaten/);
-assert.match(await readFile(outputPath, "utf8"), /selectedCandidateIds=auto-1,auto-2,auto-3/);
+assert.match(await readFile(outputPath, "utf8"), /selectedCandidateIds=auto-1,auto-2,auto-3,auto-4,auto-5,auto-6/);
 const diagnostics = renderBatchQueueDiagnostics({
   report: {
     ...report,
@@ -1587,9 +1597,11 @@ assert.doesNotThrow(() => parseYaml(workflow, { uniqueKeys: true }));
 assert.match(workflow, /name: Create Editorial Batch/);
 assert.match(workflow, /selection_mode:/);
 assert.match(workflow, /- manual/);
-assert.match(workflow, /- auto-top/);
+assert.match(workflow, /- automatic/);
 assert.match(workflow, /candidate_ids:/);
 assert.match(workflow, /fallback_to_queue:/);
+assert.match(workflow, /Workflow-Eingaben validieren/);
+assert.match(workflow, /selection_mode=manual benoetigt mindestens eine Candidate ID/);
 assert.match(workflow, /editorial-batch\/\$\{\{ github\.run_id \}\}/);
 assert.match(workflow, /git ls-remote --exit-code --heads origin/);
 assert.doesNotMatch(workflow, /--force|\bgh\s+pr\s+merge\b|\bgit\s+merge\b/);
@@ -1606,6 +1618,15 @@ assert.match(workflow, /QUEUE_PATH: src\/data\/editorial\/latest-queue\.json/);
 assert.match(workflow, /npm run editorial:batch-summary -- "\$SELECTION_MODE" "\$CANDIDATE_IDS" "\$MAX_ARTICLES" "\$QUEUE_PATH"/);
 assert.match(workflow, /npm run editorial:create-batch -- "\$CANDIDATE_IDS"[\s\S]*"\$QUEUE_PATH" "\$SELECTION_MODE" "\$FALLBACK_TO_QUEUE"/);
 assert.match(workflow, /FALLBACK_TO_QUEUE: \$\{\{ inputs\.fallback_to_queue \}\}/);
+assert.match(workflow, /GITHUB_STEP_SUMMARY: \$\{\{ runner\.temp \}\}\/spielsignal-daily-summary\.md/);
+assert.match(workflow, /GITHUB_STEP_SUMMARY: \$\{\{ runner\.temp \}\}\/spielsignal-batch-selection-summary\.md/);
+assert.match(workflow, /GITHUB_STEP_SUMMARY: \$\{\{ runner\.temp \}\}\/spielsignal-test-summary\.md/);
+assert.match(workflow, /} > "\$GITHUB_STEP_SUMMARY"/);
+const publicationSummaryStep = workflow.slice(
+  workflow.indexOf("Veröffentlichungsfähigkeit zusammenfassen"),
+  workflow.indexOf("Branch und Commit erstellen")
+);
+assert.doesNotMatch(publicationSummaryStep, />> "\$GITHUB_STEP_SUMMARY"/);
 assert.match(dailyWorkflow, /src\/data\/editorial\/latest-queue\.json/);
 assert.match(reportWriter, /join\(dataDirectory, "latest-queue\.json"\)/);
 assert.match(workflow, /if: always\(\)/);
@@ -1653,6 +1674,15 @@ assert.ok(secondaryMedia.english.includes("IGN"));
 const longArticleParagraph = "Test Quest update 1.1 will launch on PC and Steam on July 20 with a new demo. ".repeat(10);
 const secondaryFetch = async (input: string | URL | Request) => {
   const url = String(input);
+  if (url.includes("bing.com/search") && url.includes("startet%20mit%20neuer%20Demo") && url.includes("pcgamer.com")) {
+    return new Response(`<html><body><a href="https://www.pcgamer.com/test-quest-update/">PC Gamer</a></body></html>`, { status: 200, headers: { "content-type": "text/html" } });
+  }
+  if (url.includes("bing.com/search") && url.includes("startet%20mit%20neuer%20Demo") && url.includes("eurogamer.net")) {
+    return new Response(`<html><body><a href="https://www.eurogamer.net/test-quest-update">Eurogamer</a></body></html>`, { status: 200, headers: { "content-type": "text/html" } });
+  }
+  if (url.includes("bing.com/search")) {
+    return new Response("<html><body>No result</body></html>", { status: 200, headers: { "content-type": "text/html" } });
+  }
   if (url.includes("gamestar.de")) {
     return new Response(`
       <html><head>
@@ -1743,13 +1773,10 @@ await writeFile(
 );
 const secondaryBatch = await createEditorialBatch({
   rootDirectory: secondaryRoot,
-  selectionMode: "manual",
-  candidateIds: ["rss-secondary-review"],
+  selectionMode: "automatic",
+  candidateIds: [],
   articleTypeDefault: "news-overview",
-  primarySourceGroups: [[
-    "https://www.pcgamer.com/test-quest-update/",
-    "https://www.eurogamer.net/test-quest-update"
-  ]],
+  primarySourceGroups: [],
   maxArticles: 1,
   generatedAt: "2026-06-16T13:00:00.000Z",
   environment: { GITHUB_RUN_ID: "secondary-review", AI_EDITORIAL_ENABLED: "false" },
@@ -1758,6 +1785,8 @@ const secondaryBatch = await createEditorialBatch({
 });
 assert.equal(secondaryBatch.completeDrafts, 0);
 assert.equal(secondaryBatch.secondarySourceReviewDrafts, 1);
+assert.equal(secondaryBatch.secondarySearchStartedCandidates, 1);
+assert.equal(secondaryBatch.secondaryArticlesRead, 3);
 assert.equal(secondaryBatch.results[0].status, "secondary-source-review");
 assert.equal(secondaryBatch.results[0].secondarySourceFallbackUsed, true);
 assert.equal(secondaryBatch.results[0].aiInvoked, false);

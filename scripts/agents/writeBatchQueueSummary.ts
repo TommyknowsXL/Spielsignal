@@ -45,7 +45,7 @@ export function renderBatchQueueSummary(
     ? `\n\nWeitere ${report.candidates.length - MAX_SUMMARY_CANDIDATES} Kandidaten sind in \`src/data/editorial/latest-queue.json\` enthalten.`
     : "";
 
-  const selection = selectionMode === "auto-top"
+  const selection = selectionMode === "automatic" || selectionMode === "auto-top"
     ? `\n## Automatisch ausgewählte Kandidaten\n\n${selectedCandidateIds.map((id) => `- ${markdownTableValue(id)}`).join("\n") || "- Keine"}\n`
     : "";
 
@@ -104,6 +104,7 @@ export async function prepareBatchQueue(input: {
     maxArticles,
     articleType: input.articleType,
     publishedSlugs,
+    evaluateFullQueue: selectionMode === "automatic" || selectionMode === "auto-top",
     fallbackToQueue: input.fallbackToQueue
   });
   const selectedCandidateIds = selected.map((candidate) => candidate.id);
