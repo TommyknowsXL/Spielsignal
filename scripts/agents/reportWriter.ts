@@ -25,6 +25,11 @@ function candidateMarkdown(candidate: EditorialCandidate, rank: number): string 
 - **Steam-App-ID:** ${markdownValue(candidate.steamAppId)}
 - **Steam-Store-Link:** ${markdownLink("Steam öffnen", candidate.steamStoreUrl)}
 - **Quelle:** [${candidate.sourceName}](${candidate.sourceUrl})
+- **Cluster:** ${candidate.clusterId ?? candidate.id}
+- **Klassifikation:** ${candidate.topicClassification ?? "general-news"}
+- **Cluster-Quellen:** ${(candidate.clusterSourceNames ?? [candidate.sourceName]).join(", ")}
+- **Unabhaengige Quellen:** ${candidate.independentSourceCount ?? 1}
+- **Offizielle Primaerquelle im Cluster:** ${candidate.officialPrimarySourceUrl ? markdownLink("oeffnen", candidate.officialPrimarySourceUrl) : "Nein"}
 - **Artikeltyp:** ${candidate.articleType}
 - **Prioritätswert:** ${candidate.score}
 - **Gratis-Klassifikation:** ${candidate.freeReferenceType ?? "none"} (${candidate.freePromotionConfirmed ? "bestätigt" : "nicht bestätigt"})
@@ -47,6 +52,19 @@ export function renderMarkdownReport(report: EditorialQueueReport): string {
   const errors = report.sourceErrors.length
     ? report.sourceErrors.map((error) => `- ${error}`).join("\n")
     : "- Keine Quellenfehler gemeldet.";
+  const sourceDiagnostics = report.sourceDiagnostics
+    ? `## Quellen-Diagnose
+
+- **Abgefragte Quellen:** ${report.sourceDiagnostics.requested.join(", ") || "Keine"}
+- **Erfolgreiche Quellen:** ${report.sourceDiagnostics.successful.join(", ") || "Keine"}
+- **Fehlerhafte Quellen:** ${report.sourceDiagnostics.failed.join("; ") || "Keine"}
+- **Kandidaten je Quelle:** ${Object.entries(report.sourceDiagnostics.candidatesBySource).map(([name, count]) => `${name}: ${count}`).join("; ") || "Keine"}
+
+## Themencluster
+
+${report.sourceDiagnostics.clusters.length ? report.sourceDiagnostics.clusters.map((cluster) => `- **${cluster.title}** (${cluster.classification}, Score ${cluster.score}): ${cluster.independentSourceCount} unabhaengige Quelle(n), Primaerquelle ${cluster.officialPrimarySourceUrl ? "gefunden" : "nicht erkannt"}, ausgewaehlt: ${cluster.selected ? "ja" : "nein"}; ${cluster.reason}`).join("\n") : "- Keine Cluster gebildet."}
+`
+    : "";
 
   const markdown = `# SpielSignal Tagesauswahl
 
@@ -70,6 +88,17 @@ keine Bilder und führt keinen Merge auf \`main\` aus.
 - **Anzahl Bildkandidaten:** ${report.summary.imageCandidates}
 - **Anzahl Kandidaten nur mit Fallback:** ${report.summary.fallbackOnlyCandidates}
 - **Quellenfehler:** ${report.summary.sourceErrors}
+- **Abgefragte Quellen:** ${report.summary.sourceCount}
+- **Erfolgreiche Quellen:** ${report.summary.successfulSources}
+- **Fehlerhafte Quellen:** ${report.summary.failedSources}
+- **Eingangskandidaten vor Auswahl:** ${report.summary.inputCandidates}
+- **Themencluster:** ${report.summary.clusterCount}
+- **Cluster mit offizieller Primaerquelle:** ${report.summary.officialPrimarySourceClusters}
+- **Cluster mit mehreren Fachmedien:** ${report.summary.multiSourceClusters}
+- **Ausgeschlossene Kolumnen/Meinungen:** ${report.summary.excludedColumns}
+- **Ausgeschlossene Specials/Listicles:** ${report.summary.excludedSpecialsListicles}
+- **Ausgeschlossene Paywall-Inhalte:** ${report.summary.excludedPaywalled}
+- **Ausgeschlossene Steam-Rankings ohne Anlass:** ${report.summary.excludedSteamRankingsWithoutNews}
 - **Steam-Scout:** ${report.steamScoutStatus}
 - **Steam-API-Key vorhanden:** ${report.steamApiKeyPresent ? "ja" : "nein"}
 - **Steam-Releases:** ${report.steamReleaseStatus}
@@ -82,6 +111,8 @@ keine Bilder und führt keinen Merge auf \`main\` aus.
 ## Quellenstatus
 
 ${errors}
+
+${sourceDiagnostics}
 
 ## Priorisierte Vorschläge
 

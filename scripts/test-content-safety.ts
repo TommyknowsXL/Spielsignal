@@ -35,8 +35,27 @@ assert.equal(trending.items.every((item) => item.clickCount === undefined), true
 assert.equal(trending.items.every((item) => item.external), true);
 
 const enabledSources = newsSources.filter((source) => source.enabled);
-assert.deepEqual(enabledSources.map((source) => source.name), ["GameStar Gaming-News"]);
-assert.equal(enabledSources[0].feedUrl, "https://www.gamestar.de/rss/gaming.rss");
+assert.equal(enabledSources.length >= 25, true);
+assert.equal(enabledSources.some((source) => source.name === "GameStar Gaming-News"), true);
+for (const requiredName of [
+  "PC Games",
+  "MeinMMO",
+  "PC Gamer",
+  "Eurogamer",
+  "Rock Paper Shotgun",
+  "Xbox Wire",
+  "PlayStation Blog",
+  "Ubisoft News",
+  "EA News",
+  "Epic Games News",
+  "GOG News"
+]) {
+  assert.equal(enabledSources.some((source) => source.name === requiredName), true);
+}
+assert.equal(
+  enabledSources.every((source) => source.feedUrl?.startsWith("http")),
+  true
+);
 for (const disabledName of ["GameStar News", "GameStar Hardware", "GameStar Deals"]) {
   assert.equal(newsSources.find((source) => source.name === disabledName)?.enabled, false);
 }

@@ -91,7 +91,7 @@ const manyCandidates = Array.from({ length: 15 }, (_, index) => ({
 }));
 const queue = buildEditorialQueue(manyCandidates);
 assert.equal(queue.length <= MAX_DAILY_CANDIDATES, true);
-assert.equal(queue.length, 5);
+assert.equal(queue.length >= 8, true);
 assert.equal(queue.every((candidate) => Boolean(candidate.sourceUrl)), true);
 assert.equal(queue.every((candidate) => candidate.editorialStatus === "needs-review"), true);
 assert.equal(queue.some((candidate) => (candidate.articleType as string) === "test"), false);
@@ -102,9 +102,11 @@ assert.equal(
       (sourceName) =>
         queue.filter((candidate) => candidate.sourceName === sourceName).length
     )
-  ) <= 6,
+) <= 6,
   true
 );
+assert.equal(new Set(queue.map((candidate) => candidate.sourceName)).size >= 3, true);
+assert.equal(queue.every((candidate) => candidate.clusterId), true);
 
 for (const [headline, expected] of [
   ["Goals - Das neue Gratis-FIFA?", "Goals"],
@@ -158,6 +160,58 @@ assert.equal(
   ]).length,
   1
 );
+const clusteredNews = buildEditorialQueue([
+  {
+    ...baseCandidate,
+    id: "cluster-gamestar",
+    sourceName: "GameStar",
+    sourceUrl: "https://gamestar.test/news/frostline-update",
+    title: "Frostline Tactics bekommt grosses PC-Update",
+    gameTitle: "Frostline Tactics",
+    topicClassification: "game-update"
+  },
+  {
+    ...baseCandidate,
+    id: "cluster-pcgamer",
+    sourceName: "PC Gamer",
+    sourceUrl: "https://pcgamer.test/news/frostline-update",
+    title: "Frostline Tactics update adds new campaign on PC",
+    gameTitle: "Frostline Tactics",
+    topicClassification: "game-update"
+  },
+  {
+    ...baseCandidate,
+    id: "cluster-eurogamer",
+    sourceName: "Eurogamer",
+    sourceUrl: "https://eurogamer.test/news/frostline-update",
+    title: "Frostline Tactics update detailed",
+    gameTitle: "Frostline Tactics",
+    topicClassification: "game-update"
+  },
+  {
+    ...baseCandidate,
+    id: "cluster-official",
+    sourceName: "Xbox Wire",
+    sourceUrl: "https://news.xbox.com/en-us/frostline-tactics-update/",
+    title: "Frostline Tactics update is available now",
+    gameTitle: "Frostline Tactics",
+    topicClassification: "game-update"
+  }
+]);
+assert.equal(clusteredNews.length, 1);
+assert.equal(clusteredNews[0].independentSourceCount! >= 3, true);
+assert.equal(clusteredNews[0].officialPrimarySourceFound, true);
+
+const qualityQueue = buildEditorialQueue([
+  { ...baseCandidate, id: "real-news", sourceUrl: "https://example.test/update", title: "PC-Spiel Neon Harbor erhaelt grosses Update", gameTitle: "Neon Harbor", score: 50, topicClassification: "game-update" },
+  { ...baseCandidate, id: "column", sourceUrl: "https://example.test/column", title: "Kolumne: Warum PC-Spiele frueher besser waren", score: 90, topicClassification: "column" },
+  { ...baseCandidate, id: "special", sourceUrl: "https://example.test/list", title: "Die 10 besten PC-Spiele fuer den Sommer", score: 90, topicClassification: "special" },
+  { ...baseCandidate, id: "sale", sourceUrl: "https://example.test/sale", title: "Steam Sale: Viele PC-Spiele reduziert", score: 80, topicClassification: "sale-roundup" },
+  { ...baseCandidate, id: "paywall", sourceUrl: "https://example.test/plus", title: "Plus: Exklusive Analyse zum neuen PC-Spiel", score: 80, topicClassification: "paywalled-plus-content" },
+  { ...baseCandidate, id: "steam-ranking", sourceType: "steam-top-seller", sourceName: "Steam Topseller", sourceUrl: "https://store.steampowered.com/app/55/", title: "Example Game ist in den Steam-Topsellern", score: 100, topicClassification: "steam-ranking-without-news" }
+]);
+assert.equal(qualityQueue[0].id, "real-news");
+assert.equal(qualityQueue.some((candidate) => candidate.id === "steam-ranking"), false);
 assert.equal(
   hasPcGamingReference({
     title: "iOS 27: Dieses Update kommt auf das iPhone"
@@ -399,7 +453,7 @@ const rss = `<?xml version="1.0"?>
 <rss version="2.0"><channel><title>Agententest</title>
 <item><title>Neues PC-Spiel erhält großes Update</title>
 <link>https://example.test/news/pc-update</link>
-<pubDate>Sat, 06 Jun 2026 10:00:00 GMT</pubDate>
+<pubDate>Thu, 18 Jun 2026 10:00:00 GMT</pubDate>
 <category>news</category></item></channel></rss>`;
 const server = createServer((_request, response) => {
   response.writeHead(200, { "content-type": "application/rss+xml" });
@@ -466,9 +520,9 @@ const mixedReport = await runDailyEditorialQueue({
 });
 assert.equal(
   mixedReport.candidates.filter((candidate) => candidate.sourceType !== "rss-news").length,
-  2
+  1
 );
-assert.equal(mixedReport.summary.imageCandidates, 2);
+assert.equal(mixedReport.summary.imageCandidates, 1);
 assert.match(mixedReport.steamScoutStatus, /2 verwertbare/);
 await new Promise<void>((resolve, reject) =>
   server.close((error) => (error ? reject(error) : resolve()))
