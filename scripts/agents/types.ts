@@ -15,6 +15,34 @@ export type EditorialArticleType =
   | "steam-most-played"
   | "test-candidate";
 
+export type EditorialTopicClassification =
+  | "patchnotes"
+  | "game-update"
+  | "release-date"
+  | "demo-release"
+  | "new-game-announcement"
+  | "trailer"
+  | "DLC"
+  | "expansion"
+  | "studio-news"
+  | "publisher-news"
+  | "legal/regulatory"
+  | "platform-update"
+  | "event-announcement"
+  | "confirmed-delay"
+  | "confirmed-cancellation"
+  | "official-roadmap"
+  | "opinion"
+  | "column"
+  | "special"
+  | "listicle"
+  | "buying-guide"
+  | "sale-roundup"
+  | "paywalled-plus-content"
+  | "community-discussion"
+  | "steam-ranking-without-news"
+  | "general-news";
+
 export type FreeReferenceType =
   | "none"
   | "free-to-play"
@@ -63,6 +91,15 @@ export type EditorialCandidate = {
   editorialStatus: "draft" | "needs-review" | "approved" | "rejected" | "published";
   openChecks: string[];
   recommendedNextAction: string;
+  topicClassification?: EditorialTopicClassification;
+  clusterId?: string;
+  clusterTitle?: string;
+  clusterSourceUrls?: string[];
+  clusterSourceNames?: string[];
+  independentSourceCount?: number;
+  officialPrimarySourceUrl?: string;
+  officialPrimarySourceFound?: boolean;
+  queueDiagnostics?: string[];
 };
 
 export type EditorialQueueSummary = {
@@ -77,6 +114,17 @@ export type EditorialQueueSummary = {
   officialSteamImageCandidates: number;
   fallbackOnlyCandidates: number;
   sourceErrors: number;
+  sourceCount: number;
+  successfulSources: number;
+  failedSources: number;
+  inputCandidates: number;
+  clusterCount: number;
+  officialPrimarySourceClusters: number;
+  multiSourceClusters: number;
+  excludedColumns: number;
+  excludedSpecialsListicles: number;
+  excludedPaywalled: number;
+  excludedSteamRankingsWithoutNews: number;
 };
 
 export type EditorialQueueReport = {
@@ -84,6 +132,24 @@ export type EditorialQueueReport = {
   reportDate: string;
   candidates: EditorialCandidate[];
   sourceErrors: string[];
+  sourceDiagnostics?: {
+    requested: string[];
+    successful: string[];
+    failed: string[];
+    candidatesBySource: Record<string, number>;
+    clusters: {
+      id: string;
+      title: string;
+      sourceNames: string[];
+      sourceUrls: string[];
+      independentSourceCount: number;
+      officialPrimarySourceUrl?: string;
+      selected: boolean;
+      classification: EditorialTopicClassification;
+      score: number;
+      reason: string;
+    }[];
+  };
   steamScoutStatus: string;
   steamReleaseStatus: string;
   steamTopSellerStatus: string;

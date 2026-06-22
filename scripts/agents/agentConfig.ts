@@ -3,7 +3,8 @@ import type {
   EditorialCandidate
 } from "./types";
 
-export const MAX_DAILY_CANDIDATES = 10;
+export const MAX_DAILY_CANDIDATES = 15;
+export const MAX_SCOUT_INPUT_CANDIDATES = 30;
 
 export const agentRoles = {
   steamScout: {
@@ -126,6 +127,9 @@ export function scoreCandidate(
     | "createdAt"
     | "freeReferenceType"
     | "freePromotionConfirmed"
+    | "topicClassification"
+    | "officialPrimarySourceFound"
+    | "independentSourceCount"
   >
 ): { score: number; reasons: string[] } {
   const title = candidate.title.toLocaleLowerCase("de");
@@ -140,8 +144,9 @@ export function scoreCandidate(
     reasons.push("Neue überprüfbare Steam-Veröffentlichung");
   }
   if (candidate.sourceType === "steam-top-seller") {
-    score += scoringRules.verifiedSteamTrend;
-    reasons.push("Steam-Topseller aus offizieller Quelle");
+    const hasNewsEvent = candidate.topicClassification && candidate.topicClassification !== "steam-ranking-without-news";
+    score += hasNewsEvent ? scoringRules.verifiedSteamTrend : -35;
+    reasons.push(hasNewsEvent ? "Steam-Signal mit Nachrichtenanlass" : "Steam-Ranking ohne eigenen Nachrichtenanlass");
   }
   if (candidate.sourceType === "steam-most-played") {
     score += scoringRules.verifiedSteamTrend;
@@ -164,6 +169,49 @@ export function scoreCandidate(
   if (/(update|patch|erweiterung|dlc)/i.test(candidate.title)) {
     score += scoringRules.majorUpdate;
     reasons.push("Update oder Erweiterung mit möglichem Nutzwert");
+  }
+  if (candidate.officialPrimarySourceFound) {
+    score += 22;
+    reasons.push("Offizielle Primaerquelle im Cluster vorhanden");
+  }
+  if ((candidate.independentSourceCount ?? 1) >= 2) {
+    score += 16;
+    reasons.push("Mehrere unabhaengige Fachmedien berichten");
+  }
+  if ([
+    "patchnotes",
+    "game-update",
+    "release-date",
+    "demo-release",
+    "new-game-announcement",
+    "trailer",
+    "DLC",
+    "expansion",
+    "studio-news",
+    "publisher-news",
+    "legal/regulatory",
+    "platform-update",
+    "event-announcement",
+    "confirmed-delay",
+    "confirmed-cancellation",
+    "official-roadmap"
+  ].includes(candidate.topicClassification ?? "general-news")) {
+    score += 14;
+    reasons.push("Konkreter aktueller News-Anlass");
+  }
+  if ([
+    "opinion",
+    "column",
+    "special",
+    "listicle",
+    "buying-guide",
+    "sale-roundup",
+    "paywalled-plus-content",
+    "community-discussion",
+    "steam-ranking-without-news"
+  ].includes(candidate.topicClassification ?? "general-news")) {
+    score -= 45;
+    reasons.push("Nicht als eigenstaendiger News-Kandidat priorisiert");
   }
   if (/(guide|systemanforderung|kostenlos|gratis|release|termin)/i.test(candidate.title)) {
     score += scoringRules.visitorUtility;

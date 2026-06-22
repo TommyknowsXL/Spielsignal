@@ -156,7 +156,18 @@ const report: EditorialQueueReport = {
     rssCandidatesWithSteamAppId: 1,
     officialSteamImageCandidates: 0,
     fallbackOnlyCandidates: 2,
-    sourceErrors: 0
+    sourceErrors: 0,
+    sourceCount: 2,
+    successfulSources: 2,
+    failedSources: 0,
+    inputCandidates: 2,
+    clusterCount: 2,
+    officialPrimarySourceClusters: 0,
+    multiSourceClusters: 0,
+    excludedColumns: 0,
+    excludedSpecialsListicles: 0,
+    excludedPaywalled: 0,
+    excludedSteamRankingsWithoutNews: 0
   },
   safeguards: {
     automaticPublishing: false,
