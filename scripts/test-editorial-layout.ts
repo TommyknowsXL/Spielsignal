@@ -66,12 +66,16 @@ assert.ok(article.indexOf('placement="article-bottom"') < article.indexOf("data-
 assert.ok(article.indexOf("</aside>") < article.indexOf("data-article-more-news"));
 assert.match(article, /placement="article-sidebar"/);
 assert.match(redaktionIndex, /getCollection\("drafts"/);
+assert.match(redaktionIndex, /latest-queue\.json/);
+assert.match(redaktionIndex, /candidate\.id/);
+assert.match(redaktionIndex, /Draft aus diesem Thema erzeugen/);
 assert.match(redaktionIndex, /needs-source-review/);
 assert.match(redaktionIndex, /Recherche-Stub/);
 assert.match(redaktionIndex, /Vorschau/);
 assert.match(redaktionIndex, /Bearbeiten/);
 assert.match(redaktionIndex, /Freigeben/);
 assert.match(redaktionIndex, /Ablehnen/);
+assert.match(redaktionIndex, /draft\.data\.status !== "needs-source-review"/);
 assert.match(redaktionIndex, /robots="noindex, nofollow"/);
 assert.match(redaktionPreview, /robots="noindex, nofollow"/);
 assert.match(redaktionPreview, /ArticleContentBlocks/);
