@@ -7,21 +7,23 @@ on:
         description: "Candidate ID aus der Daily Editorial Queue"
         required: true
         type: string
-      article_type:
-        description: "news-overview, release-check, first-impression oder free-promotion"
-        required: true
-        type: choice
-        options:
-          - news-overview
-          - release-check
-          - first-impression
-          - free-promotion
-      primary_source_urls:
-        description: "Offizielle Quellen-URLs, durch Komma getrennt"
+      allow_secondary_source_review:
+        description: "Bei zwei belastbaren Sekundaerquellen Review-Draft erzeugen"
         required: false
-        type: string
-      editorial_note:
-        description: "Eigene Notiz oder gewünschter Schwerpunkt"
+        default: true
+        type: boolean
+      allow_research_stub:
+        description: "Bei unzureichenden Quellen needs-source-review erzeugen"
+        required: false
+        default: true
+        type: boolean
+      fallback_to_queue:
+        description: "Ein-Kandidaten-Modus: standardmaessig keine Queue-Ausweichwahl"
+        required: false
+        default: false
+        type: boolean
+      article_angle:
+        description: "Optionaler redaktioneller Fokus"
         required: false
         type: string
 
@@ -45,21 +47,31 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Abhängigkeiten installieren
+      - name: Abhaengigkeiten installieren
         run: npm ci
+
+      - name: Workflow-Eingaben validieren
+        run: |
+          if [ -z "${CANDIDATE_ID// }" ]; then
+            echo "candidate_id ist erforderlich. Kopiere eine Candidate ID aus /redaktion/."
+            exit 1
+          fi
+        env:
+          CANDIDATE_ID: ${{ inputs.candidate_id }}
 
       - name: Artikelentwurf erzeugen
         id: draft
-        run: npm run editorial:create-draft -- "$CANDIDATE_ID" "$ARTICLE_TYPE" "$PRIMARY_SOURCE_URLS" "$EDITORIAL_NOTE"
+        run: npm run editorial:create-draft -- "$CANDIDATE_ID" "" "" "$ARTICLE_ANGLE" "$ALLOW_SECONDARY_SOURCE_REVIEW" "$ALLOW_RESEARCH_STUB"
         env:
           CANDIDATE_ID: ${{ inputs.candidate_id }}
-          ARTICLE_TYPE: ${{ inputs.article_type }}
-          PRIMARY_SOURCE_URLS: ${{ inputs.primary_source_urls }}
-          EDITORIAL_NOTE: ${{ inputs.editorial_note }}
+          ARTICLE_ANGLE: ${{ inputs.article_angle }}
+          ALLOW_SECONDARY_SOURCE_REVIEW: ${{ inputs.allow_secondary_source_review }}
+          ALLOW_RESEARCH_STUB: ${{ inputs.allow_research_stub }}
+          FALLBACK_TO_QUEUE: ${{ inputs.fallback_to_queue }}
           AI_EDITORIAL_ENABLED: ${{ vars.AI_EDITORIAL_ENABLED || 'false' }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-      - name: Entwurf prüfen
+      - name: Entwurf pruefen
         run: |
           npm test
           npm run build
@@ -84,33 +96,41 @@ jobs:
           PR_TITLE: ${{ steps.draft.outputs.title }}
           CANDIDATE_ID: ${{ steps.draft.outputs.candidateId }}
           ARTICLE_TYPE: ${{ steps.draft.outputs.articleType }}
+          STATUS: ${{ steps.draft.outputs.status }}
           GAME_TITLE: ${{ steps.draft.outputs.gameTitle }}
           STEAM_APP_ID: ${{ steps.draft.outputs.steamAppId }}
           EXTERNAL_TIP_SOURCE: ${{ steps.draft.outputs.externalTipSource }}
           PRIMARY_SOURCES: ${{ steps.draft.outputs.primarySources }}
+          SECONDARY_SOURCES: ${{ steps.draft.outputs.secondarySources }}
           IMAGE_SOURCE: ${{ steps.draft.outputs.imageSource }}
           IMAGE_RIGHTS_STATUS: ${{ steps.draft.outputs.imageRightsStatus }}
           OPEN_CHECKS: ${{ steps.draft.outputs.openChecks }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           cat > pr-body.md <<EOF
           SpielSignal Artikelentwurf
 
           - Candidate ID: $CANDIDATE_ID
+          - Quelle: $EXTERNAL_TIP_SOURCE
+          - Status: $STATUS
           - Artikeltyp: $ARTICLE_TYPE
           - Spiel: $GAME_TITLE
           - Steam-App-ID: $STEAM_APP_ID
-          - externe Tippquelle: $EXTERNAL_TIP_SOURCE
-          - Primärquellen: $PRIMARY_SOURCES
+          - gefundene Primaerquellen: $PRIMARY_SOURCES
+          - gefundene Sekundaerquellen: $SECONDARY_SOURCES
+          - gelesene Fachartikel: siehe Quellen- und Pruefblock im Draft
+          - extrahierte Fakten: siehe Draft und offene Pruefpunkte
           - Bildquelle: $IMAGE_SOURCE
           - Bildfreigabestatus: $IMAGE_RIGHTS_STATUS
-          - offene Prüfungen: $OPEN_CHECKS
+          - offene Pruefungen: $OPEN_CHECKS
+          - Workflow Run ID: $RUN_ID
 
-          Vor Merge prüfen:
+          Vor Merge pruefen:
           - [ ] Fakten korrekt?
           - [ ] eigene Struktur?
           - [ ] keine kopierten Formulierungen?
           - [ ] Bildquelle dokumentiert?
-          - [ ] Primärquelle vorhanden?
+          - [ ] Primaerquelle vorhanden oder Review-Status bewusst blockiert?
           - [ ] SEO-Titel sinnvoll?
           - [ ] Artikeltyp korrekt?
           - [ ] keine erfundene Spielzeit?

@@ -1,10 +1,12 @@
 ---
 import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import latestQueue from "../../data/editorial/latest-queue.json";
 
 const redaktionEnabled = process.env.VERCEL_ENV === "preview";
 const drafts = (redaktionEnabled ? await getCollection("drafts") : [])
   .sort((left, right) => right.data.updatedAt.valueOf() - left.data.updatedAt.valueOf());
+const dailyCandidates = latestQueue.candidates ?? [];
 
 const formatDate = (date: Date) => date.toLocaleDateString("de-DE", {
   day: "2-digit",
@@ -54,6 +56,38 @@ const qualityStatus = (draft: typeof drafts[number]) => {
       ein vergleichbarer Zugriffsschutz fuer Preview-/Redaktionsrouten aktiv sein.
     </div>
 
+    <section class="editorial-candidates" aria-labelledby="daily-candidates-title">
+      <div class="section-heading">
+        <p class="eyebrow">Tagesauswahl</p>
+        <h2 id="daily-candidates-title">Kandidaten aus latest-queue.json</h2>
+        <p>
+          Candidate ID kopieren, dann in GitHub Actions den Workflow <strong>Create Editorial Draft</strong>
+          starten. Der Workflow erzeugt einen Draft, einen Review-Stub oder einen Recherchebericht.
+        </p>
+      </div>
+
+      <div class="editorial-candidate-grid">
+        {dailyCandidates.map((candidate) => (
+          <article class="editorial-candidate-card">
+            <div class="editorial-candidate-card__head">
+              <h3>{candidate.title}</h3>
+              <code>{candidate.id}</code>
+            </div>
+            <dl>
+              <div><dt>Quelle</dt><dd>{candidate.sourceName}</dd></div>
+              <div><dt>Artikeltyp</dt><dd>{candidate.articleType}</dd></div>
+              <div><dt>Spiel/Entity</dt><dd>{candidate.gameTitle ?? "nicht sicher erkannt"}</dd></div>
+              <div><dt>Score</dt><dd>{candidate.score}</dd></div>
+              <div><dt>Bildstatus</dt><dd>{candidate.imageStatus}</dd></div>
+              <div><dt>Quellenstatus</dt><dd>{candidate.officialPrimarySourceFound ? "Primaerquelle erkannt" : `${candidate.independentSourceCount ?? 1} Sekundaerquelle(n)`}</dd></div>
+            </dl>
+            <p>{candidate.recommendedNextAction}</p>
+            <a href="/redaktion/workflow/">Draft aus diesem Thema erzeugen</a>
+          </article>
+        ))}
+      </div>
+    </section>
+
     {!redaktionEnabled ? (
       <div class="editorial-empty-state">
         Redaktionsdaten werden nur in geschuetzten Preview-Deployments geladen. Bitte Vercel Deployment
@@ -97,7 +131,7 @@ const qualityStatus = (draft: typeof drafts[number]) => {
           <nav aria-label={`Aktionen fuer ${draft.data.title}`} class="editorial-actions">
             <a href={`/redaktion/vorschau/${draft.data.slug}/`}>Vorschau</a>
             <a href={`/redaktion/bearbeiten/${draft.data.slug}/`}>Bearbeiten</a>
-            {draft.data.status !== "secondary-source-review" ? (
+            {draft.data.status !== "secondary-source-review" && draft.data.status !== "needs-source-review" ? (
               <a href={`/redaktion/bearbeiten/${draft.data.slug}/?action=approve`}>Freigeben</a>
             ) : (
               <span>Freigabe gesperrt</span>

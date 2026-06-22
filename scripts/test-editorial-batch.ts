@@ -8,6 +8,7 @@ import {
   DEFAULT_EDITORIAL_QUEUE_PATH,
   loadEditorialQueue
 } from "./agents/createEditorialBatch";
+import { createEditorialDraft } from "./agents/createEditorialDraft";
 import { analyzeEditorialCandidate } from "./agents/entityAnalysis";
 import {
   classifyEditorialAiError,
@@ -185,6 +186,72 @@ await writeFile(
   `${JSON.stringify(report, null, 2)}\n`,
   "utf8"
 );
+
+const manualDraftRoot = await createTestRoot("spielsignal-manual-draft-");
+await mkdir(join(manualDraftRoot, "src", "data", "editorial"), { recursive: true });
+const manualPrimaryCandidate: EditorialCandidate = {
+  ...interestingCandidate,
+  id: "manual-primary",
+  officialPrimarySourceUrl: "https://strategy.test/patchnotes/update-1-1",
+  independentSourceCount: 1
+};
+const manualSecondaryCandidate: EditorialCandidate = {
+  ...interestingCandidate,
+  id: "manual-secondary",
+  steamStoreUrl: undefined,
+  officialPrimarySourceUrl: undefined,
+  clusterSourceUrls: [
+    "https://www.pcgamer.com/test-quest-update/",
+    "https://www.eurogamer.net/test-quest-update"
+  ],
+  independentSourceCount: 2
+};
+const manualStubCandidate: EditorialCandidate = {
+  ...interestingCandidate,
+  id: "manual-stub",
+  steamStoreUrl: undefined,
+  officialPrimarySourceUrl: undefined,
+  clusterSourceUrls: ["https://www.pcgamer.com/test-quest-update/"],
+  independentSourceCount: 1
+};
+await writeFile(
+  join(manualDraftRoot, "src", "data", "editorial", "latest-queue.json"),
+  `${JSON.stringify({
+    ...report,
+    candidates: [manualPrimaryCandidate, manualSecondaryCandidate, manualStubCandidate]
+  }, null, 2)}\n`,
+  "utf8"
+);
+await assert.rejects(
+  createEditorialDraft({ candidateId: " ", rootDirectory: manualDraftRoot }),
+  /Candidate ID ist erforderlich/
+);
+const manualPrimaryDraft = await createEditorialDraft({
+  candidateId: "manual-primary",
+  rootDirectory: manualDraftRoot,
+  generatedAt: "2026-06-08T10:00:00.000Z",
+  runId: "12345"
+});
+assert.equal(manualPrimaryDraft.status, "draft");
+assert.ok(manualPrimaryDraft.primarySources.includes("https://strategy.test/patchnotes/update-1-1"));
+assert.equal(manualPrimaryDraft.branchName, "editorial-draft/strategy-test-news-overview-12345");
+const manualSecondaryDraft = await createEditorialDraft({
+  candidateId: "manual-secondary",
+  rootDirectory: manualDraftRoot,
+  generatedAt: "2026-06-08T10:00:00.000Z",
+  runId: "12346"
+});
+assert.equal(manualSecondaryDraft.status, "secondary-source-review");
+assert.equal(manualSecondaryDraft.secondarySources.length, 3);
+assert.match(await readFile(manualSecondaryDraft.filePath, "utf8"), /^status: "secondary-source-review"$/m);
+const manualStubDraft = await createEditorialDraft({
+  candidateId: "manual-stub",
+  rootDirectory: manualDraftRoot,
+  generatedAt: "2026-06-08T10:00:00.000Z"
+});
+assert.equal(manualStubDraft.status, "needs-source-review");
+assert.match(await readFile(manualStubDraft.filePath, "utf8"), /^status: "needs-source-review"$/m);
+await cleanupTestRoot(manualDraftRoot);
 
 const longBody = `## Was ist passiert?
 
