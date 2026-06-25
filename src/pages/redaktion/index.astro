@@ -7,12 +7,15 @@ const redaktionEnabled = process.env.VERCEL_ENV === "preview";
 const drafts = (redaktionEnabled ? await getCollection("drafts") : [])
   .sort((left, right) => right.data.updatedAt.valueOf() - left.data.updatedAt.valueOf());
 const dailyCandidates = latestQueue.candidates ?? [];
+const createDraftWorkflowUrl = "https://github.com/TommyknowsXL/Spielsignal/actions/workflows/create-editorial-draft.yml";
 
-const formatDate = (date: Date) => date.toLocaleDateString("de-DE", {
+const formatDateTime = (date: Date | string) => `${new Date(date).toLocaleString("de-DE", {
   day: "2-digit",
   month: "2-digit",
-  year: "numeric"
-});
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit"
+})} Uhr`;
 
 const statusLabel = (status: string) => {
   if (status === "needs-source-review") return "Recherche-Stub";
@@ -29,6 +32,22 @@ const qualityStatus = (draft: typeof drafts[number]) => {
   if (draft.data.primarySources.length < 1) return "Primaerquelle fehlt";
   if (draft.data.imageRightsStatus !== "approved") return "Bildfreigabe offen";
   return "Bereit zur redaktionellen Pruefung";
+};
+
+const draftSourceStatus = (draft: typeof drafts[number]) => {
+  if (draft.data.primarySources.length > 0) return `${draft.data.primarySources.length} Primaerquelle(n)`;
+  if ((draft.data.secondarySources ?? []).length > 0) return `${draft.data.secondarySources.length} Sekundaerquelle(n)`;
+  return "Quellenpruefung offen";
+};
+
+const candidateSourceStatus = (candidate: typeof dailyCandidates[number]) => {
+  if (candidate.officialPrimarySourceFound) return "Primaerquelle erkannt";
+  return `${candidate.independentSourceCount ?? 1} Sekundaerquelle(n)`;
+};
+
+const candidateStatusLabel = (candidate: typeof dailyCandidates[number]) => {
+  if (candidate.editorialStatus === "needs-review") return "Pruefung offen";
+  return candidate.editorialStatus;
 };
 ---
 
@@ -75,14 +94,28 @@ const qualityStatus = (draft: typeof drafts[number]) => {
             </div>
             <dl>
               <div><dt>Quelle</dt><dd>{candidate.sourceName}</dd></div>
+              <div><dt>Datum</dt><dd>{formatDateTime(candidate.createdAt)}</dd></div>
               <div><dt>Artikeltyp</dt><dd>{candidate.articleType}</dd></div>
+              <div><dt>Status</dt><dd>{candidateStatusLabel(candidate)}</dd></div>
               <div><dt>Spiel/Entity</dt><dd>{candidate.gameTitle ?? "nicht sicher erkannt"}</dd></div>
               <div><dt>Score</dt><dd>{candidate.score}</dd></div>
               <div><dt>Bildstatus</dt><dd>{candidate.imageStatus}</dd></div>
-              <div><dt>Quellenstatus</dt><dd>{candidate.officialPrimarySourceFound ? "Primaerquelle erkannt" : `${candidate.independentSourceCount ?? 1} Sekundaerquelle(n)`}</dd></div>
+              <div><dt>Quellenstatus</dt><dd>{candidateSourceStatus(candidate)}</dd></div>
             </dl>
             <p>{candidate.recommendedNextAction}</p>
-            <a href="/redaktion/workflow/">Draft aus diesem Thema erzeugen</a>
+            <div class="editorial-candidate-workflow">
+              <strong>Candidate ID kopieren</strong>
+              <ol>
+                <li>GitHub Actions oeffnen</li>
+                <li><code>Create Editorial Draft</code> waehlen</li>
+                <li>Candidate ID einfuegen</li>
+                <li>Workflow starten</li>
+                <li>PR/Preview pruefen</li>
+              </ol>
+              <a class="editorial-button editorial-button--info" href={createDraftWorkflowUrl}>
+                GitHub-Actions-Workflow oeffnen
+              </a>
+            </div>
           </article>
         ))}
       </div>
@@ -99,8 +132,8 @@ const qualityStatus = (draft: typeof drafts[number]) => {
       <div class="editorial-draft-table__row editorial-draft-table__row--head" role="row">
         <span>Titel</span>
         <span>Status</span>
-        <span>Typ</span>
-        <span>Quellen</span>
+        <span>Daten</span>
+        <span>Details</span>
         <span>Bild</span>
         <span>Pruefung</span>
         <span>Aktionen</span>
@@ -109,13 +142,22 @@ const qualityStatus = (draft: typeof drafts[number]) => {
       {redaktionEnabled && drafts.length ? drafts.map((draft) => (
         <article class={`editorial-draft-table__row editorial-draft-table__row--${draft.data.status}`} role="row">
           <div>
-            <h2>{draft.data.title}</h2>
-            <p>{draft.data.gameTitle ?? "Kein Spielname gesetzt"} · {formatDate(draft.data.createdAt)}</p>
-            <code>src/content/drafts/{draft.id}</code>
+            <h2><a href={`/redaktion/vorschau/${draft.data.slug}/`}>{draft.data.title}</a></h2>
+            <p>{draft.data.gameTitle ?? "Kein Spielname gesetzt"}</p>
+            <code>{draft.data.slug}</code>
           </div>
           <span class="editorial-status-badge">{statusLabel(draft.data.status)}</span>
-          <span>{draft.data.articleType}</span>
-          <span>{draft.data.primarySources.length}</span>
+          <span>
+            Erstellt: {formatDateTime(draft.data.createdAt)}
+            {draft.data.updatedAt ? <><br />Aktualisiert: {formatDateTime(draft.data.updatedAt)}</> : null}
+          </span>
+          <span>
+            Typ: {draft.data.articleType}
+            <br />
+            Quellen: {draftSourceStatus(draft)}
+            <br />
+            Datei: src/content/drafts/{draft.id}
+          </span>
           <span>{draft.data.imageRightsStatus}</span>
           <span>
             {qualityStatus(draft)}
@@ -129,14 +171,26 @@ const qualityStatus = (draft: typeof drafts[number]) => {
             ) : null}
           </span>
           <nav aria-label={`Aktionen fuer ${draft.data.title}`} class="editorial-actions">
-            <a href={`/redaktion/vorschau/${draft.data.slug}/`}>Vorschau</a>
-            <a href={`/redaktion/bearbeiten/${draft.data.slug}/`}>Bearbeiten</a>
+            <a class="editorial-button editorial-button--primary" href={`/redaktion/vorschau/${draft.data.slug}/`}>
+              Vorschau oeffnen
+            </a>
+            <a class="editorial-button editorial-button--secondary" href={`/redaktion/bearbeiten/${draft.data.slug}/`}>
+              Bearbeiten
+            </a>
+            <a class="editorial-button editorial-button--info" href="/redaktion/workflow/">
+              Workflow ansehen
+            </a>
             {draft.data.status !== "secondary-source-review" && draft.data.status !== "needs-source-review" ? (
-              <a href={`/redaktion/bearbeiten/${draft.data.slug}/?action=approve`}>Freigeben</a>
+              <a class="editorial-button editorial-button--secondary" href={`/redaktion/bearbeiten/${draft.data.slug}/?action=approve`}>
+                Freigabe vorbereiten
+              </a>
             ) : (
-              <span>Freigabe gesperrt</span>
+              <span class="editorial-action-note">Freigabe gesperrt</span>
             )}
-            <a href={`/redaktion/bearbeiten/${draft.data.slug}/?action=reject`}>Ablehnen</a>
+            <a class="editorial-button editorial-button--warning" href={`/redaktion/bearbeiten/${draft.data.slug}/?action=reject`}>
+              Ablehnen vorbereiten
+            </a>
+            <small>Aktionen erzeugen Patch-/PR-Hinweise und speichern nicht direkt im Repository.</small>
           </nav>
         </article>
       )) : redaktionEnabled ? (
